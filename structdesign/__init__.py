@@ -2,9 +2,8 @@ import os
 
 from flask import Flask
 
-from .extensions import db
-from .extensions import migrate
-from . import home
+from .extensions import db, migrate, csrf
+from . import home, auth
 
 
 def create_app(test_config=None):
@@ -23,7 +22,9 @@ def create_app(test_config=None):
 
     db.init_app(app)
     migrate.init_app(app, db)
+    csrf.init_app(app)
 
     app.register_blueprint(home.bp)
+    app.register_blueprint(auth.bp)
 
     return app
