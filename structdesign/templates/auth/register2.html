@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register Second Factor | Test</title>
+  </head>
+  <body>
+    <h1>Register Second Factor</h1>
+    {% for message in get_flashed_messages() %}
+      <div class="flash">{{ message }}</div>
+    {% endfor %}
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <label for="token">Verification token:</label>
+      <input type="text" name="token" id="token" placeholder="1234567" />
+      <input type="submit" value="Submit" />
+    </form>
+  </body>
+</html>

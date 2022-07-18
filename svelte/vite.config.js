@@ -14,6 +14,7 @@ const outDir = resolve(_dirname, "dist");
 const entryPoints = {
   home: resolve(root, "intro/home/index.html"),
   about: resolve(root, "intro/about/index.html"),
+  register: resolve(root, "auth/register/index.html"),
 };
 
 Object.entries(entryPoints).forEach(
@@ -21,7 +22,16 @@ Object.entries(entryPoints).forEach(
 );
 export default defineConfig({
   root,
-  plugins: [svelte()],
+  plugins: [
+    svelte({
+      onwarn: (warning, handler) => {
+        const { code, frame } = warning;
+        if (code === "css-unused-selector") return;
+
+        handler(warning);
+      },
+    }),
+  ],
   build: {
     outDir,
     emptyOutDir: true,

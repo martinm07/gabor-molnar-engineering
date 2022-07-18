@@ -8,8 +8,13 @@
     "build": "vite build && python build-svelte.py"
   },
   "devDependencies": {
+    "@iconify/svelte": "^2.2.1",
     "@sveltejs/vite-plugin-svelte": "^1.0.0-next.30",
     "svelte": "^3.44.0",
     "vite": "^2.9.9"
+  },
+  "dependencies": {
+    "intl-tel-input": "^17.0.16",
+    "svelte-imask": "^1.2.0"
   }
 }
