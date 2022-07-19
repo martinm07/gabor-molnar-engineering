@@ -1,4 +1,5 @@
 <script>
+  import "./form-style.css";
   import {
     newPageIn,
     turnPage,
@@ -7,18 +8,23 @@
     postData,
     validateFields,
     clearErrors,
+    stageStore,
   } from "./Helper";
   import InputField from "./InputField.svelte";
   import SubmitButton from "./SubmitButton.svelte";
-  import { onMount } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import { fly } from "svelte/transition";
-  import "./form-style.css";
+  import { parsePhoneNumber } from "awesome-phonenumber";
+
+  const dispatch = createEventDispatcher();
 
   export let doTransition;
 
   let email, phonenumber, recovermethod, recoveryPromise;
   let dataType = "number",
-    disabled = false;
+    disabled = false,
+    recoveries = [],
+    moveOnTime = -1;
 
   function recoverySubmit() {
     recoveryPromise = undefined;
@@ -28,29 +34,47 @@
       if (!validateFields(validateInput, [field])) return;
       recoveryPromise = recoveryPost();
       disabled = true;
-      recoveryPromise.then(() => {}).catch(() => (disabled = false));
+      recoveryPromise
+        .then((data) => {
+          recoveries = [
+            ...recoveries,
+            { data: data["data"], method: data["method"], id: data["id"] },
+          ];
+          if (email) email.input.value = "";
+          if (phonenumber) phonenumber.input.value = "";
+          recoveryPromise = undefined;
+        })
+        .finally(() => (disabled = false));
     }, 0);
   }
-  const recoveryPost = postData.bind(
-    null,
-    () => {
-      return {
-        recovermethod,
-        phonenumber: phonenumber?.value ?? "",
-        email: email?.value ?? "",
-      };
-    },
-    "register_recovery"
-  );
+  const recoveryPost = postData.bind(null, "register_recovery", () => {
+    return {
+      recovermethod,
+      phonenumber: phonenumber?.value ?? "",
+      email: email?.value ?? "",
+    };
+  });
+  function deleteOption(e) {
+    const el = e.target.closest(".recovery-delete");
+    const deleteID = Number.parseInt(el.dataset.id);
+    console.log(deleteID);
+    postData(
+      "delete_recovery",
+      () => {
+        return { id: deleteID };
+      },
+      null
+    );
+    recoveries = recoveries.filter((opt) => opt.id !== deleteID);
+  }
 
   async function isUsed(field, name) {
-    const resp = await postData(
+    const data = await postData(
       `is_inuse/${name}/${field.value || "_"}`,
       null,
       null,
       true
     );
-    const data = await resp.json();
     return data["is_inuse"];
   }
   const validateInput = function (
@@ -121,15 +145,38 @@
         break;
     }
   };
-
+  function waitMoveOn() {
+    moveOnTime = 10;
+    const waitMoveOnInterval = setInterval(() => {
+      moveOnTime--;
+      if (moveOnTime < 0) clearInterval(waitMoveOnInterval);
+    }, 1000);
+  }
   onMount(() => {
-    doTransition = true;
-
     resizeObs = new ResizeObserver((entries) => {
       tabHeight = entries[0].target.clientHeight;
     });
     changeType({ target: lineParent.children[0] });
     recovermethod = dataType === "number" ? numberMethod : emailMethod;
+
+    postData(
+      "register_get_recovery",
+      null,
+      {
+        FORBIDDEN: () => {
+          doTransition = false;
+          stageStore.set("details");
+        },
+      },
+      true
+    ).then((data) => {
+      recoveries = data.map((opt) => {
+        if (["sms", "voice"].includes(opt.method))
+          opt.data = parsePhoneNumber(opt.data).getNumber("national");
+        return opt;
+      });
+      if (recoveries.length === 0) waitMoveOn();
+    });
   });
 
   let tabParent, resizeObs;
@@ -169,6 +216,11 @@
   let numberMethod, emailMethod;
   $: if (numberMethod && emailMethod)
     recovermethod = dataType === "number" ? numberMethod : emailMethod;
+
+  async function finishRecovery() {
+    await postData("finish_registration");
+    dispatch("success");
+  }
 </script>
 
 <div
@@ -178,19 +230,24 @@
 >
   <h1>Don't Lose Your Account</h1>
   <form on:submit|preventDefault={recoverySubmit} novalidate>
-    <div
-      class="type-choose"
-      on:click={changeType}
-      bind:this={lineParent}
-      class:disabled
-    >
-      <div class="choice choice-number" data-choice="number">Phone number</div>
-      <div class="choice choice-email" data-choice="email">Email</div>
+    <div>
       <div
-        class="choice-line"
-        style="width: {$lineWidth}px; left: {$lineOffset}px;"
-      />
+        class="type-choose"
+        on:click={changeType}
+        bind:this={lineParent}
+        class:disabled
+      >
+        <div class="choice choice-number" data-choice="number">
+          Phone number
+        </div>
+        <div class="choice choice-email" data-choice="email">Email</div>
+        <div
+          class="choice-line"
+          style="width: {$lineWidth}px; left: {$lineOffset}px;"
+        />
+      </div>
     </div>
+
     <div
       class="type-parent"
       bind:this={tabParent}
@@ -232,7 +289,7 @@
             name="recovermethod-email"
             label="Method of Contact:"
             type="select"
-            selectPairs={{ email: "Email", other: "Other one" }}
+            selectPairs={{ email: "Email" }}
             bind:value={emailMethod}
           />
         </div>
@@ -240,6 +297,17 @@
     </div>
     <div class="group-submit">
       <SubmitButton text="Add Recovery Option" {disabled} />
+      <form
+        class="finish"
+        on:submit|preventDefault={finishRecovery}
+        class:hidden={recoveryPromise}
+      >
+        <SubmitButton
+          text={`Finish${moveOnTime >= 0 ? " (" + moveOnTime + " secs)" : ""}`}
+          disabled={moveOnTime >= 0}
+        />
+      </form>
+
       {#if recoveryPromise}
         {#await recoveryPromise}
           <div class="spinner">
@@ -277,6 +345,32 @@
       {/if}
     </div>
   </form>
+  <div class="recovery-list">
+    {#each recoveries as { data, method, id } (id)}
+      <div class="recovery-option">
+        <span class="recovery-data">{data}</span>
+        <span class="recovery-method">{method}</span>
+        <span class="recovery-delete" data-id={id} on:click={deleteOption}>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            width="512"
+            height="512"
+            ><g id="_01_align_center" data-name="01 align center"
+              ><path
+                d="M22,4H17V2a2,2,0,0,0-2-2H9A2,2,0,0,0,7,2V4H2V6H4V21a3,3,0,0,0,3,3H17a3,3,0,0,0,3-3V6h2ZM9,2h6V4H9Zm9,19a1,1,0,0,1-1,1H7a1,1,0,0,1-1-1V6H18Z"
+              /><rect x="9" y="10" width="2" height="8" /><rect
+                x="13"
+                y="10"
+                width="2"
+                height="8"
+              /></g
+            ></svg
+          >
+        </span>
+      </div>
+    {/each}
+  </div>
 </div>
 
 <style>
@@ -298,6 +392,7 @@
     font-size: 140%;
     font-weight: bold;
     color: #5f5f5f;
+    cursor: pointer;
   }
   .choice-line {
     position: absolute;
@@ -323,7 +418,52 @@
     width: 100%;
   }
 
+  .finish {
+    display: inline-block;
+    margin-left: 15px;
+  }
+  .finish.hidden {
+    display: none;
+  }
+
   :global(.iti) {
     width: auto;
+  }
+
+  .recovery-list {
+    width: 70%;
+    margin-left: 30px;
+    border-left: 2px solid #7b7b7b;
+    padding-left: 15px;
+    box-sizing: border-box;
+  }
+  .recovery-option {
+    display: flex;
+    width: 100%;
+    justify-content: space-between;
+    font-family: monospace;
+    color: #4e4e4e;
+    border-bottom: 1px solid #cdcdcd;
+  }
+  .recovery-method {
+    margin-left: auto;
+    margin-right: 20px;
+    text-transform: uppercase;
+  }
+  .recovery-delete {
+    cursor: pointer;
+    padding: 5px;
+  }
+  .recovery-delete svg {
+    width: 15px;
+    height: 15px;
+    fill: #b60d0d;
+  }
+  .recovery-option span {
+    display: flex;
+    align-items: center;
+  }
+  .recovery-option:last-of-type {
+    border-bottom: none;
   }
 </style>

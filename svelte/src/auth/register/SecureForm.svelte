@@ -191,7 +191,6 @@
   }
 
   onMount(() => {
-    doTransition = true;
     postData(
       "register_get_secure",
       null,

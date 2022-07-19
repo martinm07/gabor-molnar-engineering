@@ -1,24 +1,34 @@
 <script>
-  import { sineInOut } from "svelte/easing";
   import DetailsForm from "./DetailsForm.svelte";
   import SecureForm from "./SecureForm.svelte";
   import RecoveryForm from "./RecoveryForm.svelte";
-  import { stageStore, stages } from "./Helper";
+  import { stageStore, stages, newPageIn } from "./Helper";
 
   $: window.location.hash = "/" + $stageStore;
 
-  let doTransition = true;
+  let secureRedirect = "recovery";
+  $: ((newStage) => {
+    if (newStage === "details") secureRedirect = "recovery";
+    else if (newStage === "recovery") secureRedirect = "details";
+  })($stageStore);
+
+  let doTransition = false;
   const changeStage = (newStage) => {
-    stageStore.set(newStage);
-    window.location.hash = "/" + newStage;
+    doTransition = true;
+    setTimeout(() => {
+      stageStore.set(newStage);
+    });
   };
   onhashchange = (e) => {
-    if (stages.some((el) => window.location.hash.includes(el))) {
-      doTransition = false;
+    if (
+      !doTransition &&
+      stages.some((el) => window.location.hash.includes(el))
+    ) {
       setTimeout(() => {
         stageStore.set(stages.find((el) => window.location.hash.includes(el)));
       }, 0);
     }
+    doTransition = false;
   };
 </script>
 
@@ -31,10 +41,17 @@
   {:else if $stageStore === "secure"}
     <SecureForm
       bind:doTransition
-      on:success={changeStage.bind(null, "recovery")}
+      on:success={() => changeStage(secureRedirect)}
     />
   {:else if $stageStore === "recovery"}
-    <RecoveryForm bind:doTransition />
+    <RecoveryForm
+      bind:doTransition
+      on:success={changeStage.bind(null, "congrats")}
+    />
+  {:else if $stageStore === "congrats"}
+    <div in:newPageIn={{ duration: 400, delay: 200, doTransition }}>
+      Thank you for signing up!
+    </div>
   {/if}
 </main>
 

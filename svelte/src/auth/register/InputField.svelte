@@ -69,9 +69,17 @@
   //  manages to finish).
   $: {
     if (group && type === "number" && group.querySelector(":scope > input")) {
-      console.log("Fixing intl-tel-input bug!", group.children);
-      group.children[0].appendChild(group.children[2]);
-      group.prepend(group.children[1]);
+      try {
+        group.children[0].appendChild(group.children[2]);
+        group.prepend(group.children[1]);
+      } catch (err) {
+        setTimeout(() => {
+          iti = intlTelInput(document.querySelector("#" + name), {
+            utilsScript:
+              "https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/17.0.8/js/utils.js",
+          });
+        }, 400);
+      }
     }
   }
   let group;

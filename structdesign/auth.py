@@ -16,7 +16,7 @@ from twilio.twiml.voice_response import VoiceResponse
 from twilio.base.exceptions import TwilioException
 
 from .extensions import db
-from .models import User, UserSecret
+from .models import User, UserSecret, UserRecover
 from .helper import cors_enabled, host_is_local
 
 bp = Blueprint("auth", __name__)
@@ -54,6 +54,51 @@ def send_voice(text="Hello world, this was generated on a Python Flask server.",
     )
     return "Call sent! " + url
 
+def token_penalty(attempt_num):
+    retry_timeouts = {
+        1: 30,
+        2: 40,
+        3: 60,
+        4: 90,
+        5: 120
+    }
+    return retry_timeouts.get(attempt_num, 600)
+def token_attempt(method):
+    print(session.get("attempt_num"), session.get("last_attempt"), session.get("tokentimeoffset"))
+    no_penalty_methods = ["email"]
+    last_attempt = session.get("last_attempt", 0.)
+    attempt_num = session.get("attempt_num", 0)
+    if method not in no_penalty_methods and time.time() - token_penalty(attempt_num) <= last_attempt:
+        return False
+
+    user = User.query.get(session["user_id"])
+    if method in ["sms", "voice"]:
+        session["twofa_data"] = user.phone_number
+    elif method in ["email"]:
+        session["twofa_data"] = user.email
+    else:
+        session["twofa_data"] = None
+
+    if session["twofa_data"] == None:
+        print("No data")
+        return True # Stop here; no penalty time but no data
+
+    session["last_attempt"] = time.time()
+    session["attempt_num"] = attempt_num + 1
+    session["twofa_method"] = method
+
+    if method in ["email"]:
+        session["last_attempt"] = 0
+        # If this is `0` then session.get() recognizes it as nothing, and uses default instead.
+        session["attempt_num"] = 1 
+
+    curtime = int(time.time())
+    expire_time = float(os.environ["VERIFY_TOKEN_EXPIRE_MINS"]) * 60
+    # Number of minutes (including decimal) from last time token would normally change
+    session["tokentimeoffset"] = (curtime % expire_time) / 60
+
+    return True
+
 sha256 = lambda x: hashlib.sha256(str.encode(x)).hexdigest()
 def compute_token():
     """
@@ -72,51 +117,6 @@ def compute_token():
     token = str(int(sha256(secret.secret + curtime + method + data), 16))[-7:]  # int(..., 16) converts hex to decimal
     print(curtime, token)
     return token
-
-def token_penalty(attempt_num):
-    retry_timeouts = {
-        1: 30,
-        2: 40,
-        3: 60,
-        4: 90,
-        5: 120
-    }
-    return retry_timeouts.get(attempt_num, 1000)
-def token_attempt(method):
-    no_penalty_methods = ["email"]
-    last_attempt = session.get("last_attempt", 0.)
-    attempt_num = session.get("attempt_num", 0)
-    if method not in no_penalty_methods and time.time() - token_penalty(attempt_num) <= last_attempt:
-        return False
-
-    user = User.query.get(session["user_id"])
-    if method in ["sms", "voice"]:
-        session["twofa_data"] = user.phone_number
-    elif method in ["email"]:
-        session["twofa_data"] = user.email
-    else:
-        session["twofa_data"] = None
-
-    if session["twofa_data"] == None:
-        return True # Stop here; no penalty time but no data
-
-    session["last_attempt"] = time.time()
-    session["attempt_num"] = attempt_num + 1
-    session["twofa_method"] = method
-
-    if method in ["email"]:
-        session["last_attempt"] = 0
-        # If this is `0` then session.get() recognizes it as nothing, and uses default instead.
-        session["attempt_num"] = 1 
-
-    session.pop("tokentimeoffset")
-    if not session.get("tokentimeoffset"):
-        curtime = int(time.time())
-        expire_time = float(os.environ["VERIFY_TOKEN_EXPIRE_MINS"]) * 60
-        # Number of minutes (including decimal) from last time token would normally change
-        session["tokentimeoffset"] = (curtime % expire_time) / 60
-
-    return True
 
 def get_method_type(method):
     return "number" if method in ["sms", "voice"] else "email" if method in ["email"] else None
@@ -233,7 +233,6 @@ def register_add_password():
         except Exception as err:
             return {"message": err.__str__()}, 500
 
-
 @bp.route("/api/send_token_sms", methods=["OPTIONS", "POST"])
 @cors_enabled(methods=["POST"])
 def send_token_sms():
@@ -331,8 +330,8 @@ def register_get_secure():
     if not session.get("user_id"):
         return {"message": "No user ID found in cookie storage"}, 400
     
-    if session.get("attempt_num"):
-        session.pop("attempt_num")
+    # if session.get("attempt_num"):
+    #     session.pop("attempt_num")
     is_password_made = bool(User.query.get(session["user_id"]).password_hash)
     is_token_sent = bool(session.get("attempt_num", False)) # If a token has been sent
     is_2fa_made = bool(User.query.get(session["user_id"]).twofa_method)
@@ -372,18 +371,19 @@ def register_recovery():
             if number_inuse["is_inuse"]:
                 return {"message": "[number_inuse] Phone number has already been registered for normal 2FA."}, 400
             
-            user.recover_method = recover_method
-            user.recover_data = data["phonenumber"]
+            recover_data = data["phonenumber"]
         elif recover_type == "email":
             email_inuse = json.loads(is_email_inuse(data["email"]).data.decode('utf-8'))
             if email_inuse["is_inuse"]:
                 return {"message": "[email_inuse] Email has already been registered for normal 2FA."}, 400
             
-            user.recover_method = recover_method
-            user.recover_data = data["email"]
-        db.session.add(user)
+            recover_data = data["email"]
+        recovery = UserRecover(method=recover_method, data=recover_data)
+        user.recovery_options.append(recovery)
+        db.session.add(recovery, user)
         db.session.commit()
-        return {}
+        return { "data": number.national_format if recover_type == "number" else recover_data,
+                 "method": recover_method, "id": recovery.id }
 
     except Exception as err:
         return {"message": err.__str__()}, 500
@@ -413,6 +413,45 @@ def is_number_inuse(number):
     if user.phone_number == number:
         return {"is_inuse": True}
     return {"is_inuse": False}
+@bp.route('/api/delete_recovery', methods=['OPTIONS', 'POST'])
+@cors_enabled(methods=['POST'])
+def delete_recovery():
+    if not session.get("registering"):
+        return {"messsage": "Not registering a new account."}, 403
+    try:
+        data: dict = json.loads(request.data.decode("utf-8"))
+    except BaseException:
+        return {"message": "Unable to decode accepted data"}, 400
+    recovery = UserRecover.query.get(int(data['id']))
+    db.session.delete(recovery)
+    db.session.commit()
+    return {}
+
+@bp.route("/api/register_get_recovery", methods=["OPTIONS", "GET"])
+@cors_enabled(methods=["GET"])
+def register_get_recovery():
+    if not session.get("registering"):
+        return {"messsage": "Not registering a new account."}, 403
+    if not session.get("user_id"):
+        return {"message": "No user ID found in cookie storage"}, 400
+    
+    user = User.query.get(session.get("user_id"))
+    return jsonify([{"data": opt.data, "method": opt.method, "id": opt.id} 
+                    for opt in user.recovery_options])
+
+@bp.route("/api/finish_registration", methods=["OPTIONS", "POST"])
+@cors_enabled(methods=["POST"])
+def finish_registration():
+    try:
+        session["user_id"]; session["twofa_method"]; session["registering"]
+        user = User.query.get(session["user_id"])
+        if not (user.password_hash and user.twofa_method):
+            raise Exception()
+        for key in ["twofa_method", "registering", "twofa_data", "attempt_num", "last_attempt", "tokentimeoffset"]:
+            session.pop(key, None)
+        return {}
+    except Exception as err:
+        return {"message": err.__str__()}, 500
 
 
 @bp.errorhandler(CSRFError)

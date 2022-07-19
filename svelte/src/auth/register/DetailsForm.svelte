@@ -168,7 +168,6 @@
   };
 
   onMount(() => {
-    doTransition = true;
     postData("register_get_details", null, null, true)
       .then((data) => {
         username.value = data["username"];

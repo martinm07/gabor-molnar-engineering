@@ -59,7 +59,7 @@ export const setWarning = (el, msg) => {
 };
 
 import { writable } from "svelte/store";
-export const stages = ["details", "secure", "recovery"];
+export const stages = ["details", "secure", "recovery", "congrats"];
 export const stageStore = writable(
   stages.find((el) => window.location.hash.includes(el)) ?? "details"
 );
@@ -80,7 +80,10 @@ export async function postData(
 ) {
   try {
     const data = getDataFunc ? (!getRequest ? getDataFunc() : null) : {};
-    const resp = await fetch("http://127.0.0.1:5000/api/" + url, {
+    const urlRoot = globalThis.jinjaParsed
+      ? globalThis.urlRoot
+      : "http://127.0.0.1:5000/";
+    const resp = await fetch(urlRoot + "api/" + url, {
       ...(!getRequest && {
         method: "POST",
         headers: {

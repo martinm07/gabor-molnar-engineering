@@ -14,8 +14,7 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=True)
 
     twofa_method = db.Column(db.String(32))
-    recover_data = db.Column(db.String(128))
-    recover_method = db.Column(db.String(32))
+    recovery_options = db.relationship("UserRecover")
     # phone number, 2FA method, recover data (phone number OR email), recover method
 
     def __init__(self, name, email=None, phone_number=None):
@@ -40,3 +39,13 @@ class UserSecret(db.Model):
         self.secret = secrets.token_hex()
     def __repr__(self) -> str:
         return f'<UserSecret {self.secret}>'
+
+class UserRecover(db.Model):
+    __tablename__ = 'userrecoveries'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    method = db.Column(db.String(16))
+    data = db.Column(db.String(128))
+    
+    def __repr__(self) -> str:
+        return f'<UserRecover {self.data}>'
