@@ -9,6 +9,7 @@
     validateFields,
     clearErrors,
     stageStore,
+    specialError,
   } from "./Helper";
   import InputField from "./InputField.svelte";
   import SubmitButton from "./SubmitButton.svelte";
@@ -20,21 +21,24 @@
 
   export let doTransition;
 
-  let email, phonenumber, recovermethod, recoveryPromise;
+  let email, phonenumber, recovermethod;
+  const state = {
+    promise: undefined,
+  };
   let dataType = "number",
     disabled = false,
     recoveries = [],
     moveOnTime = -1;
 
   function recoverySubmit() {
-    recoveryPromise = undefined;
+    state.promise = undefined;
     let field = dataType === "number" ? phonenumber : email;
     clearErrors([field]);
     setTimeout(() => {
       if (!validateFields(validateInput, [field])) return;
-      recoveryPromise = recoveryPost();
+      state.promise = recoveryPost();
       disabled = true;
-      recoveryPromise
+      state.promise
         .then((data) => {
           recoveries = [
             ...recoveries,
@@ -42,22 +46,44 @@
           ];
           if (email) email.input.value = "";
           if (phonenumber) phonenumber.input.value = "";
-          recoveryPromise = undefined;
+          state.promise = undefined;
         })
         .finally(() => (disabled = false));
     }, 0);
   }
-  const recoveryPost = postData.bind(null, "register_recovery", () => {
-    return {
-      recovermethod,
-      phonenumber: phonenumber?.value ?? "",
-      email: email?.value ?? "",
-    };
-  });
+
+  const recoveryPost = () => {
+    return postData(
+      "register_recovery",
+      () => {
+        return {
+          recovermethod,
+          phonenumber: phonenumber?.value ?? "",
+          email: email?.value ?? "",
+        };
+      },
+      {
+        "[email_inuse]": specialError.bind(
+          state,
+          email,
+          "You wouldn't recover your account using the email that you would've lost!"
+        ),
+        "[number_inuse]": specialError.bind(
+          state,
+          phonenumber,
+          "You wouldn't recover your account using the phone number that you'd have lost!"
+        ),
+        "[invalid_phone]": specialError.bind(
+          state,
+          phonenumber,
+          "Invalid phone number."
+        ),
+      }
+    );
+  };
   function deleteOption(e) {
     const el = e.target.closest(".recovery-delete");
     const deleteID = Number.parseInt(el.dataset.id);
-    console.log(deleteID);
     postData(
       "delete_recovery",
       () => {
@@ -67,7 +93,10 @@
     );
     recoveries = recoveries.filter((opt) => opt.id !== deleteID);
   }
-
+  async function finishRecovery() {
+    await postData("finish_registration");
+    dispatch("success");
+  }
   async function isUsed(field, name) {
     const data = await postData(
       `is_inuse/${name}/${field.value || "_"}`,
@@ -77,6 +106,7 @@
     );
     return data["is_inuse"];
   }
+
   const validateInput = function (
     key,
     ignoreMissing = false,
@@ -145,6 +175,7 @@
         break;
     }
   };
+
   function waitMoveOn() {
     moveOnTime = 10;
     const waitMoveOnInterval = setInterval(() => {
@@ -152,32 +183,6 @@
       if (moveOnTime < 0) clearInterval(waitMoveOnInterval);
     }, 1000);
   }
-  onMount(() => {
-    resizeObs = new ResizeObserver((entries) => {
-      tabHeight = entries[0].target.clientHeight;
-    });
-    changeType({ target: lineParent.children[0] });
-    recovermethod = dataType === "number" ? numberMethod : emailMethod;
-
-    postData(
-      "register_get_recovery",
-      null,
-      {
-        FORBIDDEN: () => {
-          doTransition = false;
-          stageStore.set("details");
-        },
-      },
-      true
-    ).then((data) => {
-      recoveries = data.map((opt) => {
-        if (["sms", "voice"].includes(opt.method))
-          opt.data = parsePhoneNumber(opt.data).getNumber("national");
-        return opt;
-      });
-      if (recoveries.length === 0) waitMoveOn();
-    });
-  });
 
   let tabParent, resizeObs;
   let tabHeight = 100;
@@ -217,10 +222,32 @@
   $: if (numberMethod && emailMethod)
     recovermethod = dataType === "number" ? numberMethod : emailMethod;
 
-  async function finishRecovery() {
-    await postData("finish_registration");
-    dispatch("success");
-  }
+  onMount(() => {
+    resizeObs = new ResizeObserver((entries) => {
+      tabHeight = entries[0].target.clientHeight;
+    });
+    changeType({ target: lineParent.children[0] });
+    recovermethod = dataType === "number" ? numberMethod : emailMethod;
+
+    postData(
+      "register_get_recovery",
+      null,
+      {
+        FORBIDDEN: () => {
+          doTransition = false;
+          stageStore.set("details");
+        },
+      },
+      true
+    ).then((data) => {
+      recoveries = data.map((opt) => {
+        if (["sms", "voice"].includes(opt.method))
+          opt.data = parsePhoneNumber(opt.data).getNumber("national");
+        return opt;
+      });
+      if (recoveries.length === 0) waitMoveOn();
+    });
+  });
 </script>
 
 <div
@@ -300,7 +327,7 @@
       <form
         class="finish"
         on:submit|preventDefault={finishRecovery}
-        class:hidden={recoveryPromise}
+        class:hidden={state.promise}
       >
         <SubmitButton
           text={`Finish${moveOnTime >= 0 ? " (" + moveOnTime + " secs)" : ""}`}
@@ -308,8 +335,8 @@
         />
       </form>
 
-      {#if recoveryPromise}
-        {#await recoveryPromise}
+      {#if state.promise}
+        {#await state.promise}
           <div class="spinner">
             <div class="circsec circ1" />
             <div class="circsec circ2" />

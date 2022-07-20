@@ -8,6 +8,8 @@
     setWarning,
     specialError,
     postData,
+    clearErrors,
+    validateFields,
   } from "./Helper";
   import InputField from "./InputField.svelte";
   import SubmitButton from "./SubmitButton.svelte";
@@ -23,29 +25,13 @@
     editMode: false,
   };
 
-  function clearErrors(fields) {
-    fields.forEach((el) => {
-      el.input.setCustomValidity("");
-      setWarning(el.input, "");
-      el.updateInput();
-    });
-  }
-  function validateFields(fields) {
-    return fields
-      .map((el) => {
-        validateInput(el.name, false, true, false);
-        if (el.input.validity.customError) return false;
-        return true;
-      })
-      .every((el) => (el ? true : false));
-  }
-
   const detailsSubmit = function () {
     state.promise = undefined;
     // Clear all errors
     clearErrors([username, email, phonenumber]);
     setTimeout(() => {
-      if (!validateFields([username, email, phonenumber])) return;
+      if (!validateFields(validateInput, [username, email, phonenumber]))
+        return;
       state.promise = detailsPost();
       state.disabled = true;
       state.promise
@@ -53,33 +39,31 @@
         .catch(() => (state.disabled = false));
     }, 0);
   };
-  const getDetailsData = () => {
-    return {
-      username: username.value,
-      email: email.value,
-      phonenumber: phonenumber.value,
-    };
-  };
 
   let detailsPost;
   onMount(() => {
     // prettier-ignore
-    detailsPost = postData.bind(null, "register_details", getDetailsData, {
+    detailsPost = postData.bind(null, "register_details", () => {
+      return {
+        username: username.value,
+        email: email.value,
+        phonenumber: phonenumber.value,
+      };
+    }, {
       "[invalid_phone]": specialError.bind(state, phonenumber, "Phone number invalid!"),
       "[email_taken]": specialError.bind(state, email, "Email has already been registered before!"),
       "[username_taken]": specialError.bind(state, username, "Username taken!"),
     });
   });
-
   const isTaken = (field, name) =>
     postData(`is_taken/${name}/${field.value || "_"}`, null, null, true);
+
   const validateInput = function (
     key,
     ignoreMissing = false,
     nowarn = false,
     noasync = false
   ) {
-    // console.log(noasync);
     const isEmpty = (value) => value === "" || value === "_";
     switch (key) {
       case "username": {

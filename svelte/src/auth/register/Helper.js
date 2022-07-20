@@ -16,13 +16,8 @@ export function turnPage(
   return {
     duration,
     css: (t) => {
-      // const marginRight = Math.sin(Math.PI * directionChanges * t);
-      // const easedMarginRight = quartOut(1 - t) * marginRight * intensity;
-      // return `margin-right: ${easedMarginRight}px;`;
       const easedRotate = sineInOut(1 - t) * degrees;
       const easedOpacity = sineInOut(t);
-      // const doTransition = false;
-      console.log("Do we do transition? ", doTransition);
       return `
           transform-origin: 0 0;
           transform: rotate(${doTransition ? easedRotate : degrees}deg);

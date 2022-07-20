@@ -1,33 +1,34 @@
 <!DOCTYPE html>
 <html lang="en">
+
   <head>
-    <meta charset="UTF-8" />
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8"/>
+    <link rel="icon" href="{{ url_for('static', filename='/favicon.ico') }}"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Register | Test</title>
+    <script type="module" crossorigin src="{{ url_for('static', filename='auth/js/register-1d3ea7b6.js') }}"></script>
+    <link rel="modulepreload" href="{{ url_for('static', filename='shared/js/index-6a60dbfb.js') }}">
+    <link rel="modulepreload" href="{{ url_for('static', filename='shared/js/index-c6037aa8.js') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='auth/css/register-922cff7a.css') }}">
   </head>
-  <body>
-    <h1>Register New User</h1>
-    <form method="post">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 
-      <label for="username">Username:</label>
-      <input type="text" name="username" required id="username" /><br />
+  <body style="margin: 0">
+    <div id="app"></div>
+    <script type="text/javascript">
+      "use strict";
+      try {
+        globalThis.jinjaParsed = false;
+        if (!Number.parseInt("{{ 1 }}")) 
+          throw new Error("Jinja wasn't parsed.");
+        globalThis.jinjaParsed = true;
 
-      <label for="email">Email: </label>
-      <input type="email" name="email" id="email" /><br />
-
-      <label for="phonenumber">Phone number: +(353) </label>
-      <input type="text" name="phonenumber" required id="phonenumber" /><br />
-
-      <label for="secondfactor">Second authentication factor:</label>
-      <select name="secondfactor" id="secondfactor">
-        <option value="sms">SMS</option>
-        <option value="voice">Voice</option>
-        <option value="email">Email</option></select
-      ><br />
-
-      <input type="submit" value="Register" />
-    </form>
+        globalThis.csrf_token = "{{ csrf_token() }}";
+        globalThis.urlRoot = "{{ request.url_root }}";
+      } catch (err) {
+        console.log(err);
+      }
+    </script>
+    
   </body>
+
 </html>

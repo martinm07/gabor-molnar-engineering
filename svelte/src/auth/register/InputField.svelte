@@ -7,6 +7,8 @@
   import { onMount } from "svelte";
   import "intl-tel-input/build/css/intlTelInput.css";
   import intlTelInput from "intl-tel-input";
+  // import flags from "./assets/flags.png";
+  // import flags2x from "./assets/flags@2x.png";
 
   const marginBottom = tweened(17, {
     duration: 250,
@@ -360,6 +362,14 @@
     color: #b4b4b4;
     letter-spacing: 1px;
     opacity: 1;
+  }
+  .iti__flag {
+    background-image: url("./assets/flags.png");
+  }
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .iti__flag {
+      background-image: url("./assets/flags@2x.png");
+    }
   }
 
   .password-visible-btn {

@@ -29,6 +29,10 @@ except TwilioException:
     warnings.warn("No credentials and thus no Twilio client created.")
 
 
+@bp.route('/register')
+def register():
+    return render_template("auth/register.html")
+
 @bp.route('/auth/twiml_voice/<text>')
 def twiml_voice(text):
     resp = VoiceResponse()
@@ -159,9 +163,8 @@ def register_details():
         # </ERROR HANDLING>
         try:
             time.sleep(4)
-            if not session.get("user_id"):
-                new_user = User(data["username"], email, phonenumber)
-            else: 
+            if session.get("user_id") and session.get("registering"):
+                # Update user
                 new_user = User.query.get(session.get("user_id"))
 
                 if (new_user.email != email and new_user.twofa_method == "email") or \
@@ -171,6 +174,8 @@ def register_details():
                 new_user.name = data["username"]
                 new_user.email = email
                 new_user.phone_number = phonenumber
+            else:
+                new_user = User(data["username"], email, phonenumber)
             db.session.add(new_user)
             db.session.commit()
 
@@ -189,7 +194,7 @@ def is_name_taken(username):
     name = getattr(User.query.filter_by(name=username).first(), "name", None)
     current_name = getattr(User.query.get(session.get("user_id")), "name", "")
     print(name != current_name, name, current_name)
-    if name and name != current_name:
+    if name and (name != current_name or not session.get("registering")):
         return {"is_taken": True}
     else:
         return {"is_taken": False}
@@ -198,7 +203,7 @@ def is_name_taken(username):
 def is_email_taken(email):
     email = getattr(User.query.filter_by(email=email).first(), "email", None)
     current_email = getattr(User.query.get(session.get("user_id")), "email", "")
-    if email and email != current_email:
+    if email and (email != current_email or not session.get("registering")):
         return {"is_taken": True}
     else:
         return {"is_taken": False}

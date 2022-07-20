@@ -18,14 +18,14 @@ def fixPath(path:str, source_dirpath:str="intro/js/"):
         path = os.path.normpath(os.path.join(source_dirpath, path)).replace('\\', '/')
 
     if '/assets/' not in path:
-        warn(" \"/assets/\" not part of this absolute file path. Behaviour uncertain.")
+        warn(" \"/assets/\" not part of this absolute file path: \""+ path +"\". Behaviour uncertain.")
     path = path.split('/assets/')[-1]
     path = f"\"/static/{path}\""
     return path
 
 def jsUpdateFile(src:str, source_dirpath:str="intro/js/"):
     final_src = src
-    js_regex = re.compile(r"(\").+?(?<!\\)\1") # Note here we assume that the built js files will never use 
+    js_regex = re.compile(r"(\").*?(?<!\\)\1") # Note here we assume that the built js files will never use 
     #single quotes, such that all instances of them are paths we already worked with and thus safe to ignore.
     for match in js_regex.finditer(src):
         s = match.group(0)[1:-1]
@@ -63,7 +63,7 @@ for root, dirs, files in os.walk("dist/"):
         if (extType == 'js') or (extType == 'css') or (extType == 'html'):
             updateFile = jsUpdateFile if (extType == 'js') else cssUpdateFile if (extType == 'css') else htmlUpdateFile
             # print('-=-=-=-=-=-= ', filepath, ' =-=-=-=-=-=-')
-            with open(filepath, "r+") as f:
+            with open(filepath, "r+", encoding="utf8") as f:
                 updated = updateFile(f.read(), root.replace("dist/assets/", ""))
                 f.seek(0)
                 f.truncate()
@@ -96,10 +96,11 @@ for root, dirs, files in os.walk('dist/'):
         else:
             future_dirpath = os.path.join(STATIC_PATH, dirpath)
 
-        for old_filename in os.listdir(future_dirpath):
-            old_etag = get_etag(old_filename) if not check_ext(old_filename, 'html') else old_filename
-            if old_etag == check_condition:
-                os.remove(os.path.join(future_dirpath, old_filename))
+        if os.path.exists(future_dirpath):
+            for old_filename in os.listdir(future_dirpath):
+                old_etag = get_etag(old_filename) if not check_ext(old_filename, 'html') else old_filename
+                if old_etag == check_condition:
+                    os.remove(os.path.join(future_dirpath, old_filename))
 
 ### Move assets to static
 

@@ -2,7 +2,7 @@
   import DetailsForm from "./DetailsForm.svelte";
   import SecureForm from "./SecureForm.svelte";
   import RecoveryForm from "./RecoveryForm.svelte";
-  import { stageStore, stages, newPageIn } from "./Helper";
+  import { stageStore, stages, newPageIn, postData } from "./Helper";
 
   $: window.location.hash = "/" + $stageStore;
 
@@ -41,7 +41,10 @@
   {:else if $stageStore === "secure"}
     <SecureForm
       bind:doTransition
-      on:success={() => changeStage(secureRedirect)}
+      on:success={async (e) => {
+        await postData("finish_registration");
+        changeStage(e.detail.noFactor ? "congrats" : secureRedirect);
+      }}
     />
   {:else if $stageStore === "recovery"}
     <RecoveryForm

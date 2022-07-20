@@ -74,11 +74,11 @@ function getSection(name, pathAlreadyFull = true) {
         name,
       ];
   const secRoot = path.findIndex((dirName) => dirName === "assets") - 2;
-  if (secRoot < 0)
-    throw new Error(
-      `Asset "${path.at(
-        -1
-      )}" somehow not inside "assets" directory. Full path: ${path.join("/")}`
-    );
-  return path[secRoot];
+  // if (secRoot < 0)
+  //   throw new Error(
+  //     `Asset "${path.at(
+  //       -1
+  //     )}" somehow not inside "assets" directory. Full path: ${path.join("/")}`
+  //   );
+  return path[secRoot] ?? "shared";
 }
