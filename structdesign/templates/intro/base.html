@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, minimum-scale=1"
+    />
+    <title>{% block title %}{% endblock %}</title>
+
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      integrity="sha384-JcKb8q3iqJ61gNV9KGb8thSsNjpSL0n8PARn9HuZOnIxN0hoP+VmmDGMN5t9UJ0Z"
+      crossorigin="anonymous"
+    />
+    <!-- Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"
+    />
+    <!-- Animate.css -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='intro/css/general.css') }}"
+    />
+    <!-- Main CSS File -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='intro/css/general-query.css') }}"
+    />
+    <!-- Query CSS File -->
+    {% block css_files %}{% endblock %}
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300&display=swap"
+      rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="https://use.typekit.net/cmv7svp.css" />
+    <!-- Adobe Fonts -->
+
+    <script
+      src="https://code.jquery.com/jquery-3.6.0.min.js"
+      integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4="
+      crossorigin="anonymous"
+    ></script>
+    <!-- Jquery -->
+    <script src="https://unpkg.com/ionicons@5.2.3/dist/ionicons.js"></script>
+    <!-- Ionicons -->
+
+    {% block jinja_styles %}{% endblock %}
+  </head>
+  <body>
+    {% if nav_type == "home"%}
+    <div class="sticky-home-header">
+      <a href="{{url_for('home.home')}}" class="sticky-home-logo">
+        <img
+          src="{{ url_for('static', filename='intro/img/logo.svg') }}"
+          alt=""
+        />
+      </a>
+      <div class="sticky-home-menu">
+        <div class="sticky-home-menu-item" id="sticky-home-menu-structures">
+          <button>
+            <div class="sticky-home-mobile-caret">
+              <ion-icon name="caret-forward"></ion-icon>
+            </div>
+            Structures
+          </button>
+          <div
+            class="sticky-home-dropdown"
+            ,
+            id="sticky-home-dropdown-structures"
+          >
+            {% if "gallery" in url_for(request.endpoint) %}
+            <div
+              id="scroll-Steel-Frame-Stability"
+              class="sticky-home-dropdown-item"
+            >
+              Steel Frame Stability
+            </div>
+            <div
+              id="scroll-Specialist-Steel-Connection-Designs"
+              class="sticky-home-dropdown-item"
+            >
+              Steel Connections
+            </div>
+            <div
+              id="scroll-Air-Stabilised-Domes"
+              class="sticky-home-dropdown-item"
+            >
+              Air Domes
+            </div>
+            <div
+              id="scroll-Steel-Support-Brackets"
+              class="sticky-home-dropdown-item"
+            >
+              Support Brackets
+            </div>
+            <div
+              id="scroll-Temporary-Works-and-Scaffoldings"
+              class="sticky-home-dropdown-item"
+            >
+              Temporary Works
+            </div>
+            {% else %}
+            <a
+              href="{{ url_for('home.gallery')+'#Steel-Frame-Stability' }}"
+              class="sticky-home-dropdown-item"
+              >Steel Frame Stability</a
+            >
+            <a
+              href="{{ url_for('home.gallery')+'#Specialist-Steel-Connection-Designs' }}"
+              class="sticky-home-dropdown-item"
+              >Steel Connections</a
+            >
+            <a
+              href="{{ url_for('home.gallery')+'#Air-Stabilised-Domes' }}"
+              class="sticky-home-dropdown-item"
+              >Air Domes</a
+            >
+            <a
+              href="{{ url_for('home.gallery')+'#Steel-Support-Brackets' }}"
+              class="sticky-home-dropdown-item"
+              >Support Brackets</a
+            >
+            <a
+              href="{{ url_for('home.gallery')+'#Temporary-Works-and-Scaffoldings' }}"
+              class="sticky-home-dropdown-item"
+              >Temporary Works</a
+            >
+            {% endif %}
+          </div>
+        </div>
+        <div class="sticky-home-menu-item" , id="sticky-home-menu-vessels">
+          <button>
+            <div class="sticky-home-mobile-caret">
+              <ion-icon name="caret-forward"></ion-icon>
+            </div>
+            Pressure Vessels
+          </button>
+          <div class="sticky-home-dropdown" , id="sticky-home-dropdown-vessels">
+            {% if "gallery" in url_for(request.endpoint) %}
+            <div
+              id="scroll-Tanks-Silos-Pressure-Vessels"
+              class="sticky-home-dropdown-item"
+            >
+              Pressure Vessels
+            </div>
+            <div
+              id="scroll-Pipe-Racks-Bridges"
+              class="sticky-home-dropdown-item"
+            >
+              Pipe Racks & Bridges
+            </div>
+            {% else %}
+            <a
+              href="{{ url_for('home.gallery')+'#Tanks-Silos-Pressure-Vessels' }}"
+              class="sticky-home-dropdown-item"
+              >Pressure Vessels</a
+            >
+            <a
+              href="{{ url_for('home.gallery')+'#Pipe-Racks-Bridges' }}"
+              class="sticky-home-dropdown-item"
+              >Pipe Racks & Bridges</a
+            >
+            {% endif %}
+          </div>
+        </div>
+        <div class="sticky-home-menu-item sticky-home-menu-documents">
+          <button disabled>Guidance Documents</button>
+        </div>
+        <div class="sticky-home-menu-item sticky-home-menu-contact">
+          <button class="js-scroll-contact">Contact</button>
+        </div>
+      </div>
+      <div class="mobile-hamburger">
+        <span class="mobile-hamburger-open"
+          ><ion-icon name="menu"></ion-icon></span
+        ><span class="mobile-hamburger-close"
+          ><ion-icon name="close"></ion-icon
+        ></span>
+      </div>
+    </div>
+    {% endif %}
+
+    <script>
+      $SCRIPT_ROOT = {{ request.script_root|tojson }};
+    </script>
+    {% block content %}{% endblock %}
+    <div class="space"></div>
+    <footer>
+      <div class="footer-col-1">
+        <div class="main-links">
+          <a href="#" class="footer-link disabled" id="footer-about-us"
+            >About Us</a
+          >
+          <a
+            href="{{ url_for('home.home') }}"
+            class="footer-link"
+            id="footer-home"
+            >Home</a
+          >
+          <a
+            href="{{ url_for('home.gallery') }}"
+            class="footer-link"
+            id="footer-gallery"
+            >Gallery</a
+          >
+          <a href="#" class="footer-link disabled" id="footer-blogs"
+            >Guidance Documents</a
+          >
+          <div class="footer-link-width">Guidance Documents</div>
+        </div>
+        <div class="mobile-col-2">
+          <a href="#" class="footer-link disabled" id="footer-tos"
+            >Terms of Service</a
+          >
+          <a href="#" class="footer-link disabled" id="footer-conduct"
+            >Code of Conduct</a
+          >
+        </div>
+      </div>
+      <div class="footer-col-2">
+        <a href="#" class="disabled footer-link" id="footer-tos"
+          >Terms of Service</a
+        >
+        <a href="#" class="disabled footer-link" id="footer-conduct"
+          >Code of Conduct</a
+        >
+      </div>
+      <div class="footer-col-3">
+        <div class="social-links">
+          <!-- TODO: add LinkedIn link -->
+          <a href="#" class="footer-social-link"
+            ><ion-icon name="logo-linkedin"></ion-icon
+          ></a>
+          <!-- <a href="#" class="footer-social-link"><ion-icon name="logo-github"></ion-icon></a>
+                    <a href="#" class="footer-social-link"><ion-icon name="logo-youtube"></ion-icon></a>
+                    <a href="#" class="footer-social-link"><ion-icon name="logo-discord"></ion-icon></a> -->
+        </div>
+        <div class="contact-info">
+          Structural-design.eu<br />
+          Operated by:<br />
+          Gabor Molnar Engineering Design<br />
+          Gray Office Park<br />
+          Galway Retail Park<br />
+          Headford Rd<br />
+          Galway H91 C9XH<br />
+          T. 091/511-458<br />
+          E. info@structural-design.eu
+        </div>
+      </div>
+    </footer>
+    {% block js_files %}{% endblock %}
+    <script
+      type="text/javascript"
+      src="{{ url_for('static', filename='intro/js/general.js') }}"
+    ></script>
+  </body>
+</html>

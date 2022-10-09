@@ -1,0 +1,200 @@
+/* ---------------------------------------------------------------- */
+/*                           MISC                                   */
+/* ---------------------------------------------------------------- */
+
+:root {
+  --is-mobile-nav: false;
+}
+
+.space {
+  height: 100px;
+  background-color: rgb(249, 249, 249);
+}
+.mfp-wrap {
+  top: 60px !important;
+  height: calc(100% - 60px) !important;
+}
+img.mfp-img {
+  object-fit: contain;
+}
+
+/* --------------------------------------------------- */
+/*              Sticky Navigation General              */
+/* --------------------------------------------------- */
+
+.sticky-home-header {
+  width: 100vw;
+  height: 60px;
+  background-color: #fff;
+  border-bottom: 2px solid rgb(240, 240, 240);
+  position: fixed;
+  z-index: 9999;
+  display: flex;
+  box-shadow: 0px 5px 20px -10px #e4e4e4;
+  opacity: 0.95;
+}
+
+.sticky-home-logo {
+  height: 140%;
+  background-color: #fff;
+  border-radius: 100%;
+  padding: 5px;
+  margin-left: 5px;
+}
+.sticky-home-logo img {
+  height: 100%;
+  width: 100%;
+}
+
+.sticky-home-menu {
+  display: flex;
+  margin-left: auto;
+  margin-right: 40px;
+  align-items: center;
+}
+.sticky-home-menu-item {
+  margin-left: 20px;
+  height: 100%;
+}
+.sticky-home-menu-item button {
+  height: 100%;
+  background-color: #fff;
+  border: none;
+  outline: none;
+  font-size: 115%;
+  color: #383838;
+  transition: border-bottom 0.15s, border-top 0.15s, box-shadow 0.5s;
+}
+.sticky-home-menu-item button:hover {
+  border-bottom: 2px solid #bfbfbf;
+  box-shadow: inset 0px -85px 20px -100px black;
+}
+/* #sticky-home-menu-structures button:hover {
+    border-bottom: none;
+    border-top: 2px solid #bfbfbf;
+    box-shadow: inset 0px 85px 20px -100px black;
+} */
+.sticky-home-menu-documents button:disabled {
+  border-bottom: 0px solid #000;
+  box-shadow: 0 0 BLACK;
+  opacity: 0.5;
+}
+
+/* DROPDOWN MENUS */
+.sticky-home-dropdown {
+  position: absolute;
+  background-color: #fff;
+  opacity: 0.99;
+  padding: 10px 0;
+  font-size: 110%;
+  border-bottom-left-radius: 15px;
+  border-bottom-right-radius: 15px;
+  border-left: 2px solid rgb(240, 240, 240);
+  border-bottom: 2px solid rgb(240, 240, 240);
+  color: #525252;
+  transition: transform 0.15s, opacity 0.15s;
+  transform: translateY(-10px);
+  opacity: 0;
+  display: none;
+}
+.sticky-home-dropdown-item {
+  padding: 6px 20px;
+  color: #585858;
+  display: block;
+}
+.sticky-home-dropdown-item:hover {
+  background-color: #fbfbfb;
+  cursor: pointer;
+  border-right: 2px solid #efefef;
+  padding: 6px 18px 6px 20px;
+  text-decoration: none;
+  color: #585858;
+}
+
+.sticky-home-mobile-caret {
+  display: none;
+}
+
+.mobile-hamburger {
+  display: none;
+}
+.mobile-hamburger-open {
+  display: flex;
+}
+.mobile-hamburger-close {
+  display: none;
+}
+
+footer {
+  display: flex;
+  position: relative;
+  background-color: #303030;
+  justify-content: space-between;
+  padding: 20px 40px;
+}
+.footer-col-1,
+.footer-col-2,
+.footer-col-3 {
+  display: flex;
+  flex-direction: column;
+}
+.footer-col-2 {
+  text-align: center;
+  margin-top: auto;
+}
+.mobile-col-2 {
+  display: none;
+}
+.footer-col-3 {
+  text-align: right;
+}
+
+.footer-link {
+  color: #d1d1d1;
+  margin: 3px 0px;
+  text-decoration: underline;
+  display: block;
+  transition: color 0.15s, letter-spacing 0.15s;
+}
+.footer-link.disabled {
+  pointer-events: none;
+  color: #d1d1d1 !important;
+  letter-spacing: default !important;
+  opacity: 0.5;
+}
+.footer-link:hover {
+  color: #fff;
+  /* text-decoration: none; */
+  letter-spacing: 1px;
+}
+.footer-link-width {
+  letter-spacing: 1px;
+  opacity: 0;
+  cursor: default;
+  height: 0;
+}
+
+.footer-social-link {
+  margin: 0 5px;
+  color: #d1d1d1;
+  transition: color 0.15s;
+}
+.footer-social-link:hover {
+  color: #31aaff;
+}
+.footer-social-link:hover ion-icon {
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 1) 1%,
+    rgba(255, 255, 255, 1) 60%,
+    rgba(48, 48, 48, 1) 60%
+  );
+}
+
+.social-links {
+  font-size: 150%;
+  margin-bottom: 5px;
+}
+.contact-info {
+  color: #d1d1d1;
+}
