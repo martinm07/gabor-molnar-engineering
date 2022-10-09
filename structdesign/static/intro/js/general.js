@@ -33,7 +33,7 @@ $(document).ready(function () {
 
   // Navigation menu dropdowns
   $(".mobile-hamburger").click(function () {
-    if (styles.getPropertyValue("--is-mobile-nav") == "true") {
+    if (styles.getPropertyValue("--is-mobile-nav").trim() == "true") {
       if ($(".mobile-hamburger-open").css("display") == "none") {
         $(".mobile-hamburger-close").css("display", "none");
         $(".mobile-hamburger-open").css("display", "flex");
@@ -55,7 +55,7 @@ $(document).ready(function () {
   });
   $(document).click(function (event) {
     // Check if navigation was clicked
-    if (styles.getPropertyValue("--is-mobile-nav") == "true") {
+    if (styles.getPropertyValue("--is-mobile-nav").trim() == "true") {
       if (
         $(event.target)
           .parents("*")
@@ -78,7 +78,7 @@ $(document).ready(function () {
   });
 
   $("#sticky-home-menu-structures button").click(function () {
-    if (styles.getPropertyValue("--is-mobile-nav") == "true") {
+    if (styles.getPropertyValue("--is-mobile-nav").trim() == "true") {
       if ($("#sticky-home-dropdown-structures").css("display") == "block") {
         $(this).trigger("mouseleave");
       } else {
@@ -112,8 +112,9 @@ $(document).ready(function () {
       // $("#sticky-home-dropdown-structures").css("transform", "translateY(0)");
       // $("#sticky-home-dropdown-structures").css("opacity", "0.99");
     }, 1);
-    if (styles.getPropertyValue("--is-mobile-nav") == "true") {
+    if (styles.getPropertyValue("--is-mobile-nav").trim() == "true") {
       // If we're on a mobile device
+      $("#sticky-home-menu-vessels").trigger("mouseleave");
       $(this).css("margin-left", "0px");
       $(this).css("padding-left", "10px");
       $(this).css(
@@ -145,7 +146,7 @@ $(document).ready(function () {
     sticky_menu_structures_leave_timer = setTimeout(function () {
       $("#sticky-home-dropdown-structures").css("display", "none");
     }, 250);
-    if (styles.getPropertyValue("--is-mobile-nav") == "true") {
+    if (styles.getPropertyValue("--is-mobile-nav").trim() == "true") {
       $(this).get(0).style.removeProperty("margin-left");
       $(this).get(0).style.removeProperty("padding-left");
       $(this).get(0).style.removeProperty("background");
@@ -163,7 +164,7 @@ $(document).ready(function () {
   });
 
   $("#sticky-home-menu-vessels button").click(function () {
-    if (styles.getPropertyValue("--is-mobile-nav") == "true") {
+    if (styles.getPropertyValue("--is-mobile-nav").trim() == "true") {
       if ($("#sticky-home-dropdown-vessels").css("display") == "block") {
         $(this).trigger("mouseleave");
       } else {
@@ -189,7 +190,8 @@ $(document).ready(function () {
       }
     }, 1);
 
-    if (styles.getPropertyValue("--is-mobile-nav") == "true") {
+    if (styles.getPropertyValue("--is-mobile-nav").trim() == "true") {
+      $("#sticky-home-menu-structures").trigger("mouseleave");
       $(this).css("margin-left", "0px");
       $(this).css("padding-left", "10px");
       $(this).css(
@@ -221,7 +223,7 @@ $(document).ready(function () {
     sticky_menu_vessels_leave_timer = setTimeout(function () {
       $("#sticky-home-dropdown-vessels").css("display", "none");
     }, 250);
-    if (styles.getPropertyValue("--is-mobile-nav") == "true") {
+    if (styles.getPropertyValue("--is-mobile-nav").trim() == "true") {
       $(this).get(0).style.removeProperty("margin-left");
       $(this).get(0).style.removeProperty("padding-left");
       $(this).get(0).style.removeProperty("background");
@@ -238,9 +240,9 @@ $(document).ready(function () {
     }
   });
 
-  var isMobileNav = styles.getPropertyValue("--is-mobile-nav");
+  var isMobileNav = styles.getPropertyValue("--is-mobile-nav").trim();
   $(window).resize(function () {
-    if (isMobileNav != styles.getPropertyValue("--is-mobile-nav")) {
+    if (isMobileNav != styles.getPropertyValue("--is-mobile-nav").trim()) {
       $(".sticky-home-menu").removeAttr("style");
       $(".sticky-home-menu-item").removeAttr("style");
       $(".sticky-home-menu-item button").removeAttr("style");
@@ -248,7 +250,7 @@ $(document).ready(function () {
       $(".mobile-hamburger-open").removeAttr("style");
       $(".mobile-hamburger-close").removeAttr("style");
     }
-    isMobileNav = styles.getPropertyValue("--is-mobile-nav");
+    isMobileNav = styles.getPropertyValue("--is-mobile-nav").trim();
   });
 
   function removeHash() {
