@@ -32,9 +32,11 @@
         globalThis.urlRoot = "{{ request.url_root }}";
         globalThis.loggedIn = JSON.parse("{{ bool(user)|tojson }}");
         // globalThis.urlRoutes["home.home"] --> {{ url_for('home.home') }}
-        globalThis.urlRoutes = {
-          {% for route in ["home.home", "home.gallery"] %}"{{ route }}": "{{ url_for(route) }}", {% endfor %}
-        }
+        globalThis.urlRoutes = JSON.parse(`{
+          {%- for route in ["home.home", "home.gallery"] %}
+            "{{ route }}": "{{ url_for(route) }}"{% if not loop.last %},{% endif %}
+          {%- endfor %}
+        }`);
       } catch (err) {
         globalThis.loggedIn = false;
         globalThis.urlRoutes = {};
