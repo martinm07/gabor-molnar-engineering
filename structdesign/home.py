@@ -39,7 +39,6 @@ def signup_newsletter():
 
     # If email is present and valid, save email in some database
     if news_success:
-        # TODO: Save email to some database
         new_user = NewsletterEmail(email=email.strip())
         db.session.add(new_user)
         db.session.commit()

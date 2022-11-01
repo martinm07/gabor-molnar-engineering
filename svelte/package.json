@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build && python build-svelte.py"
+    "build": "vite build && python build-svelte.py",
+    "footer": "python pull-footer.py"
   },
   "devDependencies": {
     "@iconify/svelte": "^2.2.1",

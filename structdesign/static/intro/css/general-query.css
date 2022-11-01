@@ -97,6 +97,7 @@
 }
 
 /* FOOTER */
+/*general-query.cssFooter512241*/
 @media only screen and (max-width: 640px) {
   .footer-col-2 {
     display: none;
@@ -151,6 +152,7 @@
     padding: 20px 10px;
   }
 }
+/*endGeneral-query.cssFooter512241*/
 
 /* MAGNIFIC POPUP */
 @media only screen and (max-width: 720px) {

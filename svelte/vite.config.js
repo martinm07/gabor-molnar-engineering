@@ -12,9 +12,9 @@ const root = resolve(_dirname, "src");
 const outDir = resolve(_dirname, "dist");
 
 const entryPoints = {
-  home: resolve(root, "intro/home/index.html"),
-  about: resolve(root, "intro/about/index.html"),
-  register: resolve(root, "auth/register/index.html"),
+  // about: resolve(root, "intro/about/index.html"),
+  // register: resolve(root, "auth/register/index.html"),
+  home: resolve(root, "blog/home/index.html"),
 };
 
 Object.entries(entryPoints).forEach(

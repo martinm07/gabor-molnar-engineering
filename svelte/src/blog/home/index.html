@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Guidance Documents | Gabor Molnar Engineering</title>
+    <link rel="stylesheet" href="https://use.typekit.net/xuc1dva.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        font-family: liberation-sans, sans-serif;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="app"></div>
+    <script type="text/javascript">
+      "use strict";
+      const routes = ["home.home", "home.gallery"];
+      try {
+        globalThis.jinjaParsed = false;
+        if (!Number.parseInt("{{ 1 }}"))
+          throw new Error("Jinja wasn't parsed.");
+        globalThis.jinjaParsed = true;
+
+        globalThis.csrf_token = "{{ csrf_token() }}";
+        globalThis.urlRoot = "{{ request.url_root }}";
+        globalThis.loggedIn = JSON.parse("{{ bool(user)|tojson }}");
+        // globalThis.urlRoutes["home.home"] --> {{ url_for('home.home') }}
+        globalThis.urlRoutes = {
+          {% for route in ["home.home", "home.gallery"] %}"{{ route }}": "{{ url_for(route) }}", {% endfor %}
+        }
+      } catch (err) {
+        globalThis.loggedIn = false;
+        globalThis.urlRoutes = {};
+        routes.forEach((route) => (globalThis.urlRoutes[route] = "#/"));
+        console.log(err);
+      }
+    </script>
+    <script
+      type="module"
+      src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"
+    ></script>
+    <script
+      nomodule
+      src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"
+    ></script>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

@@ -125,6 +125,11 @@ img.mfp-img {
   display: none;
 }
 
+/* --------------------------------------------------- */
+/*                       Footer                       */
+/* --------------------------------------------------- */
+
+/*general.cssFooter309123*/
 footer {
   display: flex;
   position: relative;
@@ -198,3 +203,4 @@ footer {
 .contact-info {
   color: #d1d1d1;
 }
+/*endGeneral.cssFooter309123*/
