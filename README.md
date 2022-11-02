@@ -44,7 +44,7 @@ Rate-limiting is also important so attackers can't brute-force tokens, and fraud
 
 ---
 
-- [ ] We will start by creating a basic skeleton of everything; figuring out the workflow with Svelte, how to communicate common elements (like the footer and navigation), how to do navigation between pages, creating the database schema for users, guidance documents and comments.
+- [x] We will start by creating a basic skeleton of everything; figuring out the workflow with Svelte, how to communicate common elements (like the footer and navigation), how to do navigation between pages, creating the database schema for users, guidance documents and comments.
 - [ ] Then, we'll focus on all user management systems (but not user's ability to comment, status, or notifications or anything like that). This includes registration, logging in, login sessions, forgot password, account recovery, changing information (once logged in), deleting accounts.
 - [ ] After that is developing the markdown editor for writing guidance documents and the search engine for guidance documents. This also includes developing the "home view" for users, and the whole interface for searching, filtering and sorting guidance documents.
 - [ ] Finally, we'll develop the ability to comment and reply, users getting notifications (such that they can hold conversations), tagging users with "@" and users being able to set their "status", a short piece of text that expires after some set time.

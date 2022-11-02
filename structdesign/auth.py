@@ -16,7 +16,7 @@ from twilio.twiml.voice_response import VoiceResponse
 from twilio.base.exceptions import TwilioException
 
 from .extensions import db
-from .models import User, UserSecret, UserRecover
+from .models import User, UserSecret, UserBackupFactor
 from .helper import cors_enabled, host_is_local
 
 bp = Blueprint("auth", __name__)
@@ -383,7 +383,7 @@ def register_recovery():
                 return {"message": "[email_inuse] Email has already been registered for normal 2FA."}, 400
             
             recover_data = data["email"]
-        recovery = UserRecover(method=recover_method, data=recover_data)
+        recovery = UserBackupFactor(method=recover_method, data=recover_data)
         user.recovery_options.append(recovery)
         db.session.add(recovery, user)
         db.session.commit()
@@ -427,7 +427,7 @@ def delete_recovery():
         data: dict = json.loads(request.data.decode("utf-8"))
     except BaseException:
         return {"message": "Unable to decode accepted data"}, 400
-    recovery = UserRecover.query.get(int(data['id']))
+    recovery = UserBackupFactor.query.get(int(data['id']))
     db.session.delete(recovery)
     db.session.commit()
     return {}
