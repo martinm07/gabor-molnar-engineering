@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8"/>
+    <link rel="icon" href="/favicon.ico"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Register | Test</title>
+  </head>
+
+  <body style="margin: 0">
+    <div id="app"></div>
+    <script type="text/javascript">
+      "use strict";
+      try {
+        globalThis.jinjaParsed = false;
+        if (!Number.parseInt("{{ 1 }}")) 
+          throw new Error("Jinja wasn't parsed.");
+        globalThis.jinjaParsed = true;
+
+        globalThis.csrf_token = "{{ csrf_token() }}";
+        globalThis.urlRoot = "{{ request.url_root }}";
+      } catch (err) {
+        console.log(err);
+      }
+    </script>
+    <script type="module" src="./main.js"></script>
+  </body>
+
+</html>

@@ -1,4 +1,6 @@
 <script>
+  // @ts-nocheck
+
   export let text;
   export let disabled = false;
   let isActive = false;

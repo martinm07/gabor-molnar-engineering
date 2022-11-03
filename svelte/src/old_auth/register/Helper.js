@@ -54,9 +54,9 @@ export const setWarning = (el, msg) => {
 };
 
 import { writable } from "svelte/store";
-export const stages = ["name", "possession", "verify", "congrats"];
+export const stages = ["details", "secure", "recovery", "congrats"];
 export const stageStore = writable(
-  stages.find((el) => window.location.hash.includes(el)) ?? "possession"
+  stages.find((el) => window.location.hash.includes(el)) ?? "details"
 );
 
 export const specialError = function (field, message) {

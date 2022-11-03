@@ -3,7 +3,7 @@ import os
 from flask import Flask
 
 from .extensions import db, migrate, csrf
-from . import home, auth, blog
+from . import home, old_auth, auth, blog
 
 
 def create_app(test_config=None):
@@ -25,6 +25,7 @@ def create_app(test_config=None):
     csrf.init_app(app)
 
     app.register_blueprint(home.bp)
+    app.register_blueprint(old_auth.bp)
     app.register_blueprint(auth.bp)
     app.register_blueprint(blog.bp)
 
