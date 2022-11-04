@@ -1,11 +1,14 @@
 import { quartOut, sineInOut } from "svelte/easing";
-export function tada(node, { duration, directionChanges = 2, intensity = 10 }) {
+export function tada(
+  node,
+  { duration, disable = false, directionChanges = 2, intensity = 10 }
+) {
   return {
     duration,
     css: (t) => {
       const marginRight = Math.sin(Math.PI * directionChanges * t);
       const easedMarginRight = quartOut(1 - t) * marginRight * intensity;
-      return `transform: translateX(${easedMarginRight}px);`;
+      return `transform: translateX(${!disable ? easedMarginRight : 0}px);`;
     },
   };
 }
@@ -56,7 +59,7 @@ export const setWarning = (el, msg) => {
 import { writable } from "svelte/store";
 export const stages = ["name", "possession", "verify", "congrats"];
 export const stageStore = writable(
-  stages.find((el) => window.location.hash.includes(el)) ?? "possession"
+  stages.find((el) => window.location.hash.includes(el)) ?? "verify"
 );
 
 export const specialError = function (field, message) {
@@ -138,3 +141,10 @@ export function validateFields(validateInput, fields) {
     })
     .every((el) => (el ? true : false));
 }
+
+export const flyIn = (step) => {
+  return { delay: step * 100, duration: 500, x: 30 };
+};
+export const flyOut = (step) => {
+  return { delay: step * 100, duration: 500, x: -30 };
+};

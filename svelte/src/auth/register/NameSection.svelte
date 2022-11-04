@@ -1,7 +1,44 @@
 <script>
+  // @ts-nocheck
+
   import { onMount } from "svelte";
   import { fly } from "svelte/transition";
-  import { stageStore } from "./Helper";
+  import { flyIn, flyOut, stageStore, tada } from "./Helper";
+
+  let nameInput;
+  let nameValue = "";
+  let showValidation = false;
+  let disabled = true;
+  let validType = "valid";
+  // Goals for validation of user input:
+  // - Does not pester user about empty input unless they attempt to submit it
+  // - It validates as the user types
+  // - The validation message only shows if the field is focused
+  function validateName() {
+    const validationMsgEl = document.querySelector(".validation");
+    if (!validationMsgEl) return;
+    validationMsgEl.style.removeProperty("display");
+
+    if (nameValue === "") {
+      validationMsgEl.dataset.msg = "Missing name.";
+      validType = "error";
+    } else if (nameValue.includes(" ")) {
+      validationMsgEl.dataset.msg = "Name cannot include spaces.";
+      validType = "error";
+    } else if (nameValue.length <= 2) {
+      validationMsgEl.dataset.msg = "Name must be at least three letters long.";
+      validType = "error";
+    } else {
+      validationMsgEl.dataset.msg = "";
+      validType = "valid";
+      validationMsgEl.style.display = "none";
+    }
+  }
+  $: ((...args) => {
+    if (!nameValue) validType = "valid";
+    showValidation = Boolean(nameValue);
+    setTimeout(validateName, 0); // setTimeout because the DOM update for `showValidation` only happens next cycle
+  })(nameValue);
 
   let submitBtnIsActive = false;
   function submitBtnActivate() {
@@ -21,16 +58,17 @@
   }
 
   function formSubmit() {
-    stageStore.set("possession");
-    // console.log("Submitted form!");
+    showValidation = false;
+    disabled = false;
+    setTimeout(() => {
+      showValidation = true;
+      setTimeout(() => {
+        validateName();
+        disabled = true;
+        if (validType === "valid") stageStore.set("possession");
+      }, 0);
+    }, 0);
   }
-
-  const flyIn = (step) => {
-    return { delay: step * 100, duration: 500, x: 30 };
-  };
-  const flyOut = (step) => {
-    return { delay: step * 100, duration: 500, x: -30 };
-  };
 
   export let exists = true;
   onMount(() => (exists = true));
@@ -51,7 +89,28 @@
   in:fly={flyIn(2)}
   out:fly={flyOut(2)}
 >
-  <input placeholder="your-name" type="text" />
+  <span style="position: relative;" class={validType}>
+    <input
+      placeholder="your-name"
+      type="text"
+      bind:this={nameInput}
+      bind:value={nameValue}
+      on:focusin={() => {
+        nameValue && (showValidation = true);
+        setTimeout(validateName, 0);
+      }}
+      on:focusout={() => (showValidation = false)}
+    />
+    {#if showValidation}
+      <div
+        class="validation"
+        in:tada={{ duration: 400, disable: disabled }}
+        data-msg=""
+        style="display: none;"
+      />
+    {/if}
+  </span>
+
   <button
     class={submitBtnIsActive ? "active" : ""}
     on:mousedown={submitBtnActivate}

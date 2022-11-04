@@ -1,11 +1,14 @@
 <script>
+  // @ts-nocheck
+
   import { onMount } from "svelte";
   import { fly } from "svelte/transition";
-  import { stageStore } from "./Helper";
+  import { flyIn, flyOut, stageStore, tada } from "./Helper";
   import "intl-tel-input/build/css/intlTelInput.css";
   import intlTelInput from "intl-tel-input";
 
-  let emailVal, phoneVal;
+  let emailVal = "",
+    phoneVal = "";
   let activeInput = "email";
   // Clear any input field when it's hidden
   $: activeInput &&
@@ -14,6 +17,69 @@
       if (activeInput === "email") phoneVal = "";
       else if (activeInput === "phone") emailVal = "";
     })();
+
+  let emailShowValidation, phoneShowValidation;
+  let emailValidType, phoneValidType;
+  let tadaDisabled = false;
+  function validateEmail() {
+    const validationMsgEl = document.querySelector(
+      ".email-input + .validation"
+    );
+    if (!validationMsgEl) return;
+    validationMsgEl.style.removeProperty("display");
+
+    if (emailVal === "") {
+      validationMsgEl.dataset.msg = "Missing email.";
+      emailValidType = "error";
+    } else if (
+      !/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(
+        emailVal
+      )
+    ) {
+      validationMsgEl.dataset.msg = "Invalid email.";
+      emailValidType = "error";
+    } else {
+      validationMsgEl.dataset.msg = "";
+      emailValidType = "valid";
+      validationMsgEl.style.display = "none";
+    }
+  }
+  function validatePhone() {
+    const validationMsgEl = document.querySelector(".phone-group .validation");
+    if (!validationMsgEl) return;
+    validationMsgEl.style.removeProperty("display");
+
+    if (phoneVal === "") {
+      validationMsgEl.dataset.msg = "Missing phone number.";
+      phoneValidType = "error";
+    } // replace this
+    else if (phoneVal.length < 5) {
+      validationMsgEl.dataset.msg = "Invalid number.";
+      phoneValidType = "error";
+    } else {
+      validationMsgEl.dataset.msg = "";
+      phoneValidType = "valid";
+      validationMsgEl.style.display = "none";
+    }
+  }
+  const emailUpdateValid = function () {
+    if (!emailVal) emailValidType = "valid";
+    emailShowValidation = Boolean(emailVal);
+    setTimeout(validateEmail, 0);
+  };
+  const phoneUpdateValid = function () {
+    if (!phoneVal) phoneValidType = "valid";
+    phoneShowValidation = Boolean(phoneVal);
+    setTimeout(validatePhone, 0);
+  };
+
+  const updateValidOnActiveFieldChange = function () {
+    emailShowValidation = activeInput === "email";
+    phoneShowValidation = activeInput === "phone";
+    if (!emailShowValidation) emailValidType = "valid";
+    if (!phoneShowValidation) phoneValidType = "valid";
+  };
+  $: activeInput && updateValidOnActiveFieldChange();
 
   let submitBtnIsActive = false;
   function submitBtnActivate() {
@@ -36,16 +102,26 @@
   });
 
   function formSubmit() {
-    // stageStore.set("verify");
-    console.log("Form submitted!");
+    if (activeInput === "email") {
+      emailShowValidation = false;
+      setTimeout(() => {
+        emailShowValidation = true;
+        setTimeout(() => {
+          validateEmail();
+          if (emailValidType === "valid") stageStore.set("verify");
+        }, 0);
+      }, 0);
+    } else {
+      phoneShowValidation = false;
+      setTimeout(() => {
+        phoneShowValidation = true;
+        setTimeout(() => {
+          validatePhone();
+          if (phoneValidType === "valid") stageStore.set("verify");
+        }, 0);
+      }, 0);
+    }
   }
-
-  const flyIn = (step) => {
-    return { delay: step * 100, duration: 500, x: 30 };
-  };
-  const flyOut = (step) => {
-    return { delay: step * 100, duration: 500, x: -30 };
-  };
 
   export let exists = true;
   onMount(() => (exists = true));
@@ -87,19 +163,50 @@
         Phone Number<ion-icon name="chevron-forward" />
       </span>
     </div>
-    <input
-      placeholder="youremail@gmail.com"
-      class="info-input email-input"
-      type="email"
-      bind:value={emailVal}
-      class:hidden={activeInput !== "email"}
-    />
-    <input
-      class="info-input phone-input"
-      type="text"
-      bind:value={phoneVal}
-      class:hidden={activeInput !== "phone"}
-    />
+
+    <span style="position: relative;" class="{emailValidType} email-group">
+      <input
+        placeholder="youremail@gmail.com"
+        class="info-input email-input"
+        type="text"
+        bind:value={emailVal}
+        class:hidden={activeInput !== "email"}
+        on:focusout={emailUpdateValid}
+        on:input={() => {
+          emailShowValidation = false;
+          emailValidType = "valid";
+        }}
+      />
+      {#if emailShowValidation}
+        <div
+          class="validation"
+          in:tada={{ duration: 400, disable: tadaDisabled }}
+          data-msg
+          style="display: none;"
+        />
+      {/if}
+    </span>
+    <span style="position: relative;" class="{phoneValidType} phone-group">
+      <input
+        class="info-input phone-input"
+        type="text"
+        bind:value={phoneVal}
+        class:hidden={activeInput !== "phone"}
+        on:focusout={phoneUpdateValid}
+        on:input={() => {
+          phoneShowValidation = false;
+          phoneValidType = "valid";
+        }}
+      />
+      {#if phoneShowValidation}
+        <div
+          class="validation"
+          in:tada={{ duration: 400, disable: tadaDisabled }}
+          data-msg
+          style="display: none;"
+        />
+      {/if}
+    </span>
   </div>
   <div class="submit-wrapper">
     <button
@@ -159,6 +266,7 @@
   }
   .info-option.active {
     font-weight: bold;
+    cursor: default;
   }
 
   .phone-input {
@@ -178,6 +286,7 @@
     border: 2px solid #d0c8c8;
     border-radius: 5px;
     box-shadow: 2px 2px 2px #919090, 0 20px 20px #e2e2e2;
+    z-index: 3;
   }
   :global(.iti__selected-flag) {
     border-right: 1px solid #000;
@@ -212,23 +321,5 @@
 
   .bottom-text {
     display: flex;
-  }
-  .back {
-    margin-bottom: 10px;
-    margin-left: 20px;
-    background: none;
-    border: none;
-    text-decoration: underline;
-    font-size: 100%;
-    color: #2e2e2e;
-    display: flex;
-    align-items: center;
-  }
-  .back ion-icon {
-    font-size: 110%;
-  }
-  .back:hover {
-    text-decoration: none;
-    cursor: pointer;
   }
 </style>
