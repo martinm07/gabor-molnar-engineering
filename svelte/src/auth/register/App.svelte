@@ -5,6 +5,8 @@
   import PossessionSection from "./PossessionSection.svelte";
   import VerifySection from "./VerifySection.svelte";
   import { stageStore, stages } from "./Helper";
+  import PasswordPopup from "./PasswordPopup.svelte";
+  import RecoveryPopup from "./RecoveryPopup.svelte";
 
   let isNameSec, isPossessionSec, isVerifySec;
   $: isNameAlone = !isPossessionSec && !isVerifySec;
@@ -17,9 +19,38 @@
   //     (prev, curr) => (prev || 0) + (curr || 0)
   //   ) <= 1;
   // $: console.log(isNoOtherSec);
+
+  let isLayover = false;
+  let popupName;
+  const layover = (e) => {
+    isLayover = true;
+    popupName = e.detail.name;
+    document.querySelector("body").style.overflowY = "hidden";
+    document.querySelector("#app").style.overflowY = "scroll";
+  };
+  const closeLayover = (e) => {
+    if (e instanceof KeyboardEvent) {
+      if (e.isComposing || e.keyCode === 229) return; // Ignore keyboard events that are "part of composition", probably useless though
+      if (e.key !== "Escape") return;
+    }
+    isLayover = false;
+    document.querySelector("body").style.overflowY = "scroll";
+    document.querySelector("#app").style.overflowY = "hidden";
+  };
+  window.addEventListener("keydown", closeLayover, true);
 </script>
 
 <div class="background-dec1" />
+{#if isLayover}
+  <!-- on:keydown here doesn't do anything but make A11y shut up -->
+  <div class="layover" on:click={closeLayover} on:keydown={closeLayover} />
+
+  {#if popupName === "password"}
+    <PasswordPopup on:close={closeLayover} />
+  {:else if popupName === "recovery"}
+    <RecoveryPopup />
+  {/if}
+{/if}
 <main>
   <div class="card">
     <h1 class="title">Registration</h1>
@@ -28,7 +59,11 @@
     {:else if $stageStore === "possession" && isPossessionAlone}
       <PossessionSection bind:exists={isPossessionSec} />
     {:else if $stageStore === "verify" && isVerifyAlone}
-      <VerifySection bind:exists={isVerifySec} />
+      <VerifySection
+        bind:exists={isVerifySec}
+        on:open-popup={layover}
+        on:close-popup={closeLayover}
+      />
     {/if}
   </div>
 </main>
@@ -41,6 +76,14 @@
     width: 50%;
     height: 25%;
     background-color: #b29f98;
+  }
+  .layover {
+    position: fixed;
+    z-index: 100;
+    width: 100%;
+    height: 100%;
+    background: #ffffff78;
+    backdrop-filter: blur(1px);
   }
   main {
     height: 100vh;
@@ -132,7 +175,7 @@
     outline: 3px solid #00000029;
   }
 
-  .card :global(.validation) {
+  :global(.validation) {
     position: absolute;
     z-index: 2;
     left: 10px;
@@ -140,7 +183,7 @@
     pointer-events: none;
     margin-right: 10px;
   }
-  .card :global(.validation::after) {
+  :global(.validation::after) {
     /* content: "After Alterna is a bonus level in Splatoon 3 singleplayer that only unlocks after you beat all other levels at least once"; */
     content: attr(data-msg);
     display: block;
@@ -162,13 +205,13 @@
     line-height: 13px;
     text-align: justify;
   }
-  .card :global(.error input) {
-    border: 1px solid rgb(173, 0, 35);
+  :global(.error input) {
+    border: 1px solid rgb(173, 0, 35) !important;
   }
-  .card :global(.error input:focus) {
-    outline: 3px solid #b8191929;
+  :global(.error input:focus) {
+    outline: 3px solid #b8191929 !important;
   }
-  .card :global(.error .validation::after) {
+  :global(.error .validation::after) {
     color: rgb(173, 85, 110);
   }
 

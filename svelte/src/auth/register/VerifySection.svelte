@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from "svelte";
+  import { createEventDispatcher, onMount } from "svelte";
   import { fly } from "svelte/transition";
   import { flyIn, flyOut, stageStore, tada } from "./Helper";
 
@@ -28,7 +28,8 @@
 
   function formSubmit() {}
 
-  let isFinished = false;
+  let isFinished = true;
+  const dispatch = createEventDispatcher();
 
   export let exists = true;
   onMount(() => (exists = true));
@@ -90,8 +91,16 @@
     <ion-icon name="chevron-back" />Go Back
   </button>
   <div class="extra-options" class:disabled={!isFinished}>
-    <div class="extra-option addpassword-btn">Password</div>
-    <div class="extra-option addrecovery-btn">Recovery</div>
+    <button
+      class="extra-option addpassword-btn"
+      on:click={() => dispatch("open-popup", { name: "password" })}
+      >Password</button
+    >
+    <button
+      class="extra-option addrecovery-btn"
+      on:click={() => dispatch("open-popup", { name: "recovery" })}
+      >Recovery</button
+    >
   </div>
 </div>
 
@@ -202,10 +211,19 @@
     padding: 5px 10px;
     text-decoration: underline;
     color: #474747;
+    background: none;
+    border: none;
+    font-size: 100%;
   }
   .extra-option:hover {
     cursor: pointer;
     text-decoration: none;
+  }
+  .extra-option:hover:active {
+    cursor: pointer;
+    text-decoration: none;
+    padding-top: 7px;
+    padding-bottom: 3px;
   }
   .extra-options.disabled {
     opacity: 0.3;

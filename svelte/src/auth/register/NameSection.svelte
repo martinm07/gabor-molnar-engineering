@@ -14,7 +14,7 @@
   // - Does not pester user about empty input unless they attempt to submit it
   // - It validates as the user types
   // - The validation message only shows if the field is focused
-  function validateName() {
+  async function validateName() {
     const validationMsgEl = document.querySelector(".validation");
     if (!validationMsgEl) return;
     validationMsgEl.style.removeProperty("display");
@@ -29,6 +29,13 @@
       validationMsgEl.dataset.msg = "Name must be at least three letters long.";
       validType = "error";
     } else {
+      const result = await Promise.resolve(Math.random());
+      if (result < 0.5) {
+        validationMsgEl.dataset.msg = "Name taken.";
+        validType = "error";
+        return;
+      }
+
       validationMsgEl.dataset.msg = "";
       validType = "valid";
       validationMsgEl.style.display = "none";
@@ -62,8 +69,8 @@
     disabled = false;
     setTimeout(() => {
       showValidation = true;
-      setTimeout(() => {
-        validateName();
+      setTimeout(async () => {
+        await validateName();
         disabled = true;
         if (validType === "valid") stageStore.set("possession");
       }, 0);

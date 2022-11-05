@@ -146,22 +146,24 @@
 >
   <div class="info-input-group" class:hide-intl={activeInput !== "phone"}>
     <div class="info-options">
-      <span
+      <button
+        type="button"
         class="info-option"
         class:active={activeInput === "email"}
         name="email"
         on:click={() => (activeInput = "email")}
       >
         Email Address<ion-icon name="chevron-forward" />
-      </span>
-      <span
+      </button>
+      <button
+        type="button"
         class="info-option"
         class:active={activeInput === "phone"}
         name="phone"
         on:click={() => (activeInput = "phone")}
       >
         Phone Number<ion-icon name="chevron-forward" />
-      </span>
+      </button>
     </div>
 
     <span style="position: relative;" class="{emailValidType} email-group">
@@ -260,6 +262,9 @@
     align-items: center;
     margin: 3px 0;
     cursor: pointer;
+    border: none;
+    background: none;
+    font-size: 100%;
   }
   .info-option ion-icon {
     font-size: 130%;
