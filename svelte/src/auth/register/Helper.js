@@ -148,3 +148,9 @@ export const flyIn = (step) => {
 export const flyOut = (step) => {
   return { delay: step * 100, duration: 500, x: -30 };
 };
+
+export async function timeoutPromise(seconds, returnVal, reject = false) {
+  if (!reject) await new Promise((res) => setTimeout(res, seconds * 1000));
+  else await new Promise((_r, rej) => setTimeout(rej, seconds * 1000));
+  return returnVal;
+}

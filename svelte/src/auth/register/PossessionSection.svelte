@@ -3,7 +3,7 @@
 
   import { onMount } from "svelte";
   import { fly } from "svelte/transition";
-  import { flyIn, flyOut, stageStore, tada } from "./Helper";
+  import { flyIn, flyOut, stageStore, tada, timeoutPromise } from "./Helper";
   import "intl-tel-input/build/css/intlTelInput.css";
   import intlTelInput from "intl-tel-input";
 
@@ -101,6 +101,15 @@
     });
   });
 
+  let formPromise, formPromiseState;
+  $: ((...args) => {
+    if (!formPromise) return;
+    formPromiseState = "pending";
+    formPromise
+      .then(() => (formPromiseState = "success"))
+      .catch(() => (formPromiseState = "failure"));
+  })(formPromise);
+
   function formSubmit() {
     if (activeInput === "email") {
       emailShowValidation = false;
@@ -108,7 +117,13 @@
         emailShowValidation = true;
         setTimeout(() => {
           validateEmail();
-          if (emailValidType === "valid") stageStore.set("verify");
+          if (emailValidType === "valid") {
+            formPromise = timeoutPromise(2, null, false); // "/set_email"
+            document.activeElement.blur();
+            formPromise.then(() => {
+              setTimeout(() => stageStore.set("verify"), 500);
+            });
+          }
         }, 0);
       }, 0);
     } else {
@@ -117,7 +132,13 @@
         phoneShowValidation = true;
         setTimeout(() => {
           validatePhone();
-          if (phoneValidType === "valid") stageStore.set("verify");
+          if (phoneValidType === "valid") {
+            formPromise = timeoutPromise(2, null, false); // "/set_phone"
+            document.activeElement.blur();
+            formPromise.then(() => {
+              setTimeout(() => stageStore.set("verify"), 500);
+            });
+          }
         }, 0);
       }, 0);
     }
@@ -178,6 +199,8 @@
           emailShowValidation = false;
           emailValidType = "valid";
         }}
+        disabled={formPromiseState === "pending" ||
+          formPromiseState === "success"}
       />
       {#if emailShowValidation}
         <div
@@ -199,6 +222,8 @@
           phoneShowValidation = false;
           phoneValidType = "valid";
         }}
+        disabled={formPromiseState === "pending" ||
+          formPromiseState === "success"}
       />
       {#if phoneShowValidation}
         <div
@@ -213,11 +238,24 @@
   <div class="submit-wrapper">
     <button
       type="submit"
-      class={submitBtnIsActive ? "active" : ""}
+      class:active={submitBtnIsActive}
       on:mousedown={submitBtnActivate}
       on:mouseup={submitBtnUnactivate}
-      on:mouseleave={submitBtnUnactivate}>Continue</button
+      on:mouseleave={submitBtnUnactivate}
+      class={formPromiseState}
     >
+      {#if formPromiseState === "pending"}
+        Please wait...
+      {:else}
+        Continue
+      {/if}
+      {#if formPromiseState === "success"}
+        <div class="success-wrapper"><ion-icon name="checkmark" /></div>
+      {/if}
+    </button>
+    {#await formPromise}{""}{:catch error}
+      <div class="form-error">An error has occured.</div>
+    {/await}
   </div>
 </form>
 
@@ -299,6 +337,8 @@
 
   .submit-wrapper {
     margin-top: 15px;
+    text-align: center;
+    width: 80%;
   }
   button[type="submit"] {
     padding: 5px 10px;
@@ -322,6 +362,41 @@
     margin-left: 20px;
     background-color: rgb(218, 210, 200);
     outline: 2px solid rgb(218, 210, 200);
+  }
+
+  button[type="submit"].pending,
+  button[type="submit"].success {
+    pointer-events: none;
+  }
+  button[type="submit"].success {
+    position: relative;
+  }
+  button[type="submit"].success::after {
+    content: "";
+    position: absolute;
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
+    left: -2px;
+    top: -2px;
+    background: rgba(255, 255, 255, 0.5);
+  }
+  .success-wrapper {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    right: -10px;
+    transform: translateX(100%);
+    font-size: 200%;
+    opacity: 2;
+  }
+  .success-wrapper ion-icon {
+    --ionicon-stroke-width: 50px;
+    color: rgb(48, 92, 35);
+  }
+  .form-error {
+    color: #671818;
   }
 
   .bottom-text {

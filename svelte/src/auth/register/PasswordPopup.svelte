@@ -2,7 +2,7 @@
   // @ts-nocheck
 
   import { createEventDispatcher } from "svelte";
-  import { tada, stageStore } from "./Helper";
+  import { tada, stageStore, timeoutPromise } from "./Helper";
 
   const dispatch = createEventDispatcher();
   function close() {
@@ -58,13 +58,29 @@
     passwordValidType = "valid";
   }
 
+  let formPromise, formPromiseState;
+  $: ((...args) => {
+    if (!formPromise) return;
+    formPromiseState = "pending";
+    formPromise
+      .then(() => (formPromiseState = "success"))
+      .catch(() => (formPromiseState = "failure"));
+  })(formPromise);
+  // formPromiseState = "success";
+
   function submit() {
     passwordShowValidation = false;
     setTimeout(() => {
       passwordShowValidation = true;
       setTimeout(() => {
         validatePassword();
-        if (passwordValidType === "valid") close();
+        if (passwordValidType === "valid") {
+          formPromise = timeoutPromise(2, null, false); // "/set_email"
+          document.activeElement.blur();
+          formPromise.then(() => {
+            close();
+          });
+        }
       }, 0);
     }, 0);
   }
@@ -100,6 +116,8 @@
           autocomplete="new-password"
           on:input={clearValid}
           bind:value={passwordVal}
+          disabled={formPromiseState === "pending" ||
+            formPromiseState === "success"}
         />
         {#if passwordShowValidation}
           <div
@@ -119,6 +137,8 @@
           id="repassword"
           on:input={clearValid}
           bind:value={repasswordVal}
+          disabled={formPromiseState === "pending" ||
+            formPromiseState === "success"}
         />
         {#if passwordShowValidation}
           <div
@@ -135,8 +155,21 @@
       class:active={submitBtnIsActive}
       on:mousedown={submitBtnActivate}
       on:mouseup={submitBtnUnactivate}
-      on:mouseleave={submitBtnUnactivate}>Add Password</button
+      on:mouseleave={submitBtnUnactivate}
+      class={formPromiseState}
     >
+      {#if formPromiseState === "pending"}
+        Please wait...
+      {:else}
+        Add Password
+      {/if}
+      {#if formPromiseState === "success"}
+        <div class="success-wrapper"><ion-icon name="checkmark" /></div>
+      {/if}
+    </button>
+    {#await formPromise}{""}{:catch error}
+      <div class="form-error">An error has occured.</div>
+    {/await}
   </form>
   <div class="is2fa-group">
     <label for="is2fa">2Factor Authentication enabled:</label>
@@ -202,6 +235,41 @@
     margin-left: 20px;
     background-color: rgb(218, 210, 200);
     outline: 2px solid rgb(218, 210, 200);
+  }
+
+  button[type="submit"].pending,
+  button[type="submit"].success {
+    pointer-events: none;
+  }
+  button[type="submit"].success {
+    position: relative;
+  }
+  button[type="submit"].success::after {
+    content: "";
+    position: absolute;
+    width: calc(100% + 4px);
+    height: calc(100% + 4px);
+    left: -2px;
+    top: -2px;
+    background: rgba(255, 255, 255, 0.5);
+  }
+  .success-wrapper {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    right: -10px;
+    transform: translateX(100%);
+    font-size: 200%;
+    opacity: 2;
+  }
+  .success-wrapper ion-icon {
+    --ionicon-stroke-width: 50px;
+    color: rgb(48, 92, 35);
+  }
+  .form-error {
+    color: #671818;
   }
 
   .is2fa-group {

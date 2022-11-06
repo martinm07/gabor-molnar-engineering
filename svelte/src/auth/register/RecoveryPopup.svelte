@@ -2,7 +2,9 @@
   // @ts-nocheck
 
   import { createEventDispatcher } from "svelte";
-  import { tada, stageStore } from "./Helper";
+  import { cubicOut } from "svelte/easing";
+  import { tweened } from "svelte/motion";
+  import { tada, stageStore, timeoutPromise } from "./Helper";
 
   const dispatch = createEventDispatcher();
   function close() {
@@ -50,6 +52,25 @@
     infoValidType = "valid";
   }
 
+  let formPromise, formPromiseState;
+  $: ((...args) => {
+    if (!formPromise) return;
+    formPromiseState = "pending";
+    formPromise
+      .then(() => (formPromiseState = ""))
+      .catch(() => (formPromiseState = "failure"));
+  })(formPromise);
+  // formPromiseState = "success";
+  const formMarginBottom = tweened(0, {
+    duration: 400,
+    easing: cubicOut,
+  });
+  let formErrorEl;
+  $: (() => {
+    if (!formErrorEl) formMarginBottom.set(0);
+    else formMarginBottom.set(formErrorEl.getBoundingClientRect().height);
+  })();
+
   let list = [
     { info: "martin.molnar07@gmail.com", type: "email", id: 1 },
     { info: "087 721 1985", type: "phone", id: 2 },
@@ -61,9 +82,13 @@
       setTimeout(() => {
         const type = validateInfo();
         if (infoValidType === "valid") {
-          // replace this manual creating of elements in future.
-          list = [...list, { info: infoVal, type, id: list.length + 1 }];
-          infoVal = "";
+          formPromise = timeoutPromise(2, null, false); // "/add_recovery_option"
+          document.activeElement.blur();
+          formPromise.then(() => {
+            // replace this manual creating of elements in future.
+            list = [...list, { info: infoVal, type, id: list.length + 1 }];
+            infoVal = "";
+          });
         }
       }, 0);
     }, 0);
@@ -115,7 +140,10 @@
     of friends and family). You <i>will not</i> need to verify these to add them,
     so double check yourself you're entering the details without mistakes.
   </p>
-  <form on:submit|preventDefault={addOption}>
+  <form
+    on:submit|preventDefault={addOption}
+    style="margin-bottom: {$formMarginBottom}px;"
+  >
     <span style="position: relative;" class="{infoValidType} info-group">
       <input
         type="text"
@@ -125,6 +153,8 @@
         on:focusout={() => {
           if (!infoVal) clearValid();
         }}
+        disabled={formPromiseState === "pending" ||
+          formPromiseState === "success"}
       />
       {#if infoShowValidation}
         <div
@@ -135,7 +165,20 @@
         />
       {/if}
     </span>
-    <button type="submit"><ion-icon name="add" /></button>
+    <button type="submit" class={formPromiseState}>
+      {#if formPromiseState === "pending"}
+        <div class="spinner" />
+      {:else if formPromiseState === "success"}
+        <ion-icon name="checkmark" />
+      {:else}
+        <ion-icon name="add" />
+      {/if}
+      {#await formPromise}{""}{:catch error}
+        <div class="form-error" bind:this={formErrorEl}>
+          An error has occured.
+        </div>
+      {/await}
+    </button>
   </form>
   <hr />
   <div class="list">
@@ -235,6 +278,65 @@
   button[type="submit"]:hover:active {
     margin-bottom: -3px;
     background: rgb(202, 202, 202);
+  }
+
+  button[type="submit"].pending {
+    pointer-events: none;
+    padding: 0%;
+    background: #fff;
+    overflow: hidden;
+    outline: none !important;
+    border: none;
+  }
+  button[type="submit"].pending .spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid #654c44;
+    border-radius: 50%;
+    animation-name: rotate;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+    animation-duration: 2s;
+    position: relative;
+  }
+  button[type="submit"].pending .spinner::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    z-index: 100;
+    width: 13px;
+    height: 13px;
+    background: #fff;
+    transform: translate(3px, -3px);
+  }
+  @keyframes rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  button[type="submit"].success {
+    pointer-events: none;
+    color: rgb(48, 92, 35);
+    --ionicon-stroke-width: 60px;
+    padding: 0;
+    font-size: 140%;
+  }
+  button[type="submit"].failure {
+    position: relative;
+  }
+  .form-error {
+    position: absolute;
+    font-size: 86%;
+    bottom: 0;
+    transform: translate(calc(30px - 100%), 100%);
+    left: 0;
+    max-width: 200px;
+    width: max-content;
+    color: #671818;
   }
 
   hr {

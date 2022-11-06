@@ -1,5 +1,7 @@
 <script>
   import { createEventDispatcher, onMount } from "svelte";
+  import { cubicOut } from "svelte/easing";
+  import { tweened } from "svelte/motion";
   import { fly } from "svelte/transition";
   import { flyIn, flyOut, stageStore, tada } from "./Helper";
 
@@ -25,6 +27,24 @@
         .style.removeProperty("transition");
     }, 0);
   }
+
+  let formPromise, formPromiseState;
+  $: ((...args) => {
+    if (!formPromise) return;
+    formPromiseState = "pending";
+    formPromise
+      .then(() => (formPromiseState = "success"))
+      .catch(() => (formPromiseState = "failure"));
+  })(formPromise);
+  const fieldMarginBottom = tweened(0, {
+    duration: 400,
+    easing: cubicOut,
+  });
+  let formErrorEl;
+  $: (() => {
+    if (!formErrorEl) fieldMarginBottom.set(0);
+    else fieldMarginBottom.set(formErrorEl.getBoundingClientRect().height);
+  })();
 
   function formSubmit() {}
 
@@ -55,9 +75,14 @@
   <div class="sendtoken-info">
     <span>A 6-digit code was sent to </span>
   </div>
-  <div class="input-field">
+  <div class="input-field" style="margin-bottom: {$fieldMarginBottom}px;">
     <span style="position: relative;" class="{validType} token-group">
-      <input type="text" placeholder="012345" />
+      <input
+        type="text"
+        placeholder="012345"
+        disabled={formPromiseState === "pending" ||
+          formPromiseState === "success"}
+      />
       {#if showValidation}
         <div
           class="validation"
@@ -68,14 +93,26 @@
       {/if}
     </span>
     <button
-      class={submitBtnIsActive ? "active" : ""}
+      class:active={submitBtnIsActive}
       on:mousedown={submitBtnActivate}
       on:mouseup={submitBtnUnactivate}
       on:mouseleave={submitBtnUnactivate}
+      class={formPromiseState}
       type="submit"
     >
-      <div name="arrow-extension" class="arrow-extension" />
-      <ion-icon name="arrow-forward" />
+      {#if formPromiseState === "pending"}
+        <div class="spinner" />
+      {:else if formPromiseState === "success"}
+        <ion-icon name="checkmark" />
+      {:else}
+        <div name="arrow-extension" class="arrow-extension" />
+        <ion-icon class="arrow" name="arrow-forward" />
+      {/if}
+      {#await formPromise}{""}{:catch error}
+        <div class="form-error" bind:this={formErrorEl}>
+          An error has occured.
+        </div>
+      {/await}
     </button>
   </div>
   <button class="finish" disabled={!isFinished}>Finish</button>
@@ -161,6 +198,62 @@
     background-color: rgb(208, 208, 208);
     transform: translateX(0px);
     margin-left: 0;
+  }
+
+  button[type="submit"].pending {
+    pointer-events: none;
+    padding: 0%;
+    background: #fff;
+    overflow: hidden;
+    outline: none !important;
+  }
+  button[type="submit"].pending .spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid #654c44;
+    border-radius: 50%;
+    animation-name: rotate;
+    animation-iteration-count: infinite;
+    animation-timing-function: linear;
+    animation-duration: 2s;
+    position: relative;
+  }
+  button[type="submit"].pending .spinner::after {
+    content: "";
+    position: absolute;
+    right: 0;
+    z-index: 100;
+    width: 13px;
+    height: 13px;
+    background: #fff;
+    transform: translate(3px, -3px);
+  }
+  @keyframes rotate {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  button[type="submit"].success {
+    pointer-events: none;
+    color: rgb(48, 92, 35);
+    --ionicon-stroke-width: 60px;
+    padding: 0;
+    font-size: 140%;
+  }
+  .form-error {
+    position: absolute;
+    font-size: 75%;
+    bottom: 0;
+    transform: translate(calc(30px - 100%), 100%);
+    left: 0;
+    max-width: 200px;
+    width: max-content;
+    color: #671818;
+    pointer-events: none;
   }
 
   .finish {
