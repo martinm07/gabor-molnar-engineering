@@ -149,29 +149,6 @@
     display: none;
   }
 
-  main {
-    position: fixed;
-    width: 65%;
-    max-width: 550px;
-    height: 80%;
-    display: flex;
-    left: 50%;
-    z-index: 101;
-    overflow-y: scroll;
-    background: #fff;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    border: 2px solid #bababa;
-    border-radius: 7px;
-    box-shadow: 2px 2px 2px #8d8d8d, 0 0 20px #adacac;
-    flex-direction: column;
-    box-sizing: border-box;
-  }
-  main::-webkit-scrollbar {
-    border-bottom-right-radius: 7px;
-    border-top-right-radius: 7px;
-  }
-
   .text {
     width: 80%;
     margin-left: 10%;
@@ -243,24 +220,5 @@
     height: 20px;
     width: 20px;
     accent-color: #6e6767;
-  }
-
-  .close {
-    position: absolute;
-    top: 0;
-    left: 0;
-    font-size: 200%;
-    border: none;
-    background: none;
-    color: rgb(48, 48, 48);
-    padding: 10px;
-    transform: translate(-5px, -5px);
-    cursor: pointer;
-  }
-  .close ion-icon {
-    transition: transform 0.15s cubic-bezier(0.22, 0.61, 0.36, 1);
-  }
-  .close:hover ion-icon {
-    transform: rotate(90deg);
   }
 </style>

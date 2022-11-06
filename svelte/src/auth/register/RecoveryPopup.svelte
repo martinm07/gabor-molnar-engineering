@@ -1,0 +1,338 @@
+<script>
+  // @ts-nocheck
+
+  import { createEventDispatcher } from "svelte";
+  import { tada, stageStore } from "./Helper";
+
+  const dispatch = createEventDispatcher();
+  function close() {
+    dispatch("close");
+  }
+
+  let infoVal = "";
+  let infoValidType = "valid";
+  let infoShowValidation;
+  function validateInfo() {
+    const msgEl = document.querySelector(".info-group .validation");
+    if (!msgEl) return;
+    msgEl.style.removeProperty("display");
+    infoVal = infoVal.trim();
+
+    let invalidPhone, invalidEmail;
+    if (infoVal === "") {
+      msgEl.dataset.msg = "Missing information.";
+      infoValidType = "error";
+    } else {
+      // Basic check if not email or phone number.
+      // TODO: Put the validity verdict nested in another async call to the server.
+      if (!/^(?:(?:\(\d+\)[\d -]+)|[\d -]+)$/.test(infoVal))
+        invalidPhone = true;
+      if (
+        !/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(
+          infoVal
+        )
+      )
+        invalidEmail = true;
+      if (invalidEmail && invalidPhone) {
+        msgEl.dataset.msg = "Invalid email and phone number.";
+        infoValidType = "error";
+        return;
+      }
+
+      msgEl.dataset.msg = "";
+      infoValidType = "valid";
+      msgEl.style.display = "none";
+      return invalidEmail ? "phone" : "email";
+    }
+  }
+  function clearValid() {
+    infoShowValidation = false;
+    infoValidType = "valid";
+  }
+
+  let list = [
+    { info: "martin.molnar07@gmail.com", type: "email", id: 1 },
+    { info: "087 721 1985", type: "phone", id: 2 },
+  ];
+  function addOption() {
+    infoShowValidation = false;
+    setTimeout(() => {
+      infoShowValidation = true;
+      setTimeout(() => {
+        const type = validateInfo();
+        if (infoValidType === "valid") {
+          // replace this manual creating of elements in future.
+          list = [...list, { info: infoVal, type, id: list.length + 1 }];
+          infoVal = "";
+        }
+      }, 0);
+    }, 0);
+  }
+
+  function deleteItem(e) {
+    const id = parseInt(e.target.closest(".option").dataset.id);
+    const index = list.findIndex((el) => el.id === id);
+    list.splice(index, 1);
+    list = list;
+  }
+
+  let editing = -1;
+  let editingVal, editingEl;
+  function editItem(e) {
+    const id = parseInt(e.target.closest(".option").dataset.id);
+    editingVal = e.target
+      .closest(".option")
+      .querySelector(".detail")
+      .textContent.trim();
+    editing = id;
+    setTimeout(() => {
+      document.querySelector(".editing").focus();
+    }, 0);
+  }
+  function stopEditSave() {
+    const item = list.find((el) => el.id === editing);
+    item.info = editingVal;
+    editing = -1;
+  }
+  document.onclick = (e) => {
+    if (
+      !e.target.closest(".option:has(.editing)") &&
+      document.querySelector(".editing")
+    )
+      stopEditSave();
+  };
+  document.onkeydown = (e) => {
+    if (document.querySelector(".editing") && e.key === "Enter") stopEditSave();
+  };
+</script>
+
+<main>
+  <button class="close" on:click={close}><ion-icon name="close" /></button>
+  <h1>Add Recovery Options</h1>
+  <p class="text">
+    In case you lose access to your email/phone number, it is good to have extra
+    "emergency" options you can use to log in (perhaps the emails/phone numbers
+    of friends and family). You <i>will not</i> need to verify these to add them,
+    so double check yourself you're entering the details without mistakes.
+  </p>
+  <form on:submit|preventDefault={addOption}>
+    <span style="position: relative;" class="{infoValidType} info-group">
+      <input
+        type="text"
+        placeholder="email/phone number"
+        bind:value={infoVal}
+        on:input={clearValid}
+        on:focusout={() => {
+          if (!infoVal) clearValid();
+        }}
+      />
+      {#if infoShowValidation}
+        <div
+          class="validation"
+          in:tada={{ duration: 400 }}
+          data-msg
+          style="display: none;"
+        />
+      {/if}
+    </span>
+    <button type="submit"><ion-icon name="add" /></button>
+  </form>
+  <hr />
+  <div class="list">
+    {#each list as { info, type, id } (id)}
+      <div class="option" data-id={id}>
+        <button class="delete" title="Remove" on:click={deleteItem}
+          ><ion-icon name="trash" /></button
+        >
+        <div class="detail">
+          {#if editing === id}
+            <input
+              class="editing"
+              bind:value={editingVal}
+              bind:this={editingEl}
+            />
+            <button
+              class="editing-cancel"
+              title="Cancel edit"
+              on:click={() => (editing = -1)}><ion-icon name="close" /></button
+            >
+          {:else}
+            {info}
+            {#if type === "email"}
+              <ion-icon name="mail" />
+            {:else}
+              <ion-icon name="call" />
+            {/if}
+          {/if}
+        </div>
+        <button class="edit" title="Edit" on:click={editItem}
+          ><ion-icon name="pencil" /></button
+        >
+      </div>
+    {/each}
+    {#if list.length === 0}
+      <div class="nothing-yet">Currently no recovery options.</div>
+    {/if}
+  </div>
+</main>
+
+<style>
+  h1 {
+    text-align: center;
+    margin-top: 15px;
+    margin-bottom: 0;
+    font-weight: 500;
+    color: #493633;
+    width: 86%;
+    margin-left: 7%;
+  }
+  .text {
+    margin-top: 0;
+    width: 80%;
+    margin-left: 10%;
+    color: rgb(48, 48, 48);
+  }
+
+  form {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  form input {
+    padding: 3px 5px;
+    font-size: 100%;
+    font-family: "Source Code Pro", monospace;
+    color: #3c3c3c;
+    width: 250px;
+    border: 1px solid #000;
+    box-shadow: inset 1px 1px #d5d5d5;
+    border-radius: 3px;
+  }
+  input:focus {
+    outline: 3px solid rgba(0, 0, 0, 0.135);
+  }
+  button[type="submit"] {
+    height: 28px;
+    width: 28px;
+    background: none;
+    border: 2px solid currentColor;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 7px;
+    color: #6b6b6b;
+    border-radius: 3px;
+    font-size: 100%;
+    padding: 0;
+  }
+  button[type="submit"] ion-icon {
+    font-size: 160%;
+  }
+  button[type="submit"]:hover {
+    background: rgb(232, 232, 232);
+    cursor: pointer;
+  }
+  button[type="submit"]:hover:active {
+    margin-bottom: -3px;
+    background: rgb(202, 202, 202);
+  }
+
+  hr {
+    height: 2px;
+    background: #eaeaea;
+    width: 90%;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    border: none;
+  }
+  .nothing-yet {
+    font-style: italic;
+    text-align: center;
+    color: #545454;
+  }
+
+  .list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-bottom: 30px;
+  }
+  .option {
+    display: flex;
+    justify-content: space-between;
+    width: 75%;
+    margin: 3px 0;
+    color: #383838;
+    align-items: center;
+  }
+  .delete {
+    padding: 5px;
+    margin-bottom: -5px;
+    margin-top: -5px;
+    cursor: pointer;
+    height: 100%;
+    background: none;
+    border: none;
+    display: block;
+    box-sizing: content-box;
+    font-size: 100%;
+  }
+  .detail {
+    display: flex;
+    align-items: center;
+    font-family: "Source Code Pro", monospace;
+    word-spacing: -1px;
+    letter-spacing: -1px;
+    position: relative;
+  }
+  .detail ion-icon {
+    color: #565656;
+    margin-left: 7px;
+  }
+  .edit {
+    font-size: 115%;
+    height: 100%;
+    padding: 5px;
+    margin-bottom: -5px;
+    margin-top: -5px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    display: block;
+    box-sizing: content-box;
+  }
+  .delete:hover,
+  .edit:hover {
+    color: rgb(124, 124, 124);
+  }
+
+  .editing {
+    font-family: "Source Code Pro", monospace;
+    outline: none !important;
+    padding-left: 20px;
+    width: 200px;
+  }
+  .editing-cancel {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    height: 100%;
+    margin-left: 2px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-size: 100%;
+    padding: 0;
+  }
+  .editing-cancel ion-icon {
+    margin: 0;
+    color: #2a2a2a;
+    font-size: 120%;
+  }
+  .editing-cancel:hover ion-icon {
+    color: rgb(117, 117, 117);
+  }
+  ion-icon {
+    pointer-events: none;
+  }
+</style>

@@ -44,12 +44,13 @@
 {#if isLayover}
   <!-- on:keydown here doesn't do anything but make A11y shut up -->
   <div class="layover" on:click={closeLayover} on:keydown={closeLayover} />
-
-  {#if popupName === "password"}
-    <PasswordPopup on:close={closeLayover} />
-  {:else if popupName === "recovery"}
-    <RecoveryPopup />
-  {/if}
+  <span class="popup">
+    {#if popupName === "password"}
+      <PasswordPopup on:close={closeLayover} />
+    {:else if popupName === "recovery"}
+      <RecoveryPopup on:close={closeLayover} />
+    {/if}
+  </span>
 {/if}
 <main>
   <div class="card">
@@ -77,6 +78,7 @@
     height: 25%;
     background-color: #b29f98;
   }
+
   .layover {
     position: fixed;
     z-index: 100;
@@ -85,6 +87,47 @@
     background: #ffffff78;
     backdrop-filter: blur(1px);
   }
+  :global(.popup main) {
+    position: fixed;
+    width: 65%;
+    max-width: 550px;
+    height: 80%;
+    display: flex;
+    left: 50%;
+    z-index: 101;
+    overflow-y: scroll;
+    background: #fff;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    border: 2px solid #bababa;
+    border-radius: 7px;
+    box-shadow: 2px 2px 2px #8d8d8d, 0 0 20px #adacac;
+    flex-direction: column;
+    box-sizing: border-box;
+  }
+  :global(.popup main::-webkit-scrollbar) {
+    border-bottom-right-radius: 7px;
+    border-top-right-radius: 7px;
+  }
+  :global(.close) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: 200%;
+    border: none;
+    background: none;
+    color: rgb(48, 48, 48);
+    padding: 10px;
+    transform: translate(-5px, -5px);
+    cursor: pointer;
+  }
+  :global(.close ion-icon) {
+    transition: transform 0.15s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  :global(.close:hover ion-icon) {
+    transform: rotate(90deg);
+  }
+
   main {
     height: 100vh;
     display: flex;
