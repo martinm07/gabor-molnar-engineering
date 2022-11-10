@@ -3,48 +3,75 @@
 
   import { onMount } from "svelte";
   import { fly } from "svelte/transition";
-  import { flyIn, flyOut, stageStore, tada, timeoutPromise } from "./Helper";
+  import {
+    flyIn,
+    flyOut,
+    postData,
+    stageStore,
+    tada,
+    timeoutPromise,
+    updateValidWidth,
+  } from "./Helper";
 
-  let nameInput;
+  let validEl;
   let nameValue = "";
   let showValidation = false;
-  let disabled = true;
+  let tadaDisabled = true;
   let validType = "valid";
   // Goals for validation of user input:
   // - Does not pester user about empty input unless they attempt to submit it
   // - It validates as the user types
   // - The validation message only shows if the field is focused
-  async function validateName() {
-    const validationMsgEl = document.querySelector(".validation");
-    if (!validationMsgEl) return;
-    validationMsgEl.style.removeProperty("display");
+  async function validateName(doTada = false) {
+    const updateMsg = async function (message, validType_, tada = doTada) {
+      if (tada && showValidation) {
+        showValidation = false;
+        tadaDisabled = false;
+        await timeoutPromise(0);
+      } else tadaDisabled = !tada;
+      if (!showValidation) {
+        showValidation = true;
+        await timeoutPromise(0);
+      }
+      const msgEl = document.querySelector(".validation");
+      msgEl.dataset.msg = message;
+      validType = validType_;
+    };
 
-    if (nameValue === "") {
-      validationMsgEl.dataset.msg = "Missing name.";
-      validType = "error";
+    finishValidation: if (nameValue === "") {
+      await updateMsg("Missing name", "error");
     } else if (nameValue.includes(" ")) {
-      validationMsgEl.dataset.msg = "Name cannot include spaces.";
-      validType = "error";
+      await updateMsg("Name cannot include spaces", "error");
     } else if (nameValue.length <= 2) {
-      validationMsgEl.dataset.msg = "Name must be at least three letters long.";
-      validType = "error";
+      await updateMsg("Name must be at least three letters long", "error");
+    } else if (nameValue.length > 32) {
+      await updateMsg("Name must be less than 33 characeters", "error");
     } else {
-      const result = await Promise.resolve(Math.random());
-      if (result < 0.1) {
-        validationMsgEl.dataset.msg = "Name taken.";
-        validType = "error";
-        return;
+      if (doTada) await updateMsg("Checking availability...", "stall", false);
+      else {
+        validType = "valid";
+        showValidation = false;
+      }
+      // prettier-ignore
+      const result = await postData("is_name_taken", () => nameValue, false, true);
+      if (result["is_taken"]) {
+        await updateMsg("Name taken", "error");
+        break finishValidation;
       }
 
-      validationMsgEl.dataset.msg = "";
       validType = "valid";
-      validationMsgEl.style.display = "none";
+      showValidation = false;
+      await timeoutPromise(0);
     }
+    validEl && updateValidWidth(validEl);
   }
   $: ((...args) => {
-    if (!nameValue) validType = "valid";
-    showValidation = Boolean(nameValue);
-    setTimeout(validateName, 0); // setTimeout because the DOM update for `showValidation` only happens next cycle
+    if (!nameValue) {
+      validType = "valid";
+      showValidation = false;
+      return;
+    }
+    validateName();
   })(nameValue);
 
   let submitBtnIsActive = false;
@@ -73,25 +100,19 @@
       .catch(() => (formPromiseState = "failure"));
   })(formPromise);
 
-  function formSubmit() {
-    showValidation = false;
-    disabled = false;
-    setTimeout(() => {
-      showValidation = true;
-      setTimeout(async () => {
-        await validateName();
-        disabled = true;
-        if (validType === "valid") {
-          formPromise = timeoutPromise(2, null, false); // "/set_name"
-          document.activeElement.blur();
-          formPromise.then(() => {
-            setTimeout(() => {
-              stageStore.set("possession");
-            }, 500);
-          });
-        }
-      }, 0);
-    }, 0);
+  async function formSubmit() {
+    await validateName(true);
+    if (validType !== "valid") return;
+    const getData = () => {
+      return {
+        username: nameValue,
+      };
+    };
+    formPromise = postData("set_name", getData);
+    document.activeElement.blur();
+    await formPromise;
+    await timeoutPromise(0.5);
+    stageStore.set("possession");
   }
 
   export let exists = true;
@@ -117,11 +138,11 @@
     <input
       placeholder="your-name"
       type="text"
-      bind:this={nameInput}
       bind:value={nameValue}
       on:focusin={() => {
-        nameValue && (showValidation = true);
-        setTimeout(validateName, 0);
+        if (nameValue) {
+          validateName();
+        }
       }}
       on:focusout={() => (showValidation = false)}
       disabled={formPromiseState === "pending" ||
@@ -130,9 +151,9 @@
     {#if showValidation}
       <div
         class="validation"
-        in:tada={{ duration: 400, disable: disabled }}
+        in:tada={{ duration: 400, disable: tadaDisabled }}
         data-msg=""
-        style="display: none;"
+        bind:this={validEl}
       />
     {/if}
   </span>

@@ -1,4 +1,4 @@
-import { quartOut, sineInOut } from "svelte/easing";
+import { quartOut } from "svelte/easing";
 export function tada(
   node,
   { duration, disable = false, directionChanges = 2, intensity = 10 }
@@ -12,83 +12,33 @@ export function tada(
     },
   };
 }
-export function turnPage(
-  node,
-  { duration, degrees = -15, doTransition = true }
-) {
-  return {
-    duration,
-    css: (t) => {
-      const easedRotate = sineInOut(1 - t) * degrees;
-      const easedOpacity = sineInOut(t);
-      return `
-          transform-origin: 0 0;
-          transform: rotate(${doTransition ? easedRotate : degrees}deg);
-          opacity: ${doTransition ? easedOpacity : 0};
-        `;
-    },
-  };
-}
-export function newPageIn(
-  node,
-  { duration, delay = 400, doTransition = true }
-) {
-  return {
-    delay,
-    duration,
-    css: (t) => {
-      const easedOpacity = sineInOut(t);
-      return `opacity: ${doTransition ? easedOpacity : 1};`;
-    },
-  };
-}
-
-export const focusInput = (inputEl) => {
-  if (
-    !(document.activeElement instanceof HTMLInputElement) ||
-    document.activeElement.type === "submit"
-  )
-    inputEl.focus();
-};
-
-export const setWarning = (el, msg) => {
-  el.dataset.warning = msg ? true : false;
-  el.dataset.warningMessage = msg;
-};
 
 import { writable } from "svelte/store";
 export const stages = ["name", "possession", "verify", "congrats"];
 export const stageStore = writable(
-  stages.find((el) => window.location.hash.includes(el)) ?? "verify"
+  stages.find((el) => window.location.hash.includes(el)) ?? "possession"
 );
 
-export const specialError = function (field, message) {
-  if (this?.promise) this.promise = undefined;
-  field.input.setCustomValidity("");
-  setTimeout(() => {
-    field.input.setCustomValidity(message);
-    field.updateInput();
-  }, 0);
-};
 export async function postData(
   url,
   getDataFunc,
-  specialExceptions = {},
-  getRequest = false
+  getRequest = false,
+  plainText = false
 ) {
   try {
     const data = getDataFunc ? (!getRequest ? getDataFunc() : null) : {};
     const urlRoot = globalThis.jinjaParsed
       ? globalThis.urlRoot
       : "http://127.0.0.1:5000/";
-    const resp = await fetch(urlRoot + "legacy/api/" + url, {
+    const resp = await fetch(urlRoot + "api/register/" + url, {
       ...(!getRequest && {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          ...(globalThis.jinjaParsed && {
-            "X-CSRFToken": globalThis.csrf_token,
-          }),
+          "Content-Type": !plainText ? "application/json" : "text/plain",
+          ...(globalThis.jinjaParsed &&
+            !plainText && {
+              "X-CSRFToken": globalThis.csrf_token,
+            }),
         },
         body: JSON.stringify(data),
       }),
@@ -103,43 +53,11 @@ export async function postData(
       throw new Error(
         `${resp.status} - ${resp.statusText}\n${returnData.message}`
       );
-    // In case of OK response but still error
-    if (returnData?.message) {
-      for (const [signature, _] of Object.entries(specialExceptions)) {
-        if (returnData.message.includes(signature)) {
-          throw new Error(returnData.message);
-        }
-      }
-    }
     return returnData;
   } catch (err) {
     console.log(err.message);
-    if (specialExceptions && typeof specialExceptions === "object") {
-      for (const [signature, func] of Object.entries(specialExceptions)) {
-        if (err.message.includes(signature)) {
-          func();
-        }
-      }
-    }
     throw new Error(err.message);
   }
-}
-
-export function clearErrors(fields) {
-  fields.forEach((el) => {
-    el.input.setCustomValidity("");
-    setWarning(el.input, "");
-    el.updateInput();
-  });
-}
-export function validateFields(validateInput, fields) {
-  return fields
-    .map((el) => {
-      validateInput(el.name, false, true);
-      if (el.input.validity.customError) return false;
-      return true;
-    })
-    .every((el) => (el ? true : false));
 }
 
 export const flyIn = (step) => {
@@ -153,4 +71,28 @@ export async function timeoutPromise(seconds, returnVal, reject = false) {
   if (!reject) await new Promise((res) => setTimeout(res, seconds * 1000));
   else await new Promise((_r, rej) => setTimeout(rej, seconds * 1000));
   return returnVal;
+}
+
+export function updateValidWidth(validEl) {
+  validEl.style.setProperty("--after-width", "auto");
+  const textContent = validEl.dataset.msg;
+  const text = document.createElement("span");
+  document.body.appendChild(text);
+
+  text.innerHTML = textContent;
+  text.style.width = getComputedStyle(validEl, ":after").width;
+  text.style.fontSize = getComputedStyle(validEl, ":after")["font-size"];
+  text.style.fontWeight = getComputedStyle(validEl, ":after")["font-weight"];
+  text.style.position = "fixed";
+
+  const textNode = text.firstChild;
+  const range = new Range();
+  range.setStart(textNode, 0);
+  range.setEnd(textNode, textContent.length);
+
+  validEl.style.setProperty(
+    "--after-width",
+    range.getClientRects()[0].width + "px"
+  );
+  text.remove();
 }

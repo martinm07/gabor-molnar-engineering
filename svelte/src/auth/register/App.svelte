@@ -225,6 +225,7 @@
     margin-top: -6px;
     pointer-events: none;
     margin-right: 10px;
+    --after-width: auto;
   }
   :global(.validation::after) {
     /* content: "After Alterna is a bonus level in Splatoon 3 singleplayer that only unlocks after you beat all other levels at least once"; */
@@ -246,7 +247,7 @@
     color: #0000008f;
     height: 15px;
     line-height: 13px;
-    text-align: justify;
+    width: var(--after-width);
   }
   :global(.error input) {
     border: 1px solid rgb(173, 0, 35) !important;

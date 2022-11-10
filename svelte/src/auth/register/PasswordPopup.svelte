@@ -68,21 +68,15 @@
   })(formPromise);
   // formPromiseState = "success";
 
-  function submit() {
+  async function submit() {
     passwordShowValidation = false;
-    setTimeout(() => {
-      passwordShowValidation = true;
-      setTimeout(() => {
-        validatePassword();
-        if (passwordValidType === "valid") {
-          formPromise = timeoutPromise(2, null, false); // "/set_email"
-          document.activeElement.blur();
-          formPromise.then(() => {
-            close();
-          });
-        }
-      }, 0);
-    }, 0);
+    await timeoutPromise(0);
+    passwordShowValidation = true;
+    await timeoutPromise(0);
+    validatePassword();
+    if (passwordValidType !== "valid") return;
+    formPromise = timeoutPromise(2, null, false); // "/set_password"
+    document.activeElement.blur();
   }
 </script>
 

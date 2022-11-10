@@ -4,7 +4,13 @@
   import { createEventDispatcher } from "svelte";
   import { cubicOut } from "svelte/easing";
   import { tweened } from "svelte/motion";
-  import { tada, stageStore, timeoutPromise } from "./Helper";
+  import {
+    tada,
+    stageStore,
+    timeoutPromise,
+    updateValidWidth,
+    postData,
+  } from "./Helper";
 
   const dispatch = createEventDispatcher();
   function close() {
@@ -13,22 +19,30 @@
 
   let infoVal = "";
   let infoValidType = "valid";
-  let infoShowValidation;
-  function validateInfo() {
-    const msgEl = document.querySelector(".info-group .validation");
-    if (!msgEl) return;
-    msgEl.style.removeProperty("display");
+  let infoShowValidation, tadaDisabled;
+  async function validateInfo() {
+    const updateMsg = async function (message, validType, tada = true) {
+      if (tada && infoShowValidation) {
+        infoShowValidation = false;
+        tadaDisabled = false;
+        await timeoutPromise(0);
+      } else tadaDisabled = !tada;
+      if (!infoShowValidation) {
+        infoShowValidation = true;
+        await timeoutPromise(0);
+      }
+      const msgEl = document.querySelector(".info-group .validation");
+      msgEl.dataset.msg = message;
+      infoValidType = validType;
+    };
     infoVal = infoVal.trim();
 
     let invalidPhone, invalidEmail;
-    if (infoVal === "") {
-      msgEl.dataset.msg = "Missing information.";
-      infoValidType = "error";
+    finishValidation: if (infoVal === "") {
+      await updateMsg("Missing information", "error");
     } else {
-      // Basic check if not email or phone number.
-      // TODO: Put the validity verdict nested in another async call to the server.
-      if (!/^(?:(?:\(\d+\)[\d -]+)|[\d -]+)$/.test(infoVal))
-        invalidPhone = true;
+      // We are kind of assuming that these two regex expressions don't share any string they both match
+      if (!/^[\d +\(\)-]+$/.test(infoVal)) invalidPhone = true;
       if (
         !/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(
           infoVal
@@ -36,16 +50,41 @@
       )
         invalidEmail = true;
       if (invalidEmail && invalidPhone) {
-        msgEl.dataset.msg = "Invalid email and phone number.";
-        infoValidType = "error";
-        return;
+        await updateMsg("Invalid as email and phone number", "error");
+        break finishValidation;
+      }
+      // Elaborate on validating the input as if it were a phone number
+      if (invalidEmail) {
+        if (!infoVal.startsWith("+")) {
+          await updateMsg(
+            "Phone number must start with country code (e.g. +353)",
+            "error"
+          );
+          break finishValidation;
+        }
+        await updateMsg("Checking country code...", "stall", false);
+        // prettier-ignore
+        const recognized_country_code = await postData("phone_number_has_country_code", () => infoVal, false, true);
+        if (!recognized_country_code["has_country_code"]) {
+          await updateMsg("Country code unrecognized", "error");
+          break finishValidation;
+        }
+        await updateMsg("Validating number...", "stall", false);
+        // prettier-ignore
+        const is_valid = await postData("is_valid_phone_number", () => infoVal, false, true);
+        if (!is_valid["is_valid"]) {
+          await updateMsg("Invalid phone number", "error");
+          break finishValidation;
+        }
+      }
+      if (invalidPhone) {
       }
 
-      msgEl.dataset.msg = "";
-      infoValidType = "valid";
-      msgEl.style.display = "none";
-      return invalidEmail ? "phone" : "email";
+      await updateMsg("", "valid");
+      infoShowValidation = false;
     }
+    infoValidEl && updateValidWidth(infoValidEl);
+    return invalidEmail ? "phone" : "email";
   }
   function clearValid() {
     infoShowValidation = false;
@@ -61,37 +100,33 @@
       .catch(() => (formPromiseState = "failure"));
   })(formPromise);
   // formPromiseState = "success";
+
   const formMarginBottom = tweened(0, {
     duration: 400,
     easing: cubicOut,
   });
-  let formErrorEl;
+  let formErrorEl, infoValidEl;
   $: (() => {
-    if (!formErrorEl) formMarginBottom.set(0);
-    else formMarginBottom.set(formErrorEl.getBoundingClientRect().height);
+    if (!formErrorEl && !infoValidEl) formMarginBottom.set(0);
+    else {
+      let el = formErrorEl ?? infoValidEl;
+      formMarginBottom.set(el.getBoundingClientRect().height);
+    }
   })();
 
   let list = [
     { info: "martin.molnar07@gmail.com", type: "email", id: 1 },
     { info: "087 721 1985", type: "phone", id: 2 },
   ];
-  function addOption() {
-    infoShowValidation = false;
-    setTimeout(() => {
-      infoShowValidation = true;
-      setTimeout(() => {
-        const type = validateInfo();
-        if (infoValidType === "valid") {
-          formPromise = timeoutPromise(2, null, false); // "/add_recovery_option"
-          document.activeElement.blur();
-          formPromise.then(() => {
-            // replace this manual creating of elements in future.
-            list = [...list, { info: infoVal, type, id: list.length + 1 }];
-            infoVal = "";
-          });
-        }
-      }, 0);
-    }, 0);
+  async function addOption() {
+    formPromise = null;
+    const type = await validateInfo();
+    if (infoValidType !== "valid") return;
+    formPromise = timeoutPromise(2, null, false); // "/add_recovery_option"
+    document.activeElement.blur();
+    await formPromise;
+    list = [...list, { info: infoVal, type, id: list.length + 1 }];
+    infoVal = "";
   }
 
   function deleteItem(e) {
@@ -159,9 +194,9 @@
       {#if infoShowValidation}
         <div
           class="validation"
-          in:tada={{ duration: 400 }}
+          in:tada={{ duration: 400, disable: tadaDisabled }}
           data-msg
-          style="display: none;"
+          bind:this={infoValidEl}
         />
       {/if}
     </span>

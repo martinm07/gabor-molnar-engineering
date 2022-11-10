@@ -3,10 +3,19 @@
 
   import { onMount } from "svelte";
   import { fly } from "svelte/transition";
-  import { flyIn, flyOut, stageStore, tada, timeoutPromise } from "./Helper";
+  import {
+    flyIn,
+    flyOut,
+    postData,
+    stageStore,
+    tada,
+    timeoutPromise,
+    updateValidWidth,
+  } from "./Helper";
   import "intl-tel-input/build/css/intlTelInput.css";
   import intlTelInput from "intl-tel-input";
 
+  let emailValidEl, phoneValidEl;
   let emailVal = "",
     phoneVal = "";
   let activeInput = "email";
@@ -18,66 +27,137 @@
       else if (activeInput === "phone") emailVal = "";
     })();
 
-  let emailShowValidation, phoneShowValidation;
-  let emailValidType, phoneValidType;
+  const email = {
+    showValidation: false,
+    validType: "valid",
+  };
+  const phone = {
+    showValidation: false,
+    validType: "valid",
+  };
   let tadaDisabled = false;
-  function validateEmail() {
-    const validationMsgEl = document.querySelector(
-      ".email-input + .validation"
-    );
-    if (!validationMsgEl) return;
-    validationMsgEl.style.removeProperty("display");
+  async function validateEmail(doAsync = false) {
+    const updateMsg = async function (message, validType, tada = true) {
+      if (tada && email.showValidation) {
+        email.showValidation = false;
+        tadaDisabled = false;
+        await timeoutPromise(0);
+      } else tadaDisabled = !tada;
+      if (!email.showValidation) {
+        email.showValidation = true;
+        await timeoutPromise(0);
+      }
+      const validationMsgEl = document.querySelector(
+        ".email-input + .validation"
+      );
+      validationMsgEl.dataset.msg = message;
+      email.validType = validType;
+    };
 
-    if (emailVal === "") {
-      validationMsgEl.dataset.msg = "Missing email.";
-      emailValidType = "error";
+    await updateMsg("...", "stall", false);
+    finishValidation: if (emailVal === "") {
+      await updateMsg("Missing email.", "error");
     } else if (
       !/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(
         emailVal
       )
     ) {
-      validationMsgEl.dataset.msg = "Invalid email.";
-      emailValidType = "error";
+      await updateMsg("Invalid email.", "error");
     } else {
-      validationMsgEl.dataset.msg = "";
-      emailValidType = "valid";
-      validationMsgEl.style.display = "none";
-    }
-  }
-  function validatePhone() {
-    const validationMsgEl = document.querySelector(".phone-group .validation");
-    if (!validationMsgEl) return;
-    validationMsgEl.style.removeProperty("display");
+      if (doAsync) {
+        await updateMsg("Checking duplicity...", "stall", false);
+        // prettier-ignore
+        const is_taken = await postData("is_email_taken", () => emailVal, false, true);
+        if (is_taken["is_taken"]) {
+          await updateMsg("Email already in use.", "error");
+          break finishValidation;
+        }
 
-    if (phoneVal === "") {
-      validationMsgEl.dataset.msg = "Missing phone number.";
-      phoneValidType = "error";
-    } // replace this
-    else if (phoneVal.length < 5) {
-      validationMsgEl.dataset.msg = "Invalid number.";
-      phoneValidType = "error";
-    } else {
-      validationMsgEl.dataset.msg = "";
-      phoneValidType = "valid";
-      validationMsgEl.style.display = "none";
+        await updateMsg("Thoroughly confirming validity...", "stall", false);
+        // prettier-ignore
+        const is_really_valid = await postData("is_valid_email", () => emailVal, false, true);
+        if (!is_really_valid["is_valid"]) {
+          await updateMsg("Invalid email.", "error");
+          break finishValidation;
+        }
+      }
+
+      email.validType = "valid";
+      email.showValidation = false;
+      await timeoutPromise(0);
     }
+    emailValidEl && updateValidWidth(emailValidEl);
+  }
+  async function validatePhone(doAsync = false) {
+    const updateMsg = async function (message, validType, tada = true) {
+      if (tada && phone.showValidation) {
+        phone.showValidation = false;
+        tadaDisabled = false;
+        await timeoutPromise(0);
+      } else tadaDisabled = !tada;
+      if (!phone.showValidation) {
+        phone.showValidation = true;
+        await timeoutPromise(0);
+      }
+      const validationMsgEl = document.querySelector(
+        ".phone-group .validation"
+      );
+      validationMsgEl.dataset.msg = message;
+      phone.validType = validType;
+    };
+
+    await updateMsg("...", "stall", false);
+    finishValidation: if (phoneVal === "") {
+      await updateMsg("Missing phone number.", "error");
+    } else if (!/^(?:(?:\(\d+\)[\d -]+)|[\d -]+)$/.test(phoneVal)) {
+      await updateMsg("Invalid number.", "error");
+    } else {
+      if (doAsync) {
+        await updateMsg("Checking duplicity...", "stall", false);
+        // prettier-ignore
+        const is_taken = await postData("is_phone_taken", () => phoneVal, false, true);
+        if (is_taken["is_taken"]) {
+          await updateMsg("Phone already in use.", "error");
+          break finishValidation;
+        }
+
+        await updateMsg("Confirming validity...", "stall", false);
+        // prettier-ignore
+        const is_really_valid = await postData("is_valid_phone_number", () => iti.getNumber(), false, true);
+        if (!is_really_valid["is_valid"]) {
+          await updateMsg("Invalid number.", "error");
+          break finishValidation;
+        }
+      }
+
+      phone.validType = "valid";
+      phone.showValidation = false;
+      await timeoutPromise(0);
+    }
+    phoneValidEl && updateValidWidth(phoneValidEl);
   }
   const emailUpdateValid = function () {
-    if (!emailVal) emailValidType = "valid";
-    emailShowValidation = Boolean(emailVal);
-    setTimeout(validateEmail, 0);
+    if (!emailVal) {
+      email.validType = "valid";
+      email.showValidation = false;
+      return;
+    }
+    validateEmail(false);
   };
   const phoneUpdateValid = function () {
-    if (!phoneVal) phoneValidType = "valid";
-    phoneShowValidation = Boolean(phoneVal);
-    setTimeout(validatePhone, 0);
+    if (!phoneVal) {
+      phone.validType = "valid";
+      phone.showValidation = false;
+      return;
+    }
+    validatePhone(true);
   };
 
   const updateValidOnActiveFieldChange = function () {
-    emailShowValidation = activeInput === "email";
-    phoneShowValidation = activeInput === "phone";
-    if (!emailShowValidation) emailValidType = "valid";
-    if (!phoneShowValidation) phoneValidType = "valid";
+    email.showValidation &&= activeInput === "email";
+    phone.showValidation &&= activeInput === "phone";
+    if (!email.showValidation) email.validType = "valid";
+    if (!phone.showValidation) phone.validType = "valid";
   };
   $: activeInput && updateValidOnActiveFieldChange();
 
@@ -110,38 +190,36 @@
       .catch(() => (formPromiseState = "failure"));
   })(formPromise);
 
-  function formSubmit() {
+  async function formSubmit() {
+    let getData;
     if (activeInput === "email") {
-      emailShowValidation = false;
-      setTimeout(() => {
-        emailShowValidation = true;
-        setTimeout(() => {
-          validateEmail();
-          if (emailValidType === "valid") {
-            formPromise = timeoutPromise(2, null, false); // "/set_email"
-            document.activeElement.blur();
-            formPromise.then(() => {
-              setTimeout(() => stageStore.set("verify"), 500);
-            });
-          }
-        }, 0);
-      }, 0);
+      email.showValidation = false;
+      await timeoutPromise(0);
+      await validateEmail(true);
+      if (email.validType !== "valid") return;
+      getData = () => {
+        return {
+          type: "email",
+          data: emailVal,
+        };
+      };
     } else {
-      phoneShowValidation = false;
-      setTimeout(() => {
-        phoneShowValidation = true;
-        setTimeout(() => {
-          validatePhone();
-          if (phoneValidType === "valid") {
-            formPromise = timeoutPromise(2, null, false); // "/set_phone"
-            document.activeElement.blur();
-            formPromise.then(() => {
-              setTimeout(() => stageStore.set("verify"), 500);
-            });
-          }
-        }, 0);
-      }, 0);
+      phone.showValidation = false;
+      await timeoutPromise(0);
+      await validatePhone(true);
+      if (phone.validType !== "valid") return;
+      getData = () => {
+        return {
+          type: "phone",
+          data: iti.getNumber(),
+        };
+      };
     }
+    formPromise = postData("set_info", getData);
+    document.activeElement.blur();
+    await formPromise;
+    await timeoutPromise(0.5);
+    stageStore.set("verify");
   }
 
   export let exists = true;
@@ -187,50 +265,50 @@
       </button>
     </div>
 
-    <span style="position: relative;" class="{emailValidType} email-group">
+    <span style="position: relative;" class="{email.validType} email-group">
       <input
         placeholder="youremail@gmail.com"
         class="info-input email-input"
         type="text"
         bind:value={emailVal}
         class:hidden={activeInput !== "email"}
-        on:focusout={emailUpdateValid}
+        on:focusout={emailUpdateValid.bind(null, false)}
         on:input={() => {
-          emailShowValidation = false;
-          emailValidType = "valid";
+          email.showValidation = false;
+          email.validType = "valid";
         }}
         disabled={formPromiseState === "pending" ||
           formPromiseState === "success"}
       />
-      {#if emailShowValidation}
+      {#if email.showValidation}
         <div
           class="validation"
           in:tada={{ duration: 400, disable: tadaDisabled }}
           data-msg
-          style="display: none;"
+          bind:this={emailValidEl}
         />
       {/if}
     </span>
-    <span style="position: relative;" class="{phoneValidType} phone-group">
+    <span style="position: relative;" class="{phone.validType} phone-group">
       <input
         class="info-input phone-input"
         type="text"
         bind:value={phoneVal}
         class:hidden={activeInput !== "phone"}
-        on:focusout={phoneUpdateValid}
+        on:focusout={phoneUpdateValid.bind(null, false)}
         on:input={() => {
-          phoneShowValidation = false;
-          phoneValidType = "valid";
+          phone.showValidation = false;
+          phone.validType = "valid";
         }}
         disabled={formPromiseState === "pending" ||
           formPromiseState === "success"}
       />
-      {#if phoneShowValidation}
+      {#if phone.showValidation}
         <div
           class="validation"
           in:tada={{ duration: 400, disable: tadaDisabled }}
           data-msg
-          style="display: none;"
+          bind:this={phoneValidEl}
         />
       {/if}
     </span>
