@@ -3,9 +3,59 @@
   import { cubicOut } from "svelte/easing";
   import { tweened } from "svelte/motion";
   import { fly } from "svelte/transition";
-  import { flyIn, flyOut, stageStore, tada } from "./Helper";
+  import { flyIn, flyOut, postData, stageStore, tada } from "./Helper";
 
   // Send token to device when component is created (make sure it's only once though)
+  const getData = () => {
+    return {
+      firstSendOnly: true,
+    };
+  };
+  let tokenPromise = postData("send_token", getData);
+  let tokenSent = false;
+  tokenPromise.then((data) => {
+    tokenSent = true;
+    startTimeout(data.timeout);
+  });
+  let timeout, resendDisabled;
+  function startTimeout(time) {
+    resendDisabled = true;
+    timeout = time;
+    const timeoutInterval = setInterval(() => {
+      timeout -= 1;
+      if (timeout <= 0) {
+        clearInterval(timeoutInterval);
+        postData("wait_until_resend_ready", null, true).then(() => {
+          resendDisabled = false;
+        });
+      }
+    }, 1000);
+  }
+
+  let prettyTimeout;
+  // (< 30sec), (< 1min), (≈ 1min), (≈ 2min), ...
+  $: if (timeout) {
+    if (timeout >= 60) {
+      const minute = Math.round(timeout / 60);
+      prettyTimeout = "≈ " + minute + "min" + (minute === 1 ? "" : "s");
+    } else if (timeout >= 30) prettyTimeout = "< 1min";
+    else prettyTimeout = "< 30sec";
+  }
+
+  function resendToken() {
+    if (resendDisabled) return;
+    tokenSent = false;
+    const getData = () => {
+      return {
+        firstSendOnly: false,
+      };
+    };
+    tokenPromise = postData("send_token", getData);
+    tokenPromise.then((data) => {
+      startTimeout(data.timeout);
+      tokenSent = true;
+    });
+  }
 
   let validType = "valid";
   let showValidation;
@@ -48,7 +98,7 @@
 
   function formSubmit() {}
 
-  let isFinished = true;
+  let isFinished = false;
   const dispatch = createEventDispatcher();
 
   export let exists = true;
@@ -73,7 +123,42 @@
   out:fly={flyOut(2)}
 >
   <div class="sendtoken-info">
-    <span>A 6-digit code was sent to </span>
+    {#await tokenPromise}
+      <span>Please wait...</span>
+    {:then data}
+      <span>
+        {#if data.infoType === "email"}
+          A 6-digit code was sent to<br /><a href="mailto: {data.info}"
+            >{data.info}</a
+          >
+        {:else}
+          A 6-digit code was sent to <br />{data.info}
+        {/if}
+        |
+        <button
+          class="resend-token"
+          disabled={resendDisabled}
+          on:click={resendToken}
+        >
+          Resend?{!resendDisabled || !prettyTimeout
+            ? ""
+            : " (" + prettyTimeout + ")"}
+        </button>
+      </span>
+    {:catch err}
+      <span>
+        Token send unsuccessful.
+        <button
+          class="resend-token"
+          disabled={resendDisabled}
+          on:click={resendToken}
+        >
+          Resend?{!resendDisabled || !prettyTimeout
+            ? ""
+            : " (" + prettyTimeout + ")"}
+        </button>
+      </span>
+    {/await}
   </div>
   <div class="input-field" style="margin-bottom: {$fieldMarginBottom}px;">
     <span style="position: relative;" class="{validType} token-group">
@@ -81,7 +166,8 @@
         type="text"
         placeholder="012345"
         disabled={formPromiseState === "pending" ||
-          formPromiseState === "success"}
+          formPromiseState === "success" ||
+          !tokenSent}
       />
       {#if showValidation}
         <div
@@ -99,6 +185,7 @@
       on:mouseleave={submitBtnUnactivate}
       class={formPromiseState}
       type="submit"
+      disabled={!tokenSent}
     >
       {#if formPromiseState === "pending"}
         <div class="spinner" />
@@ -148,8 +235,27 @@
     letter-spacing: -1px;
     word-spacing: -1px;
     color: #292929;
-    margin-bottom: 5px;
+    margin-bottom: 15px;
+    text-align: center;
   }
+  .resend-token {
+    border: navajowhite;
+    text-decoration: underline;
+    font-size: 100%;
+    background: none;
+    color: #5b4f4d;
+    padding: 0;
+    cursor: pointer;
+  }
+  .resend-token:hover {
+    text-decoration: none;
+  }
+  .resend-token:disabled {
+    text-decoration: none;
+    color: #9d9d9d;
+    cursor: default;
+  }
+
   .input-field {
     display: flex;
   }
@@ -176,6 +282,13 @@
     transition: width 0.2s cubic-bezier(0.22, 0.61, 0.36, 1),
       margin-left 0.2s cubic-bezier(0.22, 0.61, 0.36, 1),
       transform 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  button[type="submit"]:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+  input:disabled {
+    opacity: 0.5;
   }
   .arrow-extension {
     position: absolute;
