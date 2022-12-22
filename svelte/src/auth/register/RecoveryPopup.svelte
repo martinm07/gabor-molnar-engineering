@@ -64,14 +64,14 @@
         }
         await updateMsg("Checking country code...", "stall", false);
         // prettier-ignore
-        const recognized_country_code = await postData("phone_number_has_country_code", () => infoVal, false, true);
+        const recognized_country_code = await postData({url: "phone_number_has_country_code", data: () => infoVal, plainText: true});
         if (!recognized_country_code["has_country_code"]) {
           await updateMsg("Country code unrecognized", "error");
           break finishValidation;
         }
         await updateMsg("Validating number...", "stall", false);
         // prettier-ignore
-        const is_valid = await postData("is_valid_phone_number", () => infoVal, false, true);
+        const is_valid = await postData({url: "is_valid_phone_number", data: () => infoVal, plainText: true});
         if (!is_valid["is_valid"]) {
           await updateMsg("Invalid phone number", "error");
           break finishValidation;

@@ -67,7 +67,7 @@
       if (doAsync) {
         await updateMsg("Checking duplicity...", "stall", false);
         // prettier-ignore
-        const is_taken = await postData("is_email_taken", () => emailVal, false, true);
+        const is_taken = await postData({url: "is_email_taken", data: () => emailVal, plainText: true});
         if (is_taken["is_taken"]) {
           await updateMsg("Email already in use.", "error");
           break finishValidation;
@@ -75,7 +75,7 @@
 
         await updateMsg("Thoroughly confirming validity...", "stall", false);
         // prettier-ignore
-        const is_really_valid = await postData("is_valid_email", () => emailVal, false, true);
+        const is_really_valid = await postData({url: "is_valid_email", data: () => emailVal, plainText: true});
         if (!is_really_valid["is_valid"]) {
           await updateMsg("Invalid email.", "error");
           break finishValidation;
@@ -115,7 +115,7 @@
       if (doAsync) {
         await updateMsg("Checking duplicity...", "stall", false);
         // prettier-ignore
-        const is_taken = await postData("is_phone_taken", () => phoneVal, false, true);
+        const is_taken = await postData({url: "is_phone_taken", data: () => phoneVal, plainText: true});
         if (is_taken["is_taken"]) {
           await updateMsg("Phone already in use.", "error");
           break finishValidation;
@@ -123,7 +123,7 @@
 
         await updateMsg("Confirming validity...", "stall", false);
         // prettier-ignore
-        const is_really_valid = await postData("is_valid_phone_number", () => iti.getNumber(), false, true);
+        const is_really_valid = await postData({url: "is_valid_phone_number", data: () => iti.getNumber(), plainText: true});
         if (!is_really_valid["is_valid"]) {
           await updateMsg("Invalid number.", "error");
           break finishValidation;
@@ -215,7 +215,7 @@
         };
       };
     }
-    formPromise = postData("set_info", getData);
+    formPromise = postData({ url: "set_info", data: getData });
     document.activeElement.blur();
     await formPromise;
     await timeoutPromise(0.5);

@@ -3,21 +3,19 @@
   import { cubicOut } from "svelte/easing";
   import { tweened } from "svelte/motion";
   import { fly } from "svelte/transition";
-  import { flyIn, flyOut, postData, stageStore, tada } from "./Helper";
+  import {
+    flyIn,
+    flyOut,
+    postData,
+    stageStore,
+    tada,
+    HttpError,
+  } from "./Helper";
 
   // Send token to device when component is created (make sure it's only once though)
-  const getData = () => {
-    return {
-      firstSendOnly: true,
-    };
-  };
-  let tokenPromise = postData("send_token", getData);
   let tokenSent = false;
-  tokenPromise.then((data) => {
-    tokenSent = true;
-    startTimeout(data.timeout);
-  });
-  let timeout, resendDisabled;
+
+  let tokenPromise, timeout, resendDisabled;
   function startTimeout(time) {
     resendDisabled = true;
     timeout = time;
@@ -25,36 +23,54 @@
       timeout -= 1;
       if (timeout <= 0) {
         clearInterval(timeoutInterval);
-        postData("wait_until_resend_ready", null, true).then(() => {
-          resendDisabled = false;
-        });
+        postData({ url: "wait_until_resend_ready", getRequest: true }).then(
+          () => {
+            resendDisabled = false;
+          }
+        );
       }
     }, 1000);
   }
+  function sendToken(resend = false) {
+    if (resendDisabled) return;
+    tokenSent = false;
+    const getData = () => {
+      return {
+        firstSendOnly: !resend,
+      };
+    };
+    tokenPromise = postData({
+      url: "send_token",
+      data: getData,
+      autoErrorMsg: true,
+    });
+    tokenPromise
+      .then((data) => data)
+      .catch((err) => err)
+      .then((dataOrErr) => {
+        const data =
+          dataOrErr instanceof HttpError ? dataOrErr.data : dataOrErr;
+        startTimeout(data.timeout ?? 0);
+        tokenSent = true;
+      });
+  }
+  function getSendTokenErrorMsg(errorCode) {
+    if (errorCode.includes("resend_timeout_not_finished")) {
+      return "The timeout on resending the token has not yet finished. Try again soon.";
+    } else {
+      return "Token send was unsuccessful.";
+    }
+  }
+  sendToken();
 
   let prettyTimeout;
   // (< 30sec), (< 1min), (≈ 1min), (≈ 2min), ...
-  $: if (timeout) {
+  $: if (timeout && timeout > 0) {
     if (timeout >= 60) {
       const minute = Math.round(timeout / 60);
       prettyTimeout = "≈ " + minute + "min" + (minute === 1 ? "" : "s");
     } else if (timeout >= 30) prettyTimeout = "< 1min";
     else prettyTimeout = "< 30sec";
-  }
-
-  function resendToken() {
-    if (resendDisabled) return;
-    tokenSent = false;
-    const getData = () => {
-      return {
-        firstSendOnly: false,
-      };
-    };
-    tokenPromise = postData("send_token", getData);
-    tokenPromise.then((data) => {
-      startTimeout(data.timeout);
-      tokenSent = true;
-    });
   }
 
   let validType = "valid";
@@ -138,7 +154,7 @@
         <button
           class="resend-token"
           disabled={resendDisabled}
-          on:click={resendToken}
+          on:click={sendToken.bind(null, true)}
         >
           Resend?{!resendDisabled || !prettyTimeout
             ? ""
@@ -147,11 +163,11 @@
       </span>
     {:catch err}
       <span>
-        Token send unsuccessful.
+        {getSendTokenErrorMsg(err?.message)}
         <button
           class="resend-token"
           disabled={resendDisabled}
-          on:click={resendToken}
+          on:click={sendToken.bind(null, true)}
         >
           Resend?{!resendDisabled || !prettyTimeout
             ? ""
@@ -237,6 +253,7 @@
     color: #292929;
     margin-bottom: 15px;
     text-align: center;
+    width: 66%;
   }
   .resend-token {
     border: navajowhite;

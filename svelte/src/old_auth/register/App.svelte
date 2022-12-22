@@ -42,7 +42,7 @@
     <SecureForm
       bind:doTransition
       on:success={async (e) => {
-        await postData("finish_registration");
+        await postData({ url: "finish_registration" });
         changeStage(e.detail.noFactor ? "congrats" : secureRedirect);
       }}
     />

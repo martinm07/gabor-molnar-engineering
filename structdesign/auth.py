@@ -155,11 +155,10 @@ def generate_cookie_hash():
 
 def stamp_request(name):
     ipaddress = get_ipaddress()
-    print(ipaddress)
+    
     URL = 'https://rdap.db.ripe.net/ip/' + ipaddress
     resp = requests.get(url=URL)
     data = resp.json()
-    print(data)
     operator_name = data["name"]
     address_pool = data["startAddress"] + " - " + data["endAddress"]
 
@@ -235,17 +234,22 @@ def send_token():
         session["register_tokentimeoffset"] = curtime % cycle_len
 
         if session["register_info_type"] == "email":
-            send_token_email(compute_token())
+            return_msg = send_token_email(compute_token())
         elif session["register_info_type"] == "phone":
-            send_token_sms(compute_token())
+            return_msg = send_token_sms(compute_token())
+
+        if return_msg:
+            return return_msg
 
         session["first_token_sent"] = True
         stamp_request("send_token")
         nonlocal last_attempt
         last_attempt = 0
         return {"msgType": "success", "message": ""}
-    return returnMsg()|{"info": info, "infoType": session["register_info_type"], 
-                        "timeout": max(0, token_penalty(attempts + (1 if last_attempt == 0 else 0)) - last_attempt)}
+    # timeout has to be the timeout of the next attempt only if this one was successful
+    return_data = returnMsg()|{"info": info, "infoType": session["register_info_type"], 
+                               "timeout": max(0, token_penalty(attempts + (1 if last_attempt == 0 else 0)) - last_attempt)}
+    return return_data, (400 if return_data["msgType"] == "error" else 200)
 
 @bp.route("/api/register/phone_number_has_country_code", methods=["POST"])
 @cors_enabled(methods=["POST"])

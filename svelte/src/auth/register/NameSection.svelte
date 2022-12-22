@@ -53,7 +53,7 @@
         showValidation = false;
       }
       // prettier-ignore
-      const result = await postData("is_name_taken", () => nameValue, false, true);
+      const result = await postData({url: "is_name_taken", data: () => nameValue, plainText: true});
       if (result["is_taken"]) {
         await updateMsg("Name taken", "error");
         break finishValidation;
@@ -108,7 +108,7 @@
         username: nameValue,
       };
     };
-    formPromise = postData("set_name", getData);
+    formPromise = postData({ url: "set_name", data: getData });
     document.activeElement.blur();
     await formPromise;
     await timeoutPromise(0.5);
