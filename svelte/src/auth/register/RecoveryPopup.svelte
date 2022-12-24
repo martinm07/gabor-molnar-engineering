@@ -1,7 +1,8 @@
 <script>
   // @ts-nocheck
 
-  import { createEventDispatcher } from "svelte";
+  import { parsePhoneNumber } from "awesome-phonenumber";
+  import { createEventDispatcher, onMount } from "svelte";
   import { cubicOut } from "svelte/easing";
   import { tweened } from "svelte/motion";
   import {
@@ -16,6 +17,11 @@
   function close() {
     dispatch("close");
   }
+
+  let exampleCountryCode = "1";
+  postData({ url: "get_country_code", getRequest: true }).then(
+    (data) => (exampleCountryCode = data)
+  );
 
   let infoVal = "";
   let infoValidType = "valid";
@@ -57,7 +63,9 @@
       if (invalidEmail) {
         if (!infoVal.startsWith("+")) {
           await updateMsg(
-            "Phone number must start with country code (e.g. +353)",
+            "Phone number must start with country code (e.g. +" +
+              exampleCountryCode +
+              ")",
             "error"
           );
           break finishValidation;
@@ -65,23 +73,46 @@
         await updateMsg("Checking country code...", "stall", false);
         // prettier-ignore
         const recognized_country_code = await postData({url: "phone_number_has_country_code", data: () => infoVal, plainText: true});
-        if (!recognized_country_code["has_country_code"]) {
+        if (!recognized_country_code) {
           await updateMsg("Country code unrecognized", "error");
           break finishValidation;
         }
         await updateMsg("Validating number...", "stall", false);
         // prettier-ignore
         const is_valid = await postData({url: "is_valid_phone_number", data: () => infoVal, plainText: true});
-        if (!is_valid["is_valid"]) {
+        if (!is_valid) {
           await updateMsg("Invalid phone number", "error");
           break finishValidation;
         }
       }
+      // ...or as an email
       if (invalidPhone) {
+        await updateMsg("Checking validity & blacklist...", "stall", false);
+        // prettier-ignore
+        const isValid = await postData({url: "fast_is_valid_email", data: () => infoVal, plainText: true});
+        if (!isValid) {
+          await updateMsg("Invalid email address.", "error");
+          break finishValidation;
+        }
+      }
+
+      await updateMsg("Checking duplicity...", "stall", false);
+      const getData = () => {
+        return {
+          info: infoVal,
+          type: invalidEmail ? "phone" : "email",
+        };
+      };
+      // prettier-ignore
+      const isInuse = await postData({ url: "recovery_option_isinuse", data: getData, plainText: true })
+      if (isInuse) {
+        await updateMsg("You already have this.", "error");
+        break finishValidation;
       }
 
       await updateMsg("", "valid");
       infoShowValidation = false;
+      await timeoutPromise(0);
     }
     infoValidEl && updateValidWidth(infoValidEl);
     return invalidEmail ? "phone" : "email";
@@ -114,18 +145,33 @@
     }
   })();
 
-  let list = [
-    { info: "martin.molnar07@gmail.com", type: "email", id: 1 },
-    { info: "087 721 1985", type: "phone", id: 2 },
-  ];
+  let list = [];
+  let finishedLoadingList = false;
+  postData({ url: "get_recovery_options", getRequest: true }).then((data) => {
+    data.map((el) => {
+      if (el.type === "phone") {
+        const pn = parsePhoneNumber(el.info);
+        el.info = `+${pn.getCountryCode()} ${pn.g.number.national}`;
+        return el;
+      } else return el;
+    });
+    list = data;
+    finishedLoadingList = true;
+  });
   async function addOption() {
     formPromise = null;
     const type = await validateInfo();
     if (infoValidType !== "valid") return;
-    formPromise = timeoutPromise(2, null, false); // "/add_recovery_option"
+    const getData = () => {
+      return {
+        info: infoVal,
+        infoType: type,
+      };
+    };
+    formPromise = postData({ url: "add_recovery_option", data: getData });
     document.activeElement.blur();
-    await formPromise;
-    list = [...list, { info: infoVal, type, id: list.length + 1 }];
+    const data = await formPromise;
+    list = [...list, { info: infoVal, type, id: data.id }];
     infoVal = "";
   }
 
@@ -134,10 +180,57 @@
     const index = list.findIndex((el) => el.id === id);
     list.splice(index, 1);
     list = list;
+    const getData = () => {
+      return {
+        id,
+      };
+    };
+    postData({ url: "remove_recovery_option", data: getData });
+  }
+
+  async function validateEdit(val, mode) {
+    if (list.some((item) => item.info === val && item.id !== editing))
+      return false;
+    console.log(val, mode);
+    if (mode === "email") {
+      if (
+        !/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(
+          val
+        )
+      )
+        return false;
+      const isValid = await postData({
+        url: "fast_is_valid_email",
+        data: () => val,
+        plainText: true,
+      });
+      if (!isValid) return false;
+    } else if (mode === "phone") {
+      if (!/^[\d +\(\)-]+$/.test(val)) return false;
+      const isValid = await postData({
+        url: "is_valid_phone_number",
+        data: () => val,
+        plainText: true,
+      });
+      if (!isValid) return false;
+    }
+    const getData = () => {
+      return {
+        info: infoVal,
+        type: invalidEmail ? "phone" : "email",
+      };
+    };
+    const isInuse = await postData({
+      url: "recovery_option_isinuse",
+      data: getData,
+      plainText: true,
+    });
+    if (isInuse) return false;
+    return true;
   }
 
   let editing = -1;
-  let editingVal, editingEl;
+  let editingVal;
   function editItem(e) {
     const id = parseInt(e.target.closest(".option").dataset.id);
     editingVal = e.target
@@ -149,9 +242,21 @@
       document.querySelector(".editing").focus();
     }, 0);
   }
-  function stopEditSave() {
+  async function stopEditSave() {
     const item = list.find((el) => el.id === editing);
-    item.info = editingVal;
+    if (
+      editingVal !== item.info &&
+      (await validateEdit(editingVal, item.type))
+    ) {
+      item.info = editingVal;
+      const getData = () => {
+        return {
+          id: item.id,
+          value: editingVal,
+        };
+      };
+      postData({ url: "edit_recovery_option", data: getData });
+    } else if (editingVal !== item.info) editErrorAnim(editing);
     editing = -1;
   }
   document.onclick = (e) => {
@@ -164,6 +269,29 @@
   document.onkeydown = (e) => {
     if (document.querySelector(".editing") && e.key === "Enter") stopEditSave();
   };
+
+  // animation for when an edit is unsuccessful
+  const { _, css: keyframeFunc } = tada(null, {
+    duration: null,
+    directionChanges: 3,
+    intensity: 15,
+  });
+  const keyframes = [];
+  const numKeyframes = 50;
+  for (let i = 0; i <= numKeyframes; i++) {
+    const str = keyframeFunc(i / numKeyframes);
+    const [key, value] = str.slice(0, -1).split(": ");
+    const newObj = new Object();
+    newObj[key] = value;
+    keyframes.push(newObj);
+  }
+  keyframes.at(0).color = "#a10505";
+  keyframes.at(-1).color = "#383838";
+  function editErrorAnim(id) {
+    document
+      .querySelector('.option[data-id="' + id + '"] .detail')
+      .animate(keyframes, { duration: 750 });
+  }
 </script>
 
 <main>
@@ -216,7 +344,7 @@
     </button>
   </form>
   <hr />
-  <div class="list">
+  <div class="list" class:hidden={!finishedLoadingList}>
     {#each list as { info, type, id } (id)}
       <div class="option" data-id={id}>
         <button class="delete" title="Remove" on:click={deleteItem}
@@ -224,11 +352,7 @@
         >
         <div class="detail">
           {#if editing === id}
-            <input
-              class="editing"
-              bind:value={editingVal}
-              bind:this={editingEl}
-            />
+            <input class="editing" bind:value={editingVal} />
             <button
               class="editing-cancel"
               title="Cancel edit"
@@ -255,6 +379,9 @@
 </main>
 
 <style>
+  .hidden {
+    display: none !important;
+  }
   h1 {
     text-align: center;
     margin-top: 15px;
@@ -420,11 +547,13 @@
     font-family: "Source Code Pro", monospace;
     word-spacing: -1px;
     letter-spacing: -1px;
+    word-wrap: anywhere;
     position: relative;
   }
   .detail ion-icon {
     color: #565656;
     margin-left: 7px;
+    flex-shrink: 0;
   }
   .edit {
     font-size: 115%;

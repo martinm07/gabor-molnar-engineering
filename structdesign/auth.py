@@ -2,7 +2,7 @@ import json, warnings, os, hashlib, time, requests
 from validate_email import validate_email
 from datetime import datetime
 
-from flask import Blueprint, render_template, request, session
+from flask import Blueprint, render_template, request, session, jsonify, g
 from sqlalchemy.exc import NoResultFound
 from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse
@@ -10,7 +10,7 @@ from twilio.base.exceptions import TwilioException
 
 from .extensions import db
 from .models import User, UserSecret, UserBackupFactor, RequestStamp
-from .helper import cors_enabled, host_is_local
+from .helper import cors_enabled, host_is_local, country_code_to_prefix
 
 bp = Blueprint("auth", __name__)
 
@@ -67,17 +67,18 @@ def set_name():
 
 def checkout_phone_number(number):
     return client.lookups.v2.phone_numbers(number).fetch()
-def is_email_valid(email):
-    print(email)
-    # print(validate_email(email_address=email, dns_timeout=0.5, smtp_timeout=0.5))
-    return not (validate_email(email_address=email) == False) # `not (... == False)` to evaluate ambiguous results as True
+def is_email_valid(email, fast=False):
+    if not fast:
+        return not (validate_email(email_address=email) == False) # `not (... == False)` to evaluate ambiguous results as True
+    else:
+        return validate_email(email_address=email, check_dns=False, check_smtp=False)
 
 @bp.route("/api/register/is_valid_phone_number", methods=["POST"])
 @cors_enabled(methods=["POST"])
 def is_valid_phone_number():
     number : str = json.loads(request.data.decode("utf-8"))
     phone_number = checkout_phone_number(number)
-    return {"is_valid": phone_number.valid}
+    return jsonify(phone_number.valid)
 @bp.route("/api/register/is_valid_email", methods=["POST"])
 @cors_enabled(methods=["POST"])
 def is_valid_email():
@@ -181,7 +182,8 @@ def compute_token():
      ))
     info = user.email or user.phone_number
     ipaddress = get_ipaddress()
-    token = str(int(sha256(usersecret.secret + curtime + info + ipaddress), 16))[-6:]
+    cookie_id = session["cookie_hash"]
+    token = str(int(sha256(usersecret.secret + curtime + info + ipaddress + cookie_id), 16))[-6:]
     print("Computed token of: " + token)
     return token
 def token_penalty(attempt_num):
@@ -251,13 +253,6 @@ def send_token():
                                "timeout": max(0, token_penalty(attempts + (1 if last_attempt == 0 else 0)) - last_attempt)}
     return return_data, (400 if return_data["msgType"] == "error" else 200)
 
-@bp.route("/api/register/phone_number_has_country_code", methods=["POST"])
-@cors_enabled(methods=["POST"])
-def phone_number_has_country_code():
-    number : str = json.loads(request.data.decode("utf-8"))
-    phone_number = checkout_phone_number(number)
-    return {"has_country_code": bool(phone_number.country_code)}
-
 @bp.route("/api/register/wait_until_resend_ready", methods=["GET"])
 @cors_enabled(methods=["GET"])
 def wait_until_resend_ready():
@@ -266,4 +261,149 @@ def wait_until_resend_ready():
         return {}
     print("Going to sleep for " + str(token_penalty(num_attempts) - last_attempt) + " seconds.")
     time.sleep(token_penalty(num_attempts) - last_attempt)
+    return {}
+
+def validate_token_regulated(token):
+    if session.get("register_tokenguesses", 0) > 10:
+        time.sleep(2.5)
+    session["register_tokenguesses"] = session.get("register_tokenguesses", 0) + 1
+    return token == compute_token()
+
+@bp.route("/api/register/check_token", methods=["POST"])
+@cors_enabled(methods=["POST"])
+def check_token():
+    token : str = json.loads(request.data.decode("utf-8"))
+    if validate_token_regulated(token):
+        return jsonify(True)
+    else:
+        return jsonify(False)
+
+@bp.route("/api/register/validate_info", methods=["OPTIONS", "POST"])
+@cors_enabled(methods=["POST"])
+def validate_info():
+    if request.method != "POST":
+        return
+    data : dict = json.loads(request.data.decode("utf-8"))
+    token = data["token"]
+    if not validate_token_regulated(token):
+        return {"message": "Incorrect token"}, 400
+    user = db.session.get(User, session["register_userid"])
+    user.is_verified = True
+    db.session.commit()
+    return {}
+
+
+@bp.route("/api/register/phone_number_has_country_code", methods=["POST"])
+@cors_enabled(methods=["POST"])
+def phone_number_has_country_code():
+    number : str = json.loads(request.data.decode("utf-8"))
+    phone_number = checkout_phone_number(number)
+    return jsonify(bool(phone_number.country_code))
+@bp.route("/api/register/fast_is_valid_email", methods=["POST"])
+@cors_enabled(methods=["POST"])
+def fast_is_valid_email():
+    email : str = json.loads(request.data.decode("utf-8"))
+    is_valid = is_email_valid(email, fast=True)
+    return jsonify(is_valid)
+@bp.route("/api/register/recovery_option_isinuse", methods=["POST"])
+@cors_enabled(methods=["POST"])
+def recovery_option_isinuse():
+    data : dict = json.loads(request.data.decode("utf-8"))
+    info, type_ = data["info"], data["type"]
+    user = db.session.get(User, session["register_userid"])
+    info = checkout_phone_number(info).phone_number if type_ == "phone" else info
+    possession = user.email or user.phone_number
+    return jsonify(sum([factor.data == info for factor in user.backup_factors]) > 0 or info == possession)
+
+@bp.route("/api/register/get_recovery_options", methods=["GET"])
+@cors_enabled(methods=["GET"])
+def get_recovery_options():
+    user = db.session.get(User, session["register_userid"])
+    factors = [{"info": factor.data, "type": factor.method, "id": factor.id} for factor in user.backup_factors]
+    return jsonify(factors)
+@bp.route("/api/register/get_country_code", methods=["GET"])
+@cors_enabled(methods=["GET"])
+def get_country_code():
+    user = db.session.get(User, session.get("register_userid"))
+    if user and user.phone_number:
+        return jsonify(checkout_phone_number(user.phone_number).calling_country_code)
+    elif user:
+        phones = [factor.data for factor in user.backup_factors if factor.method == "phone"]
+        if phones != []:
+            return jsonify(checkout_phone_number(phones[0]).calling_country_code)
+
+    ipaddress = get_ipaddress()
+    URL = 'https://rdap.db.ripe.net/ip/' + ipaddress
+    resp = requests.get(url=URL)
+    data = resp.json()
+    return jsonify(country_code_to_prefix(data["country"]))
+
+def new_recovery_option_checks(data, type_):
+    user = db.session.get(User, session["register_userid"])
+    if (type_ == "email"):
+        if not is_email_valid(data, fast=True):
+            return {"message": "Invalid email address."}, 400
+        if data in [factor_.data for factor_ in user.backup_factors] or \
+                                                    (data == user.email):
+            return {"message": "Already in use by user."}, 400
+    elif (type_ == "phone"):
+        g.phone = checkout_phone_number(data)
+        if not g.phone.valid:
+            return {"message": "Invalid phone number."}, 400
+        if g.phone.phone_number in [factor_.data for factor_ in user.backup_factors] or \
+                                            (g.phone.phone_number == user.phone_number):
+            return {"message": "Already in use by user."}, 400
+    return {}, 200
+
+@bp.route("/api/register/add_recovery_option", methods=["OPTIONS", "POST"])
+@cors_enabled(methods=["POST"])
+def add_recovery_option():
+    data : dict = json.loads(request.data.decode("utf-8"))
+    info, info_type = data["info"], data["infoType"]
+
+    checks_result = new_recovery_option_checks(info, info_type)
+    if checks_result[0].get("message"):
+        return checks_result
+
+    if info_type == "phone":
+        info = g.phone.phone_number
+
+    user = db.session.get(User, session["register_userid"])
+    backupfactor = UserBackupFactor(method=info_type, data=info, user=user)
+    db.session.add(backupfactor)
+    db.session.commit()
+    return {"id": backupfactor.id}
+
+@bp.route("/api/register/remove_recovery_option", methods=["POST", "OPTIONS"])
+@cors_enabled(methods=["POST"])
+def remove_recovery_option():
+    data : dict = json.loads(request.data.decode("utf-8"))
+    factorid = data["id"]
+    user = db.session.get(User, session["register_userid"])
+    factor = db.session.get(UserBackupFactor, factorid)
+    if factor not in user.backup_factors:
+        return {"message": "Backup factor not one of the current user's."}, 400
+    db.session.delete(factor)
+    db.session.commit()
+    return {}
+
+@bp.route("/api/register/edit_recovery_option", methods=["OPTIONS", "POST"])
+@cors_enabled(methods=["POST"])
+def edit_recovery_option():
+    data : dict = json.loads(request.data.decode("utf-8"))
+    factorid, new_data = data["id"], data["value"]
+    user = db.session.get(User, session["register_userid"])
+    factor = db.session.get(UserBackupFactor, factorid)
+
+    if factor not in user.backup_factors:
+        return {"message": "Backup factor not one of the current user's."}, 400
+    checks_result = new_recovery_option_checks(new_data, factor.method)
+    if checks_result[0].get("message"):
+        return checks_result
+
+    if factor.method == "phone":
+        new_data = g.phone.phone_number
+
+    factor.data = new_data
+    db.session.commit()
     return {}

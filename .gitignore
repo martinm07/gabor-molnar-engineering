@@ -15,6 +15,8 @@ build/
 
 SECRET.txt
 .env
+mobileNATpool-assignment-example.txt
+ngrok.exe
 
 # Logs
 svelte/logs

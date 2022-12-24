@@ -10,6 +10,8 @@
     stageStore,
     tada,
     HttpError,
+    timeoutPromise,
+    updateValidWidth,
   } from "./Helper";
 
   // Send token to device when component is created (make sure it's only once though)
@@ -74,8 +76,10 @@
   }
 
   let validType = "valid";
-  let showValidation;
+  let showValidation, tokenValidEl;
   let tadaDisabled = false;
+
+  let tokenVal = "";
 
   let submitBtnIsActive = false;
   function submitBtnActivate() {
@@ -112,9 +116,64 @@
     else fieldMarginBottom.set(formErrorEl.getBoundingClientRect().height);
   })();
 
-  function formSubmit() {}
+  async function validateToken() {
+    const updateMsg = async function (message, validType_, tada = true) {
+      if (tada && showValidation) {
+        showValidation = false;
+        tadaDisabled = false;
+        await timeoutPromise(0);
+      } else tadaDisabled = !tada;
+      if (!showValidation) {
+        showValidation = true;
+        await timeoutPromise(0);
+      }
+      const validationMsgEl = document.querySelector(
+        ".token-group .validation"
+      );
+      // @ts-ignore
+      validationMsgEl.dataset.msg = message;
+      validType = validType_;
+    };
+
+    await updateMsg("...", "stall", false);
+    finishValidation: if (tokenVal === "") {
+      await updateMsg("Missing code.", "error");
+    } else if (tokenVal.length !== 6 || !/^[0-9]+$/.test(tokenVal)) {
+      await updateMsg("Invalid code.", "error");
+    } else {
+      await updateMsg("Checking validity...", "stall", false);
+      // prettier-ignore
+      const isValid = await postData({url: "check_token", data: () => tokenVal, plainText: true});
+      if (!isValid) {
+        await updateMsg("Code either invalid or expired.", "error");
+        break finishValidation;
+      }
+
+      validType = "valid";
+      showValidation = false;
+      await timeoutPromise(0);
+    }
+    tokenValidEl && updateValidWidth(tokenValidEl);
+  }
+  async function formSubmit() {
+    tokenVal = tokenVal.replaceAll(" ", "");
+    await validateToken();
+    const value = tokenVal;
+    tokenVal = "";
+    if (validType !== "valid") return;
+    const getData = () => {
+      return {
+        token: value,
+      };
+    };
+    formPromise = postData({ url: "validate_info", data: getData });
+    formPromise.then(() => (isFinished = true));
+    // @ts-ignore
+    document.activeElement.blur();
+  }
 
   let isFinished = false;
+  $: if (isFinished) formPromise = Promise.resolve();
   const dispatch = createEventDispatcher();
 
   export let exists = true;
@@ -138,7 +197,7 @@
   in:fly={flyIn(2)}
   out:fly={flyOut(2)}
 >
-  <div class="sendtoken-info">
+  <div class="sendtoken-info" class:disabled={isFinished}>
     {#await tokenPromise}
       <span>Please wait...</span>
     {:then data}
@@ -153,6 +212,7 @@
         |
         <button
           class="resend-token"
+          type="button"
           disabled={resendDisabled}
           on:click={sendToken.bind(null, true)}
         >
@@ -166,6 +226,7 @@
         {getSendTokenErrorMsg(err?.message)}
         <button
           class="resend-token"
+          type="button"
           disabled={resendDisabled}
           on:click={sendToken.bind(null, true)}
         >
@@ -181,6 +242,11 @@
       <input
         type="text"
         placeholder="012345"
+        bind:value={tokenVal}
+        on:input={() => {
+          showValidation = false;
+          validType = "valid";
+        }}
         disabled={formPromiseState === "pending" ||
           formPromiseState === "success" ||
           !tokenSent}
@@ -189,8 +255,8 @@
         <div
           class="validation"
           in:tada={{ duration: 400, disable: tadaDisabled }}
-          data-msg=""
-          style="display: none;"
+          data-msg
+          bind:this={tokenValidEl}
         />
       {/if}
     </span>
@@ -218,7 +284,7 @@
       {/await}
     </button>
   </div>
-  <button class="finish" disabled={!isFinished}>Finish</button>
+  <button class="finish" disabled={!isFinished} type="button">Finish</button>
 </form>
 
 <div
@@ -254,6 +320,10 @@
     margin-bottom: 15px;
     text-align: center;
     width: 66%;
+  }
+  .sendtoken-info.disabled {
+    opacity: 0.5;
+    pointer-events: none;
   }
   .resend-token {
     border: navajowhite;

@@ -15,6 +15,7 @@ class User(db.Model):
     avatar_image = db.Column(db.String(256))
     email = db.Column(db.String(100), nullable=True, unique=True)
     phone_number = db.Column(db.String(64), nullable=True)
+    is_verified = db.Column(db.Boolean, default=False)
 
     password_hash = db.Column(db.String(256), nullable=True)
     is_2fa = db.Column(db.Boolean)
@@ -64,8 +65,8 @@ class RequestStamp(db.Model):
     __tablename__ = "requeststamps"
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    ipaddress = db.Column(db.String(18))
-    address_pool = db.Column(db.String(15))
+    ipaddress = db.Column(db.String(15))
+    address_pool = db.Column(db.String(33))
     address_lifespan = db.Column(db.Integer)
     cookie_id = db.Column(db.String(256))
     request = db.Column(db.String(32))

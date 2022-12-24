@@ -124,7 +124,7 @@
         await updateMsg("Confirming validity...", "stall", false);
         // prettier-ignore
         const is_really_valid = await postData({url: "is_valid_phone_number", data: () => iti.getNumber(), plainText: true});
-        if (!is_really_valid["is_valid"]) {
+        if (!is_really_valid) {
           await updateMsg("Invalid number.", "error");
           break finishValidation;
         }
