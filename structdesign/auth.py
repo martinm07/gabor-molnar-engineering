@@ -43,7 +43,9 @@ def register():
 def is_name_taken():
     username : str = json.loads(request.data.decode("utf-8"))
     try:
-        db.session.execute(db.select(User).filter_by(username=username)).one()
+        user = db.session.execute(db.select(User).filter_by(username=username)).one()[0]
+        if user.id == session.get("register_userid"):
+            raise NoResultFound
     except NoResultFound:
         return {"is_taken": False}
     return {"is_taken": True}
@@ -58,11 +60,11 @@ def set_name():
     if " " in username:
         return 400
 
-    new_user = User(username)
-    db.session.add(new_user)
+    userid = session.get("register_userid")
+    user = User(username) if not userid else db.session.get(User, userid)
+    db.session.add(user) if not userid else setattr(user, "username", username)
     db.session.commit()
-    session["register_username"] = username
-    session["register_userid"] = new_user.id
+    session["register_userid"] = user.id
     return {}
 
 def checkout_phone_number(number):
@@ -132,7 +134,6 @@ def set_info():
         user.phone_number = info
         session["register_info_type"] = "phone"
     db.session.commit()
-    session["register_info"] = info
     return {}
 
 sha256 = lambda x: hashlib.sha256(str.encode(x)).hexdigest()
@@ -293,6 +294,25 @@ def validate_info():
     return {}
 
 
+@bp.route("/api/register/set_password", methods=["OPTIONS", "POST"])
+@cors_enabled(methods=["POST"])
+def set_password():
+    data : dict = json.loads(request.data.decode("utf-8"))
+    new_password = data["password"]
+    user = db.session.get(User, session["register_userid"])
+    user.set_password(new_password)
+    db.session.commit()
+    return {}
+@bp.route("/api/register/set_is2fa", methods=["POST"])
+@cors_enabled(methods=["POST"])
+def set_is2fa():
+    data : bool = json.loads(request.data.decode("utf-8"))
+    user = db.session.get(User, session["register_userid"])
+    user.is_2fa = data
+    db.session.commit()
+    return {}
+
+
 @bp.route("/api/register/phone_number_has_country_code", methods=["POST"])
 @cors_enabled(methods=["POST"])
 def phone_number_has_country_code():
@@ -315,12 +335,6 @@ def recovery_option_isinuse():
     possession = user.email or user.phone_number
     return jsonify(sum([factor.data == info for factor in user.backup_factors]) > 0 or info == possession)
 
-@bp.route("/api/register/get_recovery_options", methods=["GET"])
-@cors_enabled(methods=["GET"])
-def get_recovery_options():
-    user = db.session.get(User, session["register_userid"])
-    factors = [{"info": factor.data, "type": factor.method, "id": factor.id} for factor in user.backup_factors]
-    return jsonify(factors)
 @bp.route("/api/register/get_country_code", methods=["GET"])
 @cors_enabled(methods=["GET"])
 def get_country_code():
@@ -406,4 +420,32 @@ def edit_recovery_option():
 
     factor.data = new_data
     db.session.commit()
+    return {}
+
+
+@bp.route("/api/register/get_reg_state", methods=["GET"])
+@cors_enabled(methods=["GET"])
+def get_reg_state():
+    def make_dict(*args):
+        return {"username": args[0], "possessionType": args[1], 
+                "possession": args[2], "isVerified": args[3], "is2FA": args[4], 
+                "isPassword": args[5], "recovery": args[6]}
+    user = db.session.get(User, session.get("register_userid", -1))
+    if not user:
+        return make_dict(None, None, None, None, None, None, None)
+    name = user.username
+    possession = user.email or user.phone_number
+    possession_type = "email" if user.email else "phone"
+    is_password = bool(user.password_hash)
+    recovery = [{"info": factor.data, "type": factor.method, "id": factor.id} for factor in user.backup_factors]
+    return make_dict(name, possession_type, possession, user.is_verified, user.is_2fa, is_password, recovery)
+@bp.route("/api/register/finish_registration", methods=["OPTIONS", "POST"])
+@cors_enabled(methods=["POST"])
+def finish_registration():
+    session.pop("register_userid")
+    session.pop("register_valid_emails")
+    session.pop("register_tokenguesses")
+    session.pop("register_info_type")
+    session.pop("register_tokentimeoffset")
+    session.pop("first_token_sent")
     return {}

@@ -1,4 +1,6 @@
 <script>
+  // @ts-nocheck
+
   import { createEventDispatcher, onMount } from "svelte";
   import { cubicOut } from "svelte/easing";
   import { tweened } from "svelte/motion";
@@ -12,6 +14,7 @@
     HttpError,
     timeoutPromise,
     updateValidWidth,
+    regState,
   } from "./Helper";
 
   // Send token to device when component is created (make sure it's only once though)
@@ -172,9 +175,14 @@
     document.activeElement.blur();
   }
 
-  let isFinished = false;
+  let isFinished = regState.isVerified;
   $: if (isFinished) formPromise = Promise.resolve();
   const dispatch = createEventDispatcher();
+
+  function finish() {
+    postData({ url: "finish_registration" });
+    stageStore.set("congrats");
+  }
 
   export let exists = true;
   onMount(() => (exists = true));
@@ -284,7 +292,9 @@
       {/await}
     </button>
   </div>
-  <button class="finish" disabled={!isFinished} type="button">Finish</button>
+  <button class="finish" disabled={!isFinished} type="button" on:click={finish}
+    >Finish</button
+  >
 </form>
 
 <div

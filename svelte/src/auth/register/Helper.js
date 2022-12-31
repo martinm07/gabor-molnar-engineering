@@ -13,11 +13,21 @@ export function tada(
   };
 }
 
+// username, possessionType, possession, isVerified, is2FA, isPassword, recovery
+export const regState = await postData({
+  url: "get_reg_state",
+  getRequest: true,
+});
+console.log(regState);
+
 import { writable } from "svelte/store";
 export const stages = ["name", "possession", "verify", "congrats"];
-export const stageStore = writable(
-  stages.find((el) => window.location.hash.includes(el)) ?? "verify"
-);
+
+let startingLoc;
+if (!regState.username) startingLoc = "name";
+else if (!regState.possession) startingLoc = "possession";
+else startingLoc = "verify";
+export const stageStore = writable(startingLoc);
 
 export async function postData({
   url,

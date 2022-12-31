@@ -1,6 +1,7 @@
 from datetime import datetime
 import secrets
 from sqlalchemy.sql import func
+from passlib.hash import argon2
 
 from .extensions import db
 
@@ -18,11 +19,12 @@ class User(db.Model):
     is_verified = db.Column(db.Boolean, default=False)
 
     password_hash = db.Column(db.String(256), nullable=True)
-    is_2fa = db.Column(db.Boolean)
+    is_2fa = db.Column(db.Boolean, default=True)
 
     backup_factors = db.relationship("UserBackupFactor", back_populates="user")
     comments = db.relationship("Comment", back_populates="user")
     # phone number, 2FA method, recover data (phone number OR email), recover method
+    hasher = argon2.using(time_cost=10, memory_cost=50_000)
 
     def __init__(self, username, email=None, phone_number=None):
         if email and phone_number:
@@ -39,6 +41,11 @@ class User(db.Model):
 
     def __repr__(self) -> str:
         return f'<User {self.username}>'
+
+    def set_password(self, password):
+        self.password_hash = self.hasher.hash(password)
+    def check_password(self, password):
+        return self.hasher.verify(password, self.password_hash)
 
 class UserSecret(db.Model):
     __tablename__ = 'usersecrets'

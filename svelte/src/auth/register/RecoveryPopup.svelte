@@ -7,7 +7,7 @@
   import { tweened } from "svelte/motion";
   import {
     tada,
-    stageStore,
+    regState,
     timeoutPromise,
     updateValidWidth,
     postData,
@@ -145,19 +145,15 @@
     }
   })();
 
-  let list = [];
-  let finishedLoadingList = false;
-  postData({ url: "get_recovery_options", getRequest: true }).then((data) => {
-    data.map((el) => {
-      if (el.type === "phone") {
-        const pn = parsePhoneNumber(el.info);
-        el.info = `+${pn.getCountryCode()} ${pn.g.number.national}`;
-        return el;
-      } else return el;
-    });
-    list = data;
-    finishedLoadingList = true;
+  let list = regState.recovery ?? [];
+  list = list.map((el) => {
+    if (el.type === "phone") {
+      const pn = parsePhoneNumber(el.info);
+      el.info = `+${pn.getCountryCode()} ${pn.g.number.national}`;
+      return el;
+    } else return el;
   });
+
   async function addOption() {
     formPromise = null;
     const type = await validateInfo();
@@ -172,6 +168,7 @@
     document.activeElement.blur();
     const data = await formPromise;
     list = [...list, { info: infoVal, type, id: data.id }];
+    regState.recovery = list;
     infoVal = "";
   }
 
@@ -180,6 +177,7 @@
     const index = list.findIndex((el) => el.id === id);
     list.splice(index, 1);
     list = list;
+    regState.recovery = list;
     const getData = () => {
       return {
         id,
@@ -216,8 +214,8 @@
     }
     const getData = () => {
       return {
-        info: infoVal,
-        type: invalidEmail ? "phone" : "email",
+        info: val,
+        type: mode,
       };
     };
     const isInuse = await postData({
@@ -249,6 +247,7 @@
       (await validateEdit(editingVal, item.type))
     ) {
       item.info = editingVal;
+      regState.recovery = list;
       const getData = () => {
         return {
           id: item.id,
@@ -344,7 +343,7 @@
     </button>
   </form>
   <hr />
-  <div class="list" class:hidden={!finishedLoadingList}>
+  <div class="list">
     {#each list as { info, type, id } (id)}
       <div class="option" data-id={id}>
         <button class="delete" title="Remove" on:click={deleteItem}
@@ -379,9 +378,6 @@
 </main>
 
 <style>
-  .hidden {
-    display: none !important;
-  }
   h1 {
     text-align: center;
     margin-top: 15px;

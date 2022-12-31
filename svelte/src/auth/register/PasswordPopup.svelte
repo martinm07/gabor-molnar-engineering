@@ -2,12 +2,20 @@
   // @ts-nocheck
 
   import { createEventDispatcher } from "svelte";
-  import { tada, stageStore, timeoutPromise } from "./Helper";
+  import { tada, timeoutPromise, postData, regState } from "./Helper";
 
   const dispatch = createEventDispatcher();
   function close() {
     dispatch("close");
   }
+
+  let is2FA = regState.is2FA;
+  let is2FA_firstCall = true;
+  $: is2FA_firstCall // svelte does NOT react to the assignment made in the reactive statement, which makes this possible
+    ? (is2FA_firstCall = false)
+    : postData({ url: "set_is2fa", data: () => is2FA, plainText: true }).then(
+        () => (regState.is2FA = is2FA)
+      );
 
   let submitBtnIsActive = false;
   function submitBtnActivate() {
@@ -67,6 +75,7 @@
       .catch(() => (formPromiseState = "failure"));
   })(formPromise);
   // formPromiseState = "success";
+  if (regState.isPassword) formPromise = Promise.resolve();
 
   async function submit() {
     passwordShowValidation = false;
@@ -75,8 +84,19 @@
     await timeoutPromise(0);
     validatePassword();
     if (passwordValidType !== "valid") return;
-    formPromise = timeoutPromise(2, null, false); // "/set_password"
+    // formPromise = timeoutPromise(2, null, false); // "/set_password"
+    const getData = () => {
+      return {
+        password: passwordVal,
+      };
+    };
+    formPromise = postData({ url: "set_password", data: getData });
     document.activeElement.blur();
+    formPromise.then(() => {
+      passwordVal = "";
+      repasswordVal = "";
+      regState.isPassword = true;
+    });
   }
 </script>
 
@@ -151,6 +171,7 @@
       on:mouseup={submitBtnUnactivate}
       on:mouseleave={submitBtnUnactivate}
       class={formPromiseState}
+      disabled={formPromiseState && formPromiseState !== "failure"}
     >
       {#if formPromiseState === "pending"}
         Please wait...
@@ -167,7 +188,7 @@
   </form>
   <div class="is2fa-group">
     <label for="is2fa">2Factor Authentication enabled:</label>
-    <input type="checkbox" name="is2fa" id="is2fa" checked />
+    <input type="checkbox" name="is2fa" id="is2fa" bind:checked={is2FA} />
   </div>
 </main>
 

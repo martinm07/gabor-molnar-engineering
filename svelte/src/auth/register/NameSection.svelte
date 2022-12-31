@@ -11,10 +11,11 @@
     tada,
     timeoutPromise,
     updateValidWidth,
+    regState,
   } from "./Helper";
 
   let validEl;
-  let nameValue = "";
+  let nameValue = regState.username ?? "";
   let showValidation = false;
   let tadaDisabled = true;
   let validType = "valid";
@@ -38,7 +39,11 @@
       validType = validType_;
     };
 
-    finishValidation: if (nameValue === "") {
+    finishValidation: if (regState.username === nameValue) {
+      validType = "valid";
+      showValidation = false;
+      await timeoutPromise(0);
+    } else if (nameValue === "") {
       await updateMsg("Missing name", "error");
     } else if (nameValue.includes(" ")) {
       await updateMsg("Name cannot include spaces", "error");
@@ -111,6 +116,7 @@
     formPromise = postData({ url: "set_name", data: getData });
     document.activeElement.blur();
     await formPromise;
+    regState.username = nameValue;
     await timeoutPromise(0.5);
     stageStore.set("possession");
   }

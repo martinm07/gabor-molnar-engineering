@@ -7,11 +7,13 @@
   import { stageStore, stages } from "./Helper";
   import PasswordPopup from "./PasswordPopup.svelte";
   import RecoveryPopup from "./RecoveryPopup.svelte";
+  import CongratsSection from "./CongratsSection.svelte";
 
-  let isNameSec, isPossessionSec, isVerifySec;
-  $: isNameAlone = !isPossessionSec && !isVerifySec;
-  $: isPossessionAlone = !isNameSec && !isVerifySec;
-  $: isVerifyAlone = !isNameSec && !isPossessionSec;
+  let isNameSec, isPossessionSec, isVerifySec, isCongratsSec;
+  $: isNameAlone = !isPossessionSec && !isVerifySec && !isCongratsSec;
+  $: isPossessionAlone = !isNameSec && !isVerifySec && !isCongratsSec;
+  $: isVerifyAlone = !isNameSec && !isPossessionSec && !isCongratsSec;
+  $: isCongratsAlone = !isNameSec && !isPossessionSec && !isVerifySec;
   // `true` if 1 or less sections "exist" - PROBABLY DOESN'T WORK BECAUSE IT'S ALSO
   // REACTIVE WITH THE SECTION WE'RE TRYING TO INTRODUCE, CAUSING UNSTABLE BEHAVIOUR
   // $: isNoOtherSec =
@@ -38,6 +40,16 @@
     document.querySelector("#app").style.overflowY = "hidden";
   };
   window.addEventListener("keydown", closeLayover, true);
+
+  $: finishPopupInertLogic: {
+    const footer = document.getElementById("footer");
+    if (!footer) break finishPopupInertLogic;
+
+    const main = document.querySelector(":not(.popup) > main");
+    footer.inert = isLayover;
+    main.inert = isLayover;
+    document.activeElement.blur();
+  }
 </script>
 
 <div class="background-dec1" />
@@ -65,6 +77,8 @@
         on:open-popup={layover}
         on:close-popup={closeLayover}
       />
+    {:else if $stageStore === "congrats" && isCongratsAlone}
+      <CongratsSection bind:exists={isCongratsAlone} />
     {/if}
   </div>
 </main>

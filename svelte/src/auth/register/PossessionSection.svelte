@@ -11,20 +11,25 @@
     tada,
     timeoutPromise,
     updateValidWidth,
+    regState,
   } from "./Helper";
   import "intl-tel-input/build/css/intlTelInput.css";
   import intlTelInput from "intl-tel-input";
 
   let emailValidEl, phoneValidEl;
-  let emailVal = "",
-    phoneVal = "";
-  let activeInput = "email";
+  let emailVal = regState.possessionType === "email" ? regState.possession : "",
+    phoneVal = regState.possessionType === "phone" ? regState.possession : "";
+  let activeInput = regState.possessionType ?? "email";
   // Clear any input field when it's hidden
   $: activeInput &&
     (() => {
       if (!(emailVal || phoneVal)) return;
-      if (activeInput === "email") phoneVal = "";
-      else if (activeInput === "phone") emailVal = "";
+      if (activeInput === "email")
+        phoneVal =
+          regState.possessionType === "phone" ? regState.possession : "";
+      else if (activeInput === "phone")
+        emailVal =
+          regState.possessionType === "email" ? regState.possession : "";
     })();
 
   const email = {
@@ -55,7 +60,11 @@
     };
 
     await updateMsg("...", "stall", false);
-    finishValidation: if (emailVal === "") {
+    finishValidation: if (regState.possession === emailVal) {
+      email.validType = "valid";
+      email.showValidation = false;
+      await timeoutPromise(0);
+    } else if (emailVal === "") {
       await updateMsg("Missing email.", "error");
     } else if (
       !/^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/.test(
@@ -107,7 +116,11 @@
     };
 
     await updateMsg("...", "stall", false);
-    finishValidation: if (phoneVal === "") {
+    finishValidation: if (regState.possession === phoneVal) {
+      phone.validType = "valid";
+      phone.showValidation = false;
+      await timeoutPromise(0);
+    } else if (phoneVal === "") {
       await updateMsg("Missing phone number.", "error");
     } else if (!/^(?:(?:\(\d+\)[\d -]+)|[\d -]+)$/.test(phoneVal)) {
       await updateMsg("Invalid number.", "error");
@@ -218,6 +231,8 @@
     formPromise = postData({ url: "set_info", data: getData });
     document.activeElement.blur();
     await formPromise;
+    regState.possession = getData().data;
+    regState.possessionType = getData().type;
     await timeoutPromise(0.5);
     stageStore.set("verify");
   }
