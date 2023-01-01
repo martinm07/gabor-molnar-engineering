@@ -231,6 +231,7 @@
     formPromise = postData({ url: "set_info", data: getData });
     document.activeElement.blur();
     await formPromise;
+    if (regState.possession !== getData().data) regState.isVerified = false;
     regState.possession = getData().data;
     regState.possessionType = getData().type;
     await timeoutPromise(0.5);

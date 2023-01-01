@@ -1,5 +1,7 @@
 import { defineConfig } from "vite";
 import { resolve, dirname } from "path";
+import path from "path";
+import walkSync from "walk-sync";
 import { fileURLToPath } from "url";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 
@@ -13,7 +15,7 @@ const outDir = resolve(_dirname, "dist");
 
 const entryPoints = {
   // about: resolve(root, "intro/about/index.html"),
-  // register: resolve(root, "auth/register/index.html"),
+  register: resolve(root, "auth/register/index.html"),
   home: resolve(root, "blog/home/index.html"),
 };
 
@@ -35,10 +37,12 @@ export default defineConfig({
   build: {
     outDir,
     emptyOutDir: true,
+    target: "esnext",
     rollupOptions: {
       input: entryPoints,
       output: {
         assetFileNames: (assetInfo) => {
+          console.log(assetInfo);
           let extType = assetInfo.name.split(".").at(1);
           if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(extType)) {
             extType = "img";
@@ -62,14 +66,24 @@ export default defineConfig({
   },
 });
 
+function findSvelteFile(name) {
+  const paths = walkSync("src");
+  console.log("🎈🎈🎈"); // shared/lib/Footer.svelte
+  console.log(paths.find((path) => path.endsWith(name + ".svelte"))); //    auth/register/index.html
+  return paths.find((path) => path.endsWith(name + ".svelte"));
+}
+
 function getSection(name, pathAlreadyFull = true) {
   const assetName = name.split(".").at(0);
+  const stringPath = !pathAlreadyFull
+    ? entryPoints[assetName] ?? findSvelteFile(assetName)
+    : undefined;
   const path = pathAlreadyFull
     ? name.split("/")
     : [
         // css/js files are auto-generated and don't have a full path, just their filename,
         // but we can use its name and "entryPoints" to figure out what it would be.
-        ...entryPoints[assetName].split("/").slice(0, -1),
+        ...stringPath.split("/").slice(0, -1),
         "assets",
         name,
       ];

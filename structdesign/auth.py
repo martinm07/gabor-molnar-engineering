@@ -126,6 +126,7 @@ def set_info():
     if (type_ == "email" and user.email == info) or (type_ == "phone" and user.phone_number == info):
         return {}
 
+    old_info = user.email or user.phone_number
     user.email = None; user.phone_number = None
     if (type_ == "email") and ((info in session.get("register_valid_emails", [])) or is_email_valid(info)):
         user.email = info
@@ -133,6 +134,9 @@ def set_info():
     elif (type_ == "phone") and checkout_phone_number(info).valid:
         user.phone_number = info
         session["register_info_type"] = "phone"
+    
+    if old_info != info:
+        user.is_verified = False
     db.session.commit()
     return {}
 
@@ -443,7 +447,7 @@ def get_reg_state():
 @cors_enabled(methods=["POST"])
 def finish_registration():
     session.pop("register_userid")
-    session.pop("register_valid_emails")
+    session.pop("register_valid_emails", 1)
     session.pop("register_tokenguesses")
     session.pop("register_info_type")
     session.pop("register_tokentimeoffset")

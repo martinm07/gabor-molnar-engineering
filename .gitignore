@@ -17,6 +17,7 @@ SECRET.txt
 .env
 mobileNATpool-assignment-example.txt
 ngrok.exe
+.ngrok.exe.old
 
 # Logs
 svelte/logs
