@@ -10,7 +10,7 @@ from twilio.base.exceptions import TwilioException
 
 from .extensions import db
 from .models import User, UserSecret, UserBackupFactor, RequestStamp
-from .helper import cors_enabled, host_is_local, country_code_to_prefix
+from .helper import cors_enabled, host_is_local, country_code_to_prefix, send_email_info
 
 bp = Blueprint("auth", __name__)
 
@@ -212,6 +212,7 @@ def can_sendtoken_info():
 
 def send_token_email(token):
     user = db.session.get(User, session["register_userid"])
+    send_email_info("register-confirm", user.email, token=token)
     print(f"Sent the token to email address {user.email}: {token}")
 def send_token_sms(token):
     user = db.session.get(User, session["register_userid"])
@@ -322,7 +323,7 @@ def set_is2fa():
 def phone_number_has_country_code():
     number : str = json.loads(request.data.decode("utf-8"))
     phone_number = checkout_phone_number(number)
-    return jsonify(bool(phone_number.country_code))
+    return jsonify("INVALID_COUNTRY_CODE" in phone_number.validation_errors)
 @bp.route("/api/register/fast_is_valid_email", methods=["POST"])
 @cors_enabled(methods=["POST"])
 def fast_is_valid_email():

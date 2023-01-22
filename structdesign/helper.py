@@ -1,10 +1,16 @@
-import functools
-import os
-from flask import make_response, request
+import functools, os
+
+import smtplib, ssl
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+from flask import make_response, request, Blueprint, render_template
+import click
 from werkzeug.datastructures import HeaderSet
 
 from .extensions import csrf
 
+bp = Blueprint("tools", __name__)
 
 def cors_enabled(methods=['GET', 'POST'],
                  allow_credentials=True,
@@ -98,3 +104,56 @@ def country_code_to_prefix(countrycode):
                'WS': 685, 'CZ': 420, 'PH': 63, 'VI': 1, 'TZ': 255, 'MR': 222, 'MC': 377, 'SN': 221, 'HT': 509, 'VC': 1, 'NI': 505, 
                'GD': 1, 'GY': 592, 'TH': 66}
     return mapping[countrycode]
+
+@bp.cli.command('emailsend')
+@click.argument('subdir')
+def emailsend(subdir):
+    """ Sends a test HTML email from "developing-email/" """
+    python_path = "C:/Users/marti/anaconda3/envs/pythongeneral/python.exe"
+    script_path = "C:/Users/marti/OneDrive/Desktop/Martin/projects/webmaking_flask/gabor-molnar-engineering/developing-email/send_index.py"
+    res = os.system(f"{python_path} {script_path} {subdir}")
+    if res == 2:
+        print("Script wasn't found.")
+@bp.cli.command('emailbuild')
+@click.argument('subdir')
+def emailbuild(subdir):
+    """ Builds all the parts of the email into a single file in "templates/" """
+    python_path = "C:/Users/marti/anaconda3/envs/pythongeneral/python.exe"
+    script_path = "C:/Users/marti/OneDrive/Desktop/Martin/projects/webmaking_flask/gabor-molnar-engineering/developing-email/build_email_file.py"
+    res = os.system(f"{python_path} {script_path} {subdir}")
+    if res == 2:
+        print("Build script wasn't found.")
+
+def find_index(string, substring, end=False):
+    if end:
+        return string.find(substring) + len(substring)
+    else:
+        return string.find(substring)
+def strip_strings(*args):
+    return tuple([str_.strip() for str_ in args])
+
+def send_email_info(email_filename, address, **kwargs):
+    email_filename += ".html" if not email_filename.endswith('.html') else ""
+    email = render_template(f"email/{email_filename}", **kwargs)
+    
+    title = email[find_index(email, "<!--emailtitlesection-->", True):find_index(email, "<!--/emailtitlesection-->")]
+    text = email[find_index(email, "<!--emailplainsection-->", True):find_index(email, "<!--/emailplainsection-->")]
+    html = email[find_index(email, "<!--emailhtmlsection-->", True):find_index(email, "<!--/emailhtmlsection-->")]
+    title, text, html = strip_strings(title, text, html)
+
+    port = 465
+    context = ssl.create_default_context()
+
+    sender_email = "info@structural-design.eu"
+
+    message = MIMEMultipart("alternative")
+    message["Subject"] = title
+    message["From"] = sender_email
+    message["To"] = address
+    message.attach(MIMEText(text, "plain"))
+    message.attach(MIMEText(html, "html"))
+
+    with smtplib.SMTP_SSL("koala.serveriai.lt", port, context=context) as server:
+        server.login(sender_email, "PaledzygavimaiGrafologijos")
+        server.sendmail(sender_email, address, message.as_string())
+    return

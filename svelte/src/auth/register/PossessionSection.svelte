@@ -260,6 +260,7 @@
   out:fly={flyOut(2)}
 >
   <div class="info-input-group" class:hide-intl={activeInput !== "phone"}>
+    <!-- TODO: Disable this when submitting -->
     <div class="info-options">
       <button
         type="button"
