@@ -323,7 +323,7 @@ def set_is2fa():
 def phone_number_has_country_code():
     number : str = json.loads(request.data.decode("utf-8"))
     phone_number = checkout_phone_number(number)
-    return jsonify("INVALID_COUNTRY_CODE" in phone_number.validation_errors)
+    return jsonify("INVALID_COUNTRY_CODE" not in phone_number.validation_errors)
 @bp.route("/api/register/fast_is_valid_email", methods=["POST"])
 @cors_enabled(methods=["POST"])
 def fast_is_valid_email():
