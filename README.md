@@ -1,5 +1,19 @@
 ## Gabor Molnar Engineering - structural-design.eu
 
+Python version: `3.12.3`
+
+```cmd
+python -m venv venv
+:: If on PowerShell then the following may be necessary
+Set-ExecutionPolicy RemoteSigned –Scope Process
+
+venv\Scripts\activate
+pip install -r requirements.txt
+flask run
+```
+
+### Project Whiteboard: https://www.tldraw.com/r/QUvVY_9gF6fGJGS-gM0nm
+
 The website is composed of a "business card" and official "guidance documents", under which users are able to comment and converse.<br>
 Features:<br>
 <sub>"Our" here is the "our" of the company Gabor Molnar Engineering Design.</sub>
