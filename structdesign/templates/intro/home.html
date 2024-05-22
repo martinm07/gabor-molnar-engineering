@@ -1,259 +1,28 @@
-{% extends "intro/base.html" %} {% block title %}Home | Gabor Molnar
-Engineering{% endblock %} {% block css_files %}
-<link
-  rel="stylesheet"
-  href="{{ url_for('static', filename='intro/css/slick.css') }}"
-/>
-<link
-  rel="stylesheet"
-  href="{{ url_for('static', filename='intro/css/home.css') }}"
-/>
-<!-- Main CSS File -->
-<link
-  rel="stylesheet"
-  href="{{ url_for('static', filename='intro/css/home-query.css') }}"
-/>
-<!-- Queries CSS File -->
-{% endblock %} {% block jinja_styles %}
-<style>
-  /* Using Liberation Sans */
-  html,
-  body {
-    font-family: liberation-sans, sans-serif;
-  }
-  /* Using different font weights */
-  .header-more-btn,
-  .header-contact-btn {
-    font-weight: 700;
-  }
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/cog1-svgrepo-com.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vite + TS</title>
+    <script type="module" crossorigin src="/static/intro/js/home-Hd0n7P7f.js"></script>
+    <link rel="modulepreload" crossorigin href="/static/intro/js/svelte-Deeo1CHF.js">
+    <link rel="modulepreload" crossorigin href="/static/intro/js/attributes-D_yGRfc4.js">
+    <link rel="stylesheet" crossorigin href="/static/intro/css/style-BJ48JfmO.css">
+    <link rel="stylesheet" crossorigin href="/static/intro/css/style2-Cdv23_NN.css">
+    <link rel="stylesheet" crossorigin href="/static/intro/css/home-B3yVXxX1.css">
+  </head>
+  <body>
+    <div id="app"></div>
+    <script>
+      globalThis.jinjaParsed = false;
+      try {
+        if (!Number.parseInt("{{ 1 }}"))
+          throw new Error("Jinja wasn't parsed.");
+        globalThis.jinjaParsed = true;
 
-  /* Background Images */
-  .our-work-bgimg-1 {
-    background-image: linear-gradient(45deg, #ffffff, #ffffffe0),
-      url("{{ url_for('static', filename='intro/img/bgimg-3--home.jpg') }}");
-  }
-</style>
-{% endblock %} {% block content %}
-
-<header>
-  <div class="header-text">
-    <div class="header-title">Gabor Molnar Engineering</div>
-    <div class="header-motto">
-      We advise and serve enterprising clients with integrity, clarity and
-      passion.
-    </div>
-  </div>
-  <div class="header-buttons">
-    <button class="header-more-btn">Learn More</button>
-    <button class="header-contact-btn js-scroll-contact">Contact</button>
-  </div>
-  <div class="header-img-1">
-    <img
-      src="{{ url_for('static', filename='intro/img/bgimg-2--home.jpg') }}"
-      alt=""
-    />
-  </div>
-  <div class="header-img-2">
-    <img
-      src="{{ url_for('static', filename='intro/img/bgimg-1--home.jpg') }}"
-      alt=""
-    />
-  </div>
-</header>
-<section class="our-work">
-  <div class="our-work-bgimg-1"></div>
-  <div class="our-work-p1">
-    We deliver quality, on time. We are always streamlining our process and we
-    do our job with research and application. We believe in actually doing
-    engineering rather than telling you about how good we are at it, and we
-    believe in our ability to get the job done.
-  </div>
-  <div class="our-work-title">See Our Work</div>
-  <div class="our-work-links">
-    <div class="our-work-links-row">
-      <a
-        id="steel-frame"
-        class="our-work-link"
-        href="{{ url_for('home.gallery')+'#Steel-Frame-Stability' }}"
-      >
-        <div class="our-work-img-wrapper">
-          <img
-            src="{{ url_for('static', filename='intro/img/steel-frame-link.jpg') }}"
-            alt=""
-          />
-        </div>
-        <span>Steel Frame Stability</span>
-      </a>
-      <a
-        id="steel-connection"
-        class="our-work-link"
-        href="{{ url_for('home.gallery')+'#Specialist-Steel-Connection-Designs' }}"
-      >
-        <div class="our-work-img-wrapper">
-          <img
-            src="{{ url_for('static', filename='intro/img/steel-connection-link.jpg') }}"
-            alt=""
-          />
-        </div>
-        <span>Steel Connections</span>
-      </a>
-      <a
-        id="air-dome"
-        class="our-work-link our-work-link-temp"
-        href="{{ url_for('home.gallery')+'#Air-Stabilised-Domes' }}"
-      >
-        <div class="our-work-img-wrapper">
-          <img
-            src="{{ url_for('static', filename='intro/img/air-dome-link.jpg') }}"
-            alt=""
-          />
-        </div>
-        <span>Air Domes</span>
-      </a>
-    </div>
-    <div class="our-work-links-row">
-      <a
-        id="support-bracket"
-        class="our-work-link"
-        href="{{ url_for('home.gallery')+'#Steel-Support-Brackets' }}"
-      >
-        <div class="our-work-img-wrapper">
-          <img
-            src="{{ url_for('static', filename='intro/img/support-bracket-link.jpg') }}"
-            alt=""
-          />
-        </div>
-        <span>Support Brackets</span>
-      </a>
-      <a
-        id="temp-work"
-        class="our-work-link"
-        href="{{ url_for('home.gallery')+'#Temporary-Works-and-Scaffoldings' }}"
-      >
-        <div class="our-work-img-wrapper">
-          <img
-            src="{{ url_for('static', filename='intro/img/temp-work-link.jpg') }}"
-            alt=""
-          />
-        </div>
-        <span>Temporary Works</span>
-      </a>
-      <a
-        id="pressure_vessel"
-        class="our-work-link our-work-link-temp"
-        href="{{ url_for('home.gallery')+'#Tanks-Silos-Pressure-Vessels' }}"
-      >
-        <div class="our-work-img-wrapper">
-          <img
-            src="{{ url_for('static', filename='intro/img/pressure-vessel-link.jpg') }}"
-            alt=""
-          />
-        </div>
-        <span>Pressure Vessels</span>
-      </a>
-    </div>
-    <div class="our-work-links-row our-work-links-row-mobile">
-      <a
-        id="air-dome"
-        class="our-work-link"
-        href="{{ url_for('home.gallery')+'#Air-Stabilised-Domes' }}"
-      >
-        <div class="our-work-img-wrapper">
-          <img
-            src="{{ url_for('static', filename='intro/img/air-dome-link.jpg') }}"
-            alt=""
-          />
-        </div>
-        <span>Air Domes</span>
-      </a>
-      <a
-        id="pressure_vessel"
-        class="our-work-link"
-        href="{{ url_for('home.gallery')+'#Tanks-Silos-Pressure-Vessels' }}"
-      >
-        <div class="our-work-img-wrapper">
-          <img
-            src="{{ url_for('static', filename='intro/img/pressure-vessel-link.jpg') }}"
-            alt=""
-          />
-        </div>
-        <span>Pressure Vessels</span>
-      </a>
-    </div>
-  </div>
-</section>
-<section class="newsletter">
-  <div class="newsletter-bg"></div>
-  <div class="newsletter-header">Sign Up to Our Newsletter</div>
-  <div class="newsletter-text">
-    In our monthly newsletter, we shed some light on the latest stories and
-    technology in the world of structural engineering. We promise we won't spam
-    you!<br /><i>
-      Not yet operational. You may still enter and we'll save that for the
-      future.
-    </i>
-  </div>
-  <form class="newsletter-form" method="POST">
-    <div class="news-email-form">
-      <input
-        id="news-email-input"
-        name="email"
-        placeholder="Email"
-        spellcheck="false"
-        type="text"
-        value=""
-      />
-      <div class="error-msg"><span></span></div>
-      <div class="success-msg">
-        <span
-          ><ion-icon name="checkmark-outline"></ion-icon>Success! You will now
-          recieve our newsletter.</span
-        >
-      </div>
-    </div>
-    <div class="news-submit-wrapper">
-      <input id="news-submit" type="submit" value="Sign Up" />
-    </div>
-  </form>
-</section>
-<!--<section class="blog-posts-showcase">
-  <div class="blog-posts-bg"></div>
-  <div class="title">
-    Practical Guidance Documents for Solving Day-to-Day Engineering Problems
-  </div>
-  <div class="description">
-    From time to time, we make in-depth articles (guidance documents) on the
-    common&mdash; yet hard&mdash; problems encountered in structural
-    engineering.<br />Here's a few:
-  </div>
-  <div class="blog-showcase-carousel">
-    <div class="blog-showcase-arrows"></div>
-    <div class="blog-showcase-body">
-      {% for item in blog_carousel_items %}
-      <a class="blog-showcase-item" href="#">
-        <div class="blog-showcase-image"><img src="{{item[2]}}" alt="" /></div>
-        <div class="blog-showcase-title">{{item[0]}}</div>
-        <div class="blog-showcase-desc">{{item[1]}}</div>
-      </a>
-      {% endfor %}
-    </div>
-    <div class="blog-showcase-dots"></div>
-  </div>
-  <div class="see-more">
-    {# <a href="{{url_for('guidance_documents')}}" #}
-      >See more<ion-icon name="arrow-forward-circle-outline"></ion-icon
-    ></a>
-  </div>
-</section>-->
-
-{% endblock %} {% block js_files %}
-<script
-  type="text/javascript"
-  src="{{ url_for('static', filename='intro/js/home.js') }}"
-></script>
-<script
-  type="text/javascript"
-  ,
-  src="{{ url_for('static', filename='intro/js/slick.min.js') }}"
-></script>
-{% endblock %}
+        globalThis.csrfToken = "{{ csrf_token() }}";
+      } catch {}
+    </script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+intro\about\index.html
+intro\home\index.html
+intro\privacy\index.html
+static\intro\css\about-_2x5ZmdI.css
+static\intro\css\home-B3yVXxX1.css
+static\intro\css\style-BJ48JfmO.css
+static\intro\css\style2-Cdv23_NN.css
+static\intro\img\img1-Crzf8Rfq.png
+static\intro\img\img1-Dn-Tmj_v.png
+static\intro\img\landscape\img2-BjjAVCDF.jpg
+static\intro\js\about-2b_-HJWO.js
+static\intro\js\attributes-D_yGRfc4.js
+static\intro\js\home-Hd0n7P7f.js
+static\intro\js\privacy-rPDHxIdk.js
+static\intro\js\svelte-Deeo1CHF.js
