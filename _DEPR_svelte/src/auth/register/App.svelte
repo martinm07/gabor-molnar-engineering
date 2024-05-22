@@ -115,7 +115,9 @@
     transform: translate(-50%, -50%);
     border: 2px solid #bababa;
     border-radius: 7px;
-    box-shadow: 2px 2px 2px #8d8d8d, 0 0 20px #adacac;
+    box-shadow:
+      2px 2px 2px #8d8d8d,
+      0 0 20px #adacac;
     flex-direction: column;
     box-sizing: border-box;
   }
@@ -155,7 +157,9 @@
     max-width: 600px;
     height: 90%;
     border: 2px solid rgb(195, 190, 190);
-    box-shadow: 2px 2px 2px #a4a4a4, 4px 4px 16px #dcdcdc;
+    box-shadow:
+      2px 2px 2px #a4a4a4,
+      4px 4px 16px #dcdcdc;
     border-radius: 7px;
     box-sizing: border-box;
     background-color: #fff;
