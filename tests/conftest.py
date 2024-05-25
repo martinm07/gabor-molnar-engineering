@@ -39,18 +39,14 @@ def database(client):
     cursor.execute("SHOW DATABASES")
     if next((x for x in cursor if x[0] == dbname), -1) == -1:
         cursor.execute("CREATE DATABASE " + dbname)
-    else:
-        # The expression in the if statement may leave some unread items in the results buffer,
-        # which we need to clear out before continuing
-        cursor.fetchall()
-
-        cursor.execute("USE " + dbname)
-        cursor.execute("SHOW TABLES")
-        for x in cursor:
-            cursor.execute(f"DROP TABLE IF EXISTS {x[0]}")
+    # Potentially unread results in cursor
+    cursor.reset()
 
     db.create_all()  # Requires active Flask application context
-    return db
+    yield db
+
+    cursor.execute("DROP DATABASE " + dbname)
+    cursor.close()
 
 
 @pytest.fixture(scope="session")
@@ -100,7 +96,7 @@ def runner(app: Flask):
     return app.test_cli_runner()
 
 
-# @pytest.fixture(autouse=True)
-# def cleanup_session(client: FlaskClient):
-#     with client.session_transaction() as session:
-#         session.clear()
+@pytest.fixture(autouse=True)
+def cleanup_session(client):
+    with client.session_transaction() as session:
+        session.clear()

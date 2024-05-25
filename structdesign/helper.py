@@ -14,9 +14,7 @@ from .extensions import csrf
 bp = Blueprint("tools", __name__)
 
 
-def cors_enabled(
-    methods=["GET", "POST"], allow_credentials=True, development_only=False
-):
+def cors_enabled(methods=["POST"], allow_credentials=True, development_only=False):
     def decorator(view):
         if (not development_only) or (
             development_only and os.environ.get("FLASK_ENV") == "development"

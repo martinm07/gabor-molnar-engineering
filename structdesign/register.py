@@ -6,12 +6,14 @@ from sqlalchemy import select
 from validate_email import validate_email
 
 from .extensions import db
+from .helper import cors_enabled
 from .models import User, UserLoginOption
 
 bp = Blueprint("register", __name__, url_prefix="/register")
 
 
 @bp.route("/get_session_state")
+@cors_enabled()
 def get_session_state():
     return {
         "username": session.get("REG-username"),
@@ -32,12 +34,23 @@ def is_username_valid(username: str):
 
 
 @bp.route("/add_username", methods=["POST"])
+@cors_enabled()
 def add_username():
     username: str = request.data.decode("utf-8")
     result = is_username_valid(username)
     if result["result"]:
         session["REG-username"] = username
     return result
+
+
+@bp.route("/set_loginmode", methods=["POST"])
+@cors_enabled()
+def set_loginmode():
+    loginmode: str = request.data.decode("utf-8")
+    if loginmode not in ["password", "twofactorauth", "possession"]:
+        return {"result": False, "code": "LMI"}
+    session["REG-loginmode"] = loginmode
+    return {"result": True}
 
 
 def is_email_valid(email: str):
@@ -70,6 +83,7 @@ def is_password_valid(password: str):
 
 
 @bp.route("/add_email_password", methods=["POST"])
+@cors_enabled()
 def add_email_password():
     data = json.loads(request.data.decode("utf-8"))
     email: str = data.get("email")
@@ -90,6 +104,7 @@ def add_email_password():
 
 
 @bp.route("/finish", methods=["POST"])
+@cors_enabled()
 def finish():
     loginmode = session.get("REG-loginmode")
     if not loginmode:

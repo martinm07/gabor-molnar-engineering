@@ -7,6 +7,10 @@ from structdesign.extensions import db
 from structdesign.models import User, UserLoginOption
 
 
+def row_exists(table, **kwargs):
+    return len(db.session.execute(select(table).filter_by(**kwargs)).all()) == 1
+
+
 def test_get_session_state(client: FlaskClient):
     with client.session_transaction() as session:
         session["REG-username"] = "seanhorses"
@@ -165,11 +169,22 @@ def test_add_email_password(client: FlaskClient, monkeypatch):
 
 
 def test_set_loginmode(client: FlaskClient):
-    pass
+    def get_resp(loginmode: str):
+        return client.post(
+            "/register/set_loginmode", data=loginmode, content_type="text/plain"
+        ).json
 
+    for loginmode in [None, "bananas"]:
+        with client:
+            resp = get_resp(loginmode)
+            assert resp.get("result") is False
+            assert resp.get("code") == "LMI"
+            assert session.get("REG-loginmode") is None
 
-def row_exists(table, **kwargs):
-    return len(db.session.execute(select(table).filter_by(**kwargs)).all()) == 1
+    with client:
+        resp = get_resp("password")
+        assert resp.get("result") is True
+        assert session.get("REG-loginmode") == "password"
 
 
 def test_finish_pwd_loginmode(client: FlaskClient):

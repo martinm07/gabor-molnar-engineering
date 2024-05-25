@@ -10,3 +10,4 @@
 | `EMI`       | E Mail Invalid     |                               |
 | `EMT`       | E Mail Taken       |                               |
 | `PWM`       | Pass Word Missing  |                               |
+| `LMI`       | Login Mode Invalid |                               |

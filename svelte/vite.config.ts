@@ -25,6 +25,7 @@ const STATIC_PATH = "static/";
 
 // IMP: Set the build's entry points here. The key names don't matter
 const entryPoints = {
+  register: resolve(root, "auth/register/index.html"),
   home: resolve(root, "intro/home/index.html"),
   about: resolve(root, "intro/about/index.html"),
   privacy: resolve(root, "intro/privacy/index.html"),
