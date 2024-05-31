@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css?family=IM%20Fell%20Great%20Primer%20SC:700|IM%20Fell%20Great%20Primer%20SC:400");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,8 +10,4 @@
   --primary: #b16363;
   --secondary: #cf9898;
   --accent: #c37878;
-}
-
-body {
-  margin: 0;
 }

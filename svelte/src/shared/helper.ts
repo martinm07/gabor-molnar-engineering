@@ -28,3 +28,35 @@ export function fetch_(input: string | URL | Request, init?: RequestInit) {
 
   return fetch(input, init);
 }
+
+export function snapStylesOnActive(
+  el: HTMLElement,
+  styles: string[],
+  snapRelease: boolean = true
+) {
+  const addSnap = (el: HTMLElement) => {
+    el.style.transition = styles.map((style) => style + " 0s").join(", ");
+  };
+  const removeSnap = (el: HTMLElement) => {
+    snapRelease
+      ? setTimeout(() => {
+          el.style.removeProperty("transition");
+        })
+      : el.style.removeProperty("transition");
+  };
+
+  el.addEventListener("mousedown", () => {
+    addSnap(el);
+    for (const childEl of el.querySelectorAll("*")) {
+      if (!(childEl instanceof HTMLElement)) continue;
+      addSnap(childEl);
+    }
+  });
+  el.addEventListener("mouseup", () => {
+    removeSnap(el);
+    for (const childEl of el.querySelectorAll("*")) {
+      if (!(childEl instanceof HTMLElement)) continue;
+      removeSnap(childEl);
+    }
+  });
+}

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -8,6 +8,24 @@
   </head>
   <body>
     <div id="app"></div>
+    <script>
+      globalThis.jinjaParsed = false;
+      try {
+        if (!Number.parseInt("{{ 1 }}"))
+          throw new Error("Jinja wasn't parsed.");
+        globalThis.jinjaParsed = true;
+
+        globalThis.csrfToken = "{{ csrf_token() }}";
+      } catch {}
+    </script>
+    <script
+      type="module"
+      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"
+    ></script>
+    <script
+      nomodule
+      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"
+    ></script>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

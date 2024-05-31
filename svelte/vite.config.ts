@@ -5,6 +5,7 @@ import { createHash } from "crypto";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import sveltePreprocess from "svelte-preprocess";
 import {
   ManualChunksOption,
   NullValue,
@@ -239,6 +240,7 @@ export default defineConfig({
   root,
   plugins: [
     svelte({
+      preprocess: sveltePreprocess(),
       compilerOptions: {
         runes: true,
       },
