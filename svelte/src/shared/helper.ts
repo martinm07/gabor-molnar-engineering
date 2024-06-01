@@ -29,6 +29,13 @@ export function fetch_(input: string | URL | Request, init?: RequestInit) {
   return fetch(input, init);
 }
 
+export function preventDefault(fn: Function) {
+  return function (this: any, event: Event) {
+    event.preventDefault();
+    fn.call(this, event);
+  };
+}
+
 export function snapStylesOnActive(
   el: HTMLElement,
   styles: string[],

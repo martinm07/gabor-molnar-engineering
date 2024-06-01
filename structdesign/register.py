@@ -1,7 +1,7 @@
 import json
 import os
 
-from flask import Blueprint, request, session
+from flask import Blueprint, render_template, request, session
 from sqlalchemy import select
 from validate_email import validate_email
 
@@ -10,6 +10,11 @@ from .helper import cors_enabled
 from .models import User, UserLoginOption
 
 bp = Blueprint("register", __name__, url_prefix="/register")
+
+
+@bp.route("/testing")
+def testing():
+    return render_template("testing/testing.html")
 
 
 @bp.route("/get_session_state")

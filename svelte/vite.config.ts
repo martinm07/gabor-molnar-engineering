@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import sveltePreprocess from "svelte-preprocess";
-import {
+import type {
   ManualChunksOption,
   NullValue,
   GetModuleInfo,
@@ -26,6 +26,7 @@ const STATIC_PATH = "static/";
 
 // IMP: Set the build's entry points here. The key names don't matter
 const entryPoints = {
+  testing: resolve(root, "testing/testing/index.html"),
   register: resolve(root, "auth/register/index.html"),
   home: resolve(root, "intro/home/index.html"),
   about: resolve(root, "intro/about/index.html"),
@@ -240,6 +241,10 @@ export default defineConfig({
   root,
   plugins: [
     svelte({
+      // This enables the understanding of Svelte 5 syntax.
+      // The "prettier" and "prettier-plugin-svelte" dependencies
+      //  need to be explicitly included in package.json for the
+      //  formatting of Svelte 5 syntax.
       preprocess: sveltePreprocess(),
       compilerOptions: {
         runes: true,
