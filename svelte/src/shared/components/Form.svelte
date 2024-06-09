@@ -35,7 +35,7 @@
     // Clear errors and state
     genericError = null;
     inputBinds.forEach((inp) =>
-      inp.setValidState({ result: 0, code: "" }, false)
+      inp.setValidState({ result: 0, code: "" }, false),
     );
     // Start validation of all inputs
     const failedIds: number[] = [];
@@ -45,7 +45,7 @@
           inputBinds[i].setValidState(state, true);
           failedIds.push(i);
         } else inputBinds[i].setValidState({ result: -2 }, false);
-      })
+      }),
     );
 
     await Promise.all(promises);
@@ -57,7 +57,7 @@
       // Creates dictionary of input names associated with their values
       const submitVals: { [key: string]: any } = inputBinds.reduce(
         (p, c, i) => ({ ...p, [inputs[i].name]: c.getValue() }),
-        {}
+        {},
       );
       const resp = await submitFunc(submitVals);
 
@@ -81,7 +81,7 @@
         // Set inputs which didn't fail to 'neutral' state
         inputBinds.forEach(
           (inp, i) =>
-            !failedIds.includes(i) && inp.setValidState({ result: -2 }, false)
+            !failedIds.includes(i) && inp.setValidState({ result: -2 }, false),
         );
       } else if (resp.result === 1) {
         // Form submit success

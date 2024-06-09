@@ -4,7 +4,10 @@
   import "./style.css";
 
   onMount(() => {
-    snapStylesOnActive(document.querySelector(".snap-press")!, ["margin-right", "width"]);
+    snapStylesOnActive(document.querySelector(".snap-press")!, [
+      "margin-right",
+      "width",
+    ]);
   });
 </script>
 
