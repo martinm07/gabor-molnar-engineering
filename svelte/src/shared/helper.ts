@@ -1,3 +1,5 @@
+import { quartOut } from "svelte/easing";
+
 export function fetch_(input: string | URL | Request, init?: RequestInit) {
   if (globalThis.jinjaParsed) {
     if (
@@ -27,6 +29,16 @@ export function fetch_(input: string | URL | Request, init?: RequestInit) {
   }
 
   return fetch(input, init);
+}
+
+export async function timeoutPromise(
+  seconds: number,
+  returnVal?: any,
+  reject = false
+) {
+  if (!reject) await new Promise((res) => setTimeout(res, seconds * 1000));
+  else await new Promise((_r, rej) => setTimeout(rej, seconds * 1000));
+  return returnVal;
 }
 
 export function preventDefault(fn: Function) {
@@ -66,4 +78,39 @@ export function snapStylesOnActive(
       removeSnap(childEl);
     }
   });
+}
+
+interface TadaOptions {
+  duration: number;
+  disable?: boolean;
+  directionChanges?: number;
+  intensity?: number;
+}
+export function tada(
+  _: HTMLElement,
+  {
+    duration,
+    disable = false,
+    directionChanges = 2,
+    intensity = 10,
+  }: TadaOptions
+) {
+  return {
+    duration,
+    css: (t: number) => {
+      const marginRight = Math.sin(Math.PI * directionChanges * t);
+      const easedMarginRight = quartOut(1 - t) * marginRight * intensity;
+      return `transform: translateX(${!disable ? easedMarginRight : 0}px);`;
+    },
+  };
+}
+
+export function splitCodes(codes: string) {
+  if (codes.length % 3 !== 0)
+    throw new Error("codes string not a multiple of 3");
+  const final: string[] = [];
+  for (let i = 0; i < codes.length / 3; i++) {
+    final.push(codes.slice(i * 3, (i + 1) * 3));
+  }
+  return final;
 }

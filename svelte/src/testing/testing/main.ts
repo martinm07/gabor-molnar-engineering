@@ -1,5 +1,5 @@
 import { mount } from "svelte";
-import App from "/shared/components/Form.svelte";
+import App from "./App.svelte";
 
 const app = mount(App, { target: document.getElementById("app")! });
 

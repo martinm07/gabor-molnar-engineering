@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .base-text-input {
+    @apply border-2 border-stone-800 rounded-lg px-5 py-3 font-mono text-lg focus:outline-none focus:ring-stone-400 focus:ring-4 w-72 [&:has(+_.err)]:border-red-500 [&:has(+_.err)]:focus:ring-red-300 disabled:border-stone-500 [&:has(+_.pending)]:text-stone-500;
+  }
+}
