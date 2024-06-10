@@ -34,7 +34,7 @@ export function fetch_(input: string | URL | Request, init?: RequestInit) {
 export async function timeoutPromise(
   seconds: number,
   returnVal?: any,
-  reject = false
+  reject = false,
 ) {
   if (!reject) await new Promise((res) => setTimeout(res, seconds * 1000));
   else await new Promise((_r, rej) => setTimeout(rej, seconds * 1000));
@@ -51,7 +51,7 @@ export function preventDefault(fn: Function) {
 export function snapStylesOnActive(
   el: HTMLElement,
   styles: string[],
-  snapRelease: boolean = true
+  snapRelease: boolean = true,
 ) {
   const addSnap = (el: HTMLElement) => {
     el.style.transition = styles.map((style) => style + " 0s").join(", ");
@@ -63,21 +63,17 @@ export function snapStylesOnActive(
         })
       : el.style.removeProperty("transition");
   };
+  const recursiveApply = (func: (el: HTMLElement) => void) => {
+    func(el);
+    for (const childEl of el.querySelectorAll("*")) {
+      if (!(childEl instanceof HTMLElement)) continue;
+      func(childEl);
+    }
+  };
 
-  el.addEventListener("mousedown", () => {
-    addSnap(el);
-    for (const childEl of el.querySelectorAll("*")) {
-      if (!(childEl instanceof HTMLElement)) continue;
-      addSnap(childEl);
-    }
-  });
-  el.addEventListener("mouseup", () => {
-    removeSnap(el);
-    for (const childEl of el.querySelectorAll("*")) {
-      if (!(childEl instanceof HTMLElement)) continue;
-      removeSnap(childEl);
-    }
-  });
+  el.addEventListener("mousedown", recursiveApply.bind(null, addSnap));
+  el.addEventListener("mouseleave", recursiveApply.bind(null, removeSnap));
+  el.addEventListener("mouseup", recursiveApply.bind(null, removeSnap));
 }
 
 interface TadaOptions {
@@ -93,7 +89,7 @@ export function tada(
     disable = false,
     directionChanges = 2,
     intensity = 10,
-  }: TadaOptions
+  }: TadaOptions,
 ) {
   return {
     duration,

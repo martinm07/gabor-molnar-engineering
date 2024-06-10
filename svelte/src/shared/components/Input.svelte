@@ -32,12 +32,14 @@
     inpId: string;
     statusCodeNameMsg: (code: string) => { input: string | null; msg: string };
     class?: string | null;
+    statusclass?: string;
     label?: string;
   }
   let {
     inpId,
     statusCodeNameMsg,
     class: inpClass = "",
+    statusclass: statusClass = "",
     label,
     ...rest
   }: Props = $props();
@@ -90,20 +92,24 @@
   };
 </script>
 
-<div class="mb-5 flex items-center">
+<div class="flex items-center">
   {#if label}
     <label for={inpId} class="inline-block mr-4 text-xl">{label}</label>
   {/if}
   <div class="relative inline-block">
     {#snippet statusMsg(classes, msg)}
       <label
-        class="block cursor-text absolute bg-white -mt-3 mx-4 text-sm font-bold leading-tight text-balance px-1 box-content {classes}"
+        class="base-text-input-status {classes} {statusClass}"
         use:setToSpanWidth={msg}
         for={inpId}
         in:tada|global={{ duration: 400, disable: tadaDisabled }}
       >
-        <span>
-          {@html msg}
+        <!-- <div class="bg-white absolute w-full h-1 mt-2 -ml-1"></div> -->
+        <span class="bg-none relative">
+          {#if msg}
+            <!-- {@html "&nbsp;" + msg + "&nbsp;"} -->
+            {@html msg}
+          {/if}
         </span>
       </label>
     {/snippet}

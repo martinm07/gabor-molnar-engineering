@@ -4,6 +4,8 @@
   import type { IInput } from "./Input.svelte";
   import { type ValidationResponse } from "./form";
   import { preventDefault, splitCodes } from "/shared/helper";
+  import type { Snippet } from "svelte";
+  import type { Action } from "svelte/action";
 
   interface Props {
     inputs: Array<{
@@ -11,12 +13,22 @@
       inputAttrs: HTMLInputAttributes;
       validateFunc: (value: any) => Promise<ValidationResponse>;
       label?: string;
+      statusclass?: string;
     }>;
     statusCodeNameMsg: (code: string) => { input: string | null; msg: string };
     submitFunc: (values: Record<string, any>) => Promise<ValidationResponse>;
+    submitBtn?: Snippet;
     onsuccess?: Function;
+    formclass?: string;
   }
-  let { inputs, submitFunc, statusCodeNameMsg, onsuccess }: Props = $props();
+  let {
+    inputs,
+    submitFunc,
+    statusCodeNameMsg,
+    submitBtn,
+    onsuccess,
+    formclass = "",
+  }: Props = $props();
 
   const allNames = inputs.map(({ name }) => name);
   if (new Set(allNames).size !== inputs.length)
@@ -25,6 +37,7 @@
   // On successful form submits, the browser still believes it's invalid, so we invoke a ghost click
   //  that doesn't do anything after setting the validity to valid.
   let ghostSubmit = false;
+  // svelte-ignore non_reactive_update
   let ghostBtn: HTMLInputElement;
   async function onSubmit(e: SubmitEvent) {
     if (ghostSubmit) {
@@ -100,13 +113,23 @@
 
   let inputBinds: IInput[] = Array(inputs.length);
   let genericError: string | null = $state(null);
+  const getSubmitBtnEl: Action = (node) => {
+    const btn = node.querySelector("[type=submit]");
+    if (!btn)
+      throw new Error(
+        "submitBtn snippter must have a button/input of type 'submit'",
+      );
+    ghostBtn = <HTMLInputElement>btn;
+  };
 </script>
 
+<!-- svelte-ignore non_reactive_update -->
 <form
   method="POST"
-  class="flex items-center justify-center h-screen flex-col"
+  class={formclass}
   novalidate
   onsubmit={preventDefault(onSubmit)}
+  use:getSubmitBtnEl
 >
   {#each inputs as input, i}
     <Input
@@ -114,15 +137,20 @@
       inpId={input.name}
       label={input.label}
       {statusCodeNameMsg}
+      statusclass={input.statusclass}
       {...input.inputAttrs}
     />
   {/each}
-  <input
-    class="border-2 border-stone-500 px-4 py-2 rounded-lg text-stone-500 font-bold cursor-pointer mt-6"
-    type="submit"
-    value="Submit"
-    bind:this={ghostBtn}
-  />
+  {#if submitBtn}
+    {@render submitBtn()}
+  {:else}
+    <input
+      class="border-2 border-stone-500 px-4 py-2 rounded-lg text-stone-500 font-bold cursor-pointer mt-6"
+      type="submit"
+      value="Submit"
+      bind:this={ghostBtn}
+    />
+  {/if}
   {#if genericError}
     <div class="text-red-500 text-center">{genericError}</div>
   {/if}
