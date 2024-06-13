@@ -1,12 +1,20 @@
 import functools
 import os
 import smtplib
+import socket
 import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from urllib.parse import urlparse
 
 import click
-from flask import Blueprint, make_response, render_template, request
+from flask import (
+    Blueprint,
+    current_app,
+    make_response,
+    render_template,
+    request,
+)
 from werkzeug.datastructures import HeaderSet
 
 from .extensions import csrf
@@ -14,6 +22,10 @@ from .extensions import csrf
 bp = Blueprint("tools", __name__)
 
 
+old_samesite = None
+
+
+# TODO: Add config for "Partitioned" attribute after Flask adds it: https://github.com/pallets/flask/pull/5499
 def cors_enabled(methods=["POST"], allow_credentials=True, development_only=False):
     def decorator(view):
         if (not development_only) or (
@@ -23,6 +35,10 @@ def cors_enabled(methods=["POST"], allow_credentials=True, development_only=Fals
             @csrf.exempt
             @functools.wraps(view)
             def wrapped_view(*args, **kwargs):
+                global old_samesite
+                old_samesite = current_app.config.get("SESSION_COOKIE_SAMESITE")
+
+                current_app.config.update(SESSION_COOKIE_SAMESITE="None")
                 if request.method == "OPTIONS":
                     resp = make_response()
                     if allow_credentials:
@@ -33,7 +49,6 @@ def cors_enabled(methods=["POST"], allow_credentials=True, development_only=Fals
                     resp.access_control_allow_credentials = allow_credentials
                     resp.access_control_allow_headers = HeaderSet(["Content-Type"])
                     resp.access_control_allow_methods = HeaderSet(methods)
-                    return resp
                 else:
                     resp = make_response(view(*args, **kwargs))
                     if allow_credentials:
@@ -42,7 +57,7 @@ def cors_enabled(methods=["POST"], allow_credentials=True, development_only=Fals
                     else:
                         resp.access_control_allow_origin = "*"
                     resp.access_control_allow_credentials = allow_credentials
-                    return resp
+                return resp
         else:
 
             @functools.wraps(view)
@@ -54,8 +69,10 @@ def cors_enabled(methods=["POST"], allow_credentials=True, development_only=Fals
     return decorator
 
 
-import socket
-from urllib.parse import urlparse
+@bp.teardown_app_request
+def reset_session_config(_):
+    if old_samesite:
+        current_app.config.update(SESSION_COOKIE_SAMESITE=old_samesite)
 
 
 def host_is_local(host):

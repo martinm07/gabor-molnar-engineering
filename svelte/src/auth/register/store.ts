@@ -1,4 +1,4 @@
-import { writable, type Writable } from "svelte/store";
+import { get, writable, type Writable } from "svelte/store";
 
 interface RegState {
   page: string;
@@ -13,14 +13,21 @@ export const state: Writable<RegState> = writable({
   page: startPage,
   doTransition: false,
 });
-// export const state: RegState = $state({ page: startPage, doTransition: false });
+
 export function changePage(newPage: string, doTransition: boolean = false) {
   if (!pages.includes(newPage))
     throw new Error(
       `Unexpected value for newPage. Got '${newPage}' but expected one of ${pages.map((page) => "'" + page + "'").join(", ")}.`,
     );
   state.update((st) => Object.assign(st, { page: newPage, doTransition }));
-  // const searchParams = new URLSearchParams(window.location.search);
-  // searchParams.set("page", newPage);
-  // window.location.search = searchParams.toString();
+  const searchParams = new URLSearchParams(window.location.search);
+  searchParams.set("page", newPage);
+  history.pushState(get(state), "", "?" + searchParams.toString());
 }
+
+window.addEventListener("popstate", (e) => {
+  const newPage = e?.state?.page ?? pages[0];
+  state.update((st) =>
+    Object.assign(st, { page: newPage, doTransition: false }),
+  );
+});
