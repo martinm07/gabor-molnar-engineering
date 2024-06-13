@@ -18,11 +18,16 @@ export async function setName({
   if (typeof name === "undefined") return { result: -1, code: "UNM" };
 
   // await timeoutPromise(1);
-  const resp = await fetch_("/register/add_username", {
-    method: "POST",
-    body: name,
-    headers: { "Content-Type": "text/plain" },
-  });
+  let resp;
+  try {
+    resp = await fetch_("/register/add_username", {
+      method: "POST",
+      body: name,
+      headers: { "Content-Type": "text/plain" },
+    });
+  } catch (err) {
+    return { result: -1 };
+  }
   const result: { result: boolean; code?: string } = await resp.json();
   return { result: result.result ? 1 : -1, code: result.code };
 }

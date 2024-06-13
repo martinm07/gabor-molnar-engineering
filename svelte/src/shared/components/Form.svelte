@@ -78,7 +78,7 @@
       if (resp.result === -1) {
         const failedIds: number[] = [];
         // The code sent by the server may be multiple codes concatenated together
-        for (const code of splitCodes(resp.code ?? "")) {
+        for (const code of splitCodes(resp.code ?? "GER")) {
           // The statusCodeNameMsg needs to associate codes to input names
           const { input: inputName, msg } = statusCodeNameMsg(code);
           const i = inputs.findIndex(({ name }) => inputName === name);
@@ -103,7 +103,7 @@
 
         // This is to make sure the browser believes the form was submitted correctly
         setTimeout(() => {
-          inputBinds.forEach((inp) => inp.setInputToValid());
+          inputBinds.forEach((inp) => inp && inp.setInputToValid());
           ghostSubmit = true;
           ghostBtn.click();
         });
@@ -126,7 +126,7 @@
 <!-- svelte-ignore non_reactive_update -->
 <form
   method="POST"
-  class={formclass}
+  class="relative {formclass}"
   novalidate
   onsubmit={preventDefault(onSubmit)}
   use:getSubmitBtnEl
@@ -152,6 +152,10 @@
     />
   {/if}
   {#if genericError}
-    <div class="text-red-500 text-center">{genericError}</div>
+    <div
+      class="text-red-500 text-center absolute bottom-0 translate-y-full text-balance"
+    >
+      {genericError}
+    </div>
   {/if}
 </form>

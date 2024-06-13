@@ -10,12 +10,12 @@
     <div id="app"></div>
     <script>
       globalThis.jinjaParsed = false;
-      globalThis.urlRoot = import.meta.env.VITE_DEV_FLASK_SERVER;
+      // globalThis.urlRoot = import.meta.env.VITE_DEV_FLASK_SERVER;
       try {
         if (!Number.parseInt("{{ 1 }}"))
           throw new Error("Jinja wasn't parsed.");
         globalThis.jinjaParsed = true;
-        globalThis.urlRoot = "";
+        // globalThis.urlRoot = "";
 
         globalThis.csrfToken = "{{ csrf_token() }}";
       } catch {}
