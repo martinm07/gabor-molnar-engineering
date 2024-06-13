@@ -1,4 +1,6 @@
 <script context="module" lang="ts">
+  import type { ValidationResponse } from "/shared/types";
+
   export function statusCodeNameMsg(code: string): {
     input: string | null;
     msg: string;
@@ -24,94 +26,49 @@
         return { input: null, msg: code };
     }
   }
+
+  export async function validateName(
+    name: string,
+  ): Promise<ValidationResponse> {
+    const name_ = name.trim();
+    if (name_.length === 0) return { result: -1, code: "UNM" };
+    if (name_.length < 3) return { result: -1, code: "UNS" };
+    return { result: 1 };
+  }
+
+  export async function setName({
+    name,
+  }: {
+    name?: string;
+  }): Promise<ValidationResponse> {
+    if (typeof name === "undefined") return { result: -1, code: "UNM" };
+
+    let resp;
+    try {
+      resp = await fetch_("/register/add_username", {
+        method: "POST",
+        body: name,
+        headers: { "Content-Type": "text/plain" },
+      });
+    } catch (err) {
+      return { result: -1 };
+    }
+    const result: { result: boolean; code?: string } = await resp.json();
+    return { result: result.result ? 1 : -1, code: result.code };
+  }
 </script>
 
 <script lang="ts">
   import Card from "./Card.svelte";
   import UsernameCard from "./UsernameCard.svelte";
   import EmailPasswordCard from "./EmailPasswordCard.svelte";
-  import { fade } from "svelte/transition";
   import { state, changePage } from "./store";
-  import "./style.css";
-  interface State {
-    page: string;
-  }
-
-  const startPage: string = "name";
-
-  // let state: State = $state({ page: startPage });
-  // document.addEventListener("keydown", (e) => {
-  //   if (e.key === "ArrowLeft") state.page = "name";
-  //   else if (e.key === "ArrowRight") state.page = "emailpass";
-  // });
+  import { fetch_ } from "/shared/helper";
+  import "/shared/tailwindinit.css";
 </script>
 
-<!-- <Card> -->
-<!-- {#snippet card()} -->
 {#if $state.page === "name"}
-  <Card card={UsernameCard} onsuccess={() => changePage("emailpass", true)}>
-    <!-- {#snippet card()}
-      <UsernameCard onsuccess={() => (state.page = "emailpass")} />
-    {/snippet} -->
-  </Card>
+  <Card card={UsernameCard} onsuccess={() => changePage("emailpass", true)} />
 {:else if $state.page === "emailpass"}
-  <Card card={EmailPasswordCard} onsuccess={() => changePage("name", true)}>
-    <!-- {#snippet card()}
-      <EmailPasswordCard onsuccess={() => (state.page = "name")} />
-    {/snippet} -->
-  </Card>
+  <Card card={EmailPasswordCard} onsuccess={() => changePage("name", true)} />
 {/if}
-<!-- {/snippet} -->
-<!-- </Card> -->
-
-<!-- {#if state.page === "name"}
-  <Card>
-    {#snippet card()}
-      Hello world!
-    {/snippet}
-  </Card>
-{:else if state.page === "emailpass"}
-  <Card>
-    {#snippet card()}
-      Hello world at the Email/Password page!
-    {/snippet}
-  </Card>
-{/if} -->
-
-<!-- {#if state.page === "name"}
-  <Card />
-{:else}
-  <Card />
-{/if} -->
-
-<!-- {#if state.page === "name"}
-  <div class="absolute w-screen h-screen bg-background-200 -z-10"></div>
-  <div
-    class="absolute w-screen h-screen flex items-center justify-center"
-    transition:fade|global={{ duration: 1000 }}
-  >
-    <div
-      class="absolute flex flex-col md:w-1/2 w-5/6 h-4/5 bg-background rounded-md p-4"
-    >
-      <h1 class="shrink text-center font-serif text-dark text-4xl">
-        Registration
-      </h1>
-      Hello world!
-    </div>
-  </div>
-{:else if state.page === "emailpass"}
-  <div class="absolute w-screen h-screen bg-background-200 -z-10"></div>
-  <div
-    class="absolute w-screen h-screen flex items-center justify-center"
-    transition:fade|global={{ duration: 1000 }}
-  >
-    <div
-      class="absolute flex flex-col md:w-1/2 w-5/6 h-4/5 bg-background rounded-md p-4"
-    >
-      <h1 class="shrink text-center font-serif text-dark text-4xl">
-        Registration
-      </h1>
-      Hello world at the Email/Password page!
-    </div>
-  </div>
-{/if} -->

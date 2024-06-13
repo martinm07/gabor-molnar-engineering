@@ -1,6 +1,6 @@
 <script lang="ts">
   import Form from "/shared/components/Form.svelte";
-  import { setName, validateName } from "/shared/components/form";
+  import { setName, validateName } from "/auth/register/App.svelte";
 
   export function statusCodeNameMsg(code: string): {
     input: string | null;

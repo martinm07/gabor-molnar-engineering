@@ -110,3 +110,13 @@ export function splitCodes(codes: string) {
   }
   return final;
 }
+
+/**
+ * At least in the case of the onMount of a component, the next DOM update never
+ * happens after one requestAnimationFrame, inconsistently after one setTimeout
+ * and seemingly consistently after two requestAnimationFrames, which is what this
+ * function does.
+ */
+export function request2AnimationFrames(callback: FrameRequestCallback) {
+  requestAnimationFrame(() => requestAnimationFrame(callback));
+}

@@ -2,7 +2,7 @@
   import type { HTMLInputAttributes } from "svelte/elements";
   import Input from "./Input.svelte";
   import type { IInput } from "./Input.svelte";
-  import { type ValidationResponse } from "./form";
+  import { type ValidationResponse } from "/shared/types";
   import { preventDefault, splitCodes } from "/shared/helper";
   import type { Snippet } from "svelte";
   import type { Action } from "svelte/action";

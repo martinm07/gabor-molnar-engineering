@@ -23,7 +23,7 @@
 
 <script lang="ts">
   import type { Action } from "svelte/action";
-  import type { ValidationResponse } from "./form";
+  import type { ValidationResponse } from "/shared/types";
   import { tada } from "/shared/helper";
   import "./input.css";
   import type { HTMLInputAttributes } from "svelte/elements";

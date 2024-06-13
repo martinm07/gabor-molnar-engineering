@@ -2,11 +2,11 @@
   import Form from "/shared/components/Form.svelte";
   // import Card from "./Card.svelte";
   import { statusCodeNameMsg } from "./App.svelte";
-  import { setName, validateName } from "/shared/components/form";
+  import { setName, validateName } from "./App.svelte";
   import { onMount } from "svelte";
   import { fade } from "svelte/transition";
   import { snapStylesOnActive } from "/shared/helper";
-  import "./style.css";
+  import "/shared/tailwindinit.css";
 
   const urlRoot = globalThis.jinjaParsed
     ? ""

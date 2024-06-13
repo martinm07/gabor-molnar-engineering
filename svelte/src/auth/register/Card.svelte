@@ -1,8 +1,8 @@
 <script lang="ts">
   import { onMount, type Component } from "svelte";
-  import { fade } from "svelte/transition";
   import { state } from "./store";
-  import "./style.css";
+  import "/shared/tailwindinit.css";
+  import { request2AnimationFrames } from "/shared/helper";
 
   interface Props {
     card: Component<{ onsuccess: Function }>;
@@ -21,7 +21,7 @@
     }
     if ($state.doTransition) {
       transEls.forEach((el) => (el.style.opacity = "0"));
-      setTimeout(() => {
+      request2AnimationFrames(() => {
         for (const el of transEls) {
           const delay = Number.parseFloat(el.dataset.transitionDelay ?? "0");
           el.style.transitionDelay = `${delay}ms`;
@@ -42,7 +42,6 @@
       el.style.transitionDuration = `${TRANSITION_DURATION}ms`;
       el.style.transitionProperty = `opacity`;
       el.style.opacity = "0";
-      state;
       if (delay > maxDelay) maxDelay = delay;
     }
     setTimeout(
