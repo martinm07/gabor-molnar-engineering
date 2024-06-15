@@ -22,40 +22,21 @@
         return { input: "name", msg: "Username is already taken" };
       case "UNP":
         return { input: "name", msg: "Username was detected as profane" };
+      case "EMM":
+        return { input: "email", msg: "Email is required" };
+      case "EMI":
+        return { input: "email", msg: "Invalid email" };
+      case "EMT":
+        return { input: "email", msg: "Email is already taken" };
+      case "PWM":
+        return { input: "password", msg: "Password is required" };
       default:
         return { input: null, msg: code };
     }
   }
 
-  export async function validateName(
-    name: string,
-  ): Promise<ValidationResponse> {
-    const name_ = name.trim();
-    if (name_.length === 0) return { result: -1, code: "UNM" };
-    if (name_.length < 3) return { result: -1, code: "UNS" };
-    return { result: 1 };
-  }
-
-  export async function setName({
-    name,
-  }: {
-    name?: string;
-  }): Promise<ValidationResponse> {
-    if (typeof name === "undefined") return { result: -1, code: "UNM" };
-
-    let resp;
-    try {
-      resp = await fetch_("/register/add_username", {
-        method: "POST",
-        body: name,
-        headers: { "Content-Type": "text/plain" },
-      });
-    } catch (err) {
-      return { result: -1 };
-    }
-    const result: { result: boolean; code?: string } = await resp.json();
-    return { result: result.result ? 1 : -1, code: result.code };
-  }
+  export const inputclass =
+    "shadow-[inset_-7px_-7px_var(--steel-100)] focus:shadow-[inset_-7px_-7px_var(--steel-100),0_0_0_3px_var(--background),0_0_0_7px_var(--steel-200)] focus:ring-0 transition-shadow duration-100";
 </script>
 
 <script lang="ts">

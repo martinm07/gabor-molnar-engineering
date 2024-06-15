@@ -3,6 +3,9 @@ import { get, writable, type Writable } from "svelte/store";
 interface RegState {
   page: string;
   doTransition: boolean;
+  name?: string;
+  email?: string;
+  password?: string;
 }
 
 const pages = ["name", "emailpass", "passconfirm", "congrats"];

@@ -9,4 +9,13 @@
   .base-text-input-status {
     @apply block cursor-text absolute bg-white -mt-[11px] mx-4 text-sm font-bold leading-tight text-balance px-1 box-content;
   }
+  .base-text-input-outer {
+    @apply relative inline-block;
+  }
+  .base-text-input-wrapper {
+    @apply flex items-center;
+  }
+  .base-text-input-label {
+    @apply inline-block mr-4 text-xl;
+  }
 }

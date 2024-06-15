@@ -1,3 +1,9 @@
+<script context="module" lang="ts">
+  export interface IForm {
+    getValue: (name: string) => string;
+  }
+</script>
+
 <script lang="ts">
   import type { HTMLInputAttributes } from "svelte/elements";
   import Input from "./Input.svelte";
@@ -7,10 +13,16 @@
   import type { Snippet } from "svelte";
   import type { Action } from "svelte/action";
 
+  interface InputAttrs extends HTMLInputAttributes {
+    wrapperclass?: string;
+    outerclass?: string;
+    labelclass?: string;
+  }
+
   interface Props {
     inputs: Array<{
       name: string;
-      inputAttrs: HTMLInputAttributes;
+      inputAttrs: InputAttrs;
       validateFunc: (value: any) => Promise<ValidationResponse>;
       label?: string;
       statusclass?: string;
@@ -121,6 +133,15 @@
       );
     ghostBtn = <HTMLInputElement>btn;
   };
+
+  export function getValue(name: string) {
+    const i = inputs.findIndex((inp) => inp.name === name);
+    if (i === -1)
+      throw new Error(
+        `Name not found. Expected one of ${inputs.map((inp) => "'" + inp.name + "'").join(", ")}. Got '${name}'`,
+      );
+    return inputBinds[i].getValue();
+  }
 </script>
 
 <!-- svelte-ignore non_reactive_update -->

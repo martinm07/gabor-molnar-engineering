@@ -1,12 +1,40 @@
 <script lang="ts">
-  import Form from "/shared/components/Form.svelte";
+  import Form, { type IForm } from "/shared/components/Form.svelte";
   // import Card from "./Card.svelte";
   import { statusCodeNameMsg } from "./App.svelte";
-  import { setName, validateName } from "./App.svelte";
   import { onMount } from "svelte";
-  import { fade } from "svelte/transition";
-  import { snapStylesOnActive } from "/shared/helper";
+  import { fetch_, snapStylesOnActive } from "/shared/helper";
+  import { state } from "./store";
   import "/shared/tailwindinit.css";
+  import type { ValidationResponse } from "/shared/types";
+
+  async function validateName(name: string): Promise<ValidationResponse> {
+    const name_ = name.trim();
+    if (name_.length === 0) return { result: -1, code: "UNM" };
+    if (name_.length < 3) return { result: -1, code: "UNS" };
+    return { result: 1 };
+  }
+
+  async function setName({
+    name,
+  }: {
+    name?: string;
+  }): Promise<ValidationResponse> {
+    if (typeof name === "undefined") return { result: -1, code: "UNM" };
+
+    let resp;
+    try {
+      resp = await fetch_("/register/add_username", {
+        method: "POST",
+        body: name,
+        headers: { "Content-Type": "text/plain" },
+      });
+    } catch (err) {
+      return { result: -1 };
+    }
+    const result: { result: boolean; code?: string } = await resp.json();
+    return { result: result.result ? 1 : -1, code: result.code };
+  }
 
   const urlRoot = globalThis.jinjaParsed
     ? ""
@@ -23,6 +51,13 @@
     onsuccess: Function;
   }
   let { onsuccess }: Props = $props();
+
+  let form: IForm;
+  function onSuccess() {
+    // console.log("Hello world!", form.getValue("name"));
+    $state.name = form.getValue("name");
+    onsuccess();
+  }
 </script>
 
 {#snippet oauth(name, iconname, url)}
@@ -52,6 +87,7 @@
   ></div>
   <div class="flex z-10">
     <Form
+      bind:this={form}
       inputs={[
         {
           name: "name",
@@ -67,7 +103,7 @@
       {statusCodeNameMsg}
       submitFunc={setName}
       formclass="flex"
-      {onsuccess}
+      onsuccess={onSuccess}
     >
       {#snippet submitBtn()}
         <button

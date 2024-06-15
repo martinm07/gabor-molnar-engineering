@@ -87,7 +87,7 @@ def is_password_valid(password: str):
     return {"result": True}
 
 
-@bp.route("/add_email_password", methods=["POST"])
+@bp.route("/add_email_password", methods=["OPTIONS", "POST"])
 @cors_enabled()
 def add_email_password():
     data = json.loads(request.data.decode("utf-8"))

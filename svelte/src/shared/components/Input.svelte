@@ -32,7 +32,10 @@
     inpId: string;
     statusCodeNameMsg: (code: string) => { input: string | null; msg: string };
     class?: string | null;
+    outerclass?: string;
+    wrapperclass?: string;
     statusclass?: string;
+    labelclass?: string;
     label?: string;
   }
   let {
@@ -40,6 +43,9 @@
     statusCodeNameMsg,
     class: inpClass = "",
     statusclass: statusClass = "",
+    outerclass: outerClass = "",
+    wrapperclass: wrapperClass = "",
+    labelclass: labelClass = "",
     label,
     ...rest
   }: Props = $props();
@@ -92,11 +98,12 @@
   };
 </script>
 
-<div class="flex items-center">
+<div class="base-text-input-wrapper {wrapperClass}">
   {#if label}
-    <label for={inpId} class="inline-block mr-4 text-xl">{label}</label>
+    <label for={inpId} class="base-text-input-label {labelClass}">{label}</label
+    >
   {/if}
-  <div class="relative inline-block">
+  <div class="base-text-input-outer {outerClass}">
     {#snippet statusMsg(classes, msg)}
       <label
         class="base-text-input-status {classes} {statusClass}"
