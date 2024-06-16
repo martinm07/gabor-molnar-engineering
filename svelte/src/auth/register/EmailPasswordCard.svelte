@@ -2,11 +2,20 @@
   export async function validateEmail(
     email: string,
   ): Promise<ValidationResponse> {
+    const email_ = email.trim().toLowerCase();
+    if (email_.length === 0) return { result: -1, code: "EMM" };
+    else if (
+      !email_.match(
+        /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|.(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
+      )
+    )
+      return { result: -1, code: "EMI" };
     return { result: 1 };
   }
   export async function validatePassword(
     password: string,
   ): Promise<ValidationResponse> {
+    if (password.length === 0) return { result: -1, code: "PWM" };
     return { result: 1 };
   }
 
@@ -37,7 +46,7 @@
 </script>
 
 <script lang="ts">
-  import { state } from "./store";
+  import { state, changePage } from "./store";
   import type { IForm } from "/shared/components/Form.svelte";
   import Form from "/shared/components/Form.svelte";
   import type { ValidationResponse } from "/shared/types";
@@ -47,15 +56,16 @@
   import "/shared/tailwindinit.css";
 
   interface Props {
-    onsuccess: Function;
+    transitionpage: (name: string) => void;
   }
-  let { onsuccess }: Props = $props();
+  let { transitionpage }: Props = $props();
 
   let form: IForm;
   function onSuccess() {
     $state.email = form.getValue("email");
     $state.password = form.getValue("password");
-    onsuccess();
+    // onsuccess();
+    transitionpage("name");
   }
 
   onMount(() => {
@@ -64,17 +74,18 @@
       "width",
     ]);
   });
-  // 1234567890abcdefghijklmnopqr
 </script>
 
-<!-- <div data-transition-delay="100">
-  Hello, {$state.page}!
-  <button onclick={() => onsuccess()}>Go back</button>
-</div> -->
-<h2 class="text-2xl ml-10 mt-10 text-text" data-transition-delay="0">
+<h2
+  class="text-2xl ml-10 mt-6 text-steel-500 break-words"
+  data-transition-delay="0"
+>
   Hello, {$state.name || "anonymous"}!
 </h2>
-<div class="grow flex items-center justify-center relative">
+<div
+  class="grow flex items-center justify-center relative"
+  data-transition-delay="100"
+>
   <div
     class="absolute w-full h-full bg-steel-100 z-0"
     style="clip-path: polygon(6% 0, 37% 0, 95% 94%, 91% 100%, 65% 100%, 3% 4%); background: linear-gradient(162deg, var(--background) 0%, var(--background) 10%, var(--steel-100) 50%, var(--steel-100) 100%);"
@@ -86,8 +97,9 @@
         name: "email",
         inputAttrs: {
           placeholder: "example@domain.reg",
-          class: "w-80 " + inputclass,
-          wrapperclass: "mb-8",
+          class: "w-72 text-base md:w-72 " + inputclass,
+          wrapperclass: "mb-5",
+          labelclass: "text-base ",
           type: "email",
         },
         label: "Email:",
@@ -98,7 +110,8 @@
         name: "password",
         inputAttrs: {
           placeholder: "password",
-          class: "w-80 " + inputclass,
+          class: "w-72 text-base md:w-72 " + inputclass,
+          labelclass: "text-base ",
           type: "password",
         },
         label: "Password:",
@@ -132,6 +145,9 @@
     {/snippet}
   </Form>
 </div>
-<button class="absolute bottom-0 left-0 px-4 py-2 flex items-center text-lg"
+<button
+  data-transition-delay="100"
+  onclick={() => transitionpage("name")}
+  class="absolute bottom-0 left-0 px-4 py-2 flex items-center text-lg hover:underline active:no-underline text-text active:text-text-600"
   ><ion-icon name="arrow-back-outline" class="text-xl mr-1"></ion-icon>Go back</button
 >

@@ -1,14 +1,13 @@
 <script lang="ts">
   import { onMount, type Component } from "svelte";
-  import { state } from "./store";
+  import { changePage, state } from "./store";
   import "/shared/tailwindinit.css";
   import { request2AnimationFrames } from "/shared/helper";
 
   interface Props {
-    card: Component<{ onsuccess: Function }>;
-    onsuccess: Function;
+    card: Component<{ transitionpage: (page: string) => void }>;
   }
-  let { card, onsuccess }: Props = $props();
+  let { card }: Props = $props();
 
   const TRANSITION_DURATION = 500;
   let cardEl: HTMLElement;
@@ -34,7 +33,7 @@
     }
   });
 
-  function onSuccess() {
+  function onTransition(page: string) {
     let maxDelay = 0;
     for (const el of transEls) {
       const delay = Number.parseFloat(el.dataset.transitionDelay ?? "0");
@@ -45,7 +44,7 @@
       if (delay > maxDelay) maxDelay = delay;
     }
     setTimeout(
-      () => onsuccess(),
+      () => changePage(page, true),
       transEls.length > 0 ? maxDelay + TRANSITION_DURATION : 0,
     );
   }
@@ -60,8 +59,6 @@
     <h1 class="shrink text-center font-serif text-dark text-4xl">
       Registration
     </h1>
-    <!-- {@render card()} -->
-    <svelte:component this={card} onsuccess={onSuccess} />
-    <!-- {Math.random()} -->
+    <svelte:component this={card} transitionpage={onTransition} />
   </div>
 </div>

@@ -4,16 +4,16 @@
 
 @layer components {
   .base-text-input {
-    @apply border-2 border-rock-800 rounded-lg px-5 py-3 font-mono text-lg focus:outline-none focus:ring-rock-400 focus:ring-4 w-72 [&:has(+_.err)]:border-red-500 [&:has(+_.err)]:focus:ring-red-300 disabled:border-rock-500 [&:has(+_.pending)]:text-rock-500;
+    @apply border-2 border-rock-800 rounded-lg px-5 py-3 font-mono text-lg focus:outline-none focus:ring-rock-400 focus:ring-4 w-72 [&:has(+_.err)]:border-red-500 [&:has(+_.err)]:focus:ring-red-300 disabled:border-rock-500 [&:has(+_.pending)]:text-rock-500 max-w-full;
   }
   .base-text-input-status {
     @apply block cursor-text absolute bg-white -mt-[11px] mx-4 text-sm font-bold leading-tight text-balance px-1 box-content;
   }
   .base-text-input-outer {
-    @apply relative inline-block;
+    @apply relative inline-block max-w-full;
   }
   .base-text-input-wrapper {
-    @apply flex items-center;
+    @apply flex flex-col items-start lg:flex-row lg:items-center max-w-full;
   }
   .base-text-input-label {
     @apply inline-block mr-4 text-xl;

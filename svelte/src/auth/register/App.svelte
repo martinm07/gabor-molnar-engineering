@@ -49,7 +49,7 @@
 </script>
 
 {#if $state.page === "name"}
-  <Card card={UsernameCard} onsuccess={() => changePage("emailpass", true)} />
+  <Card card={UsernameCard} />
 {:else if $state.page === "emailpass"}
-  <Card card={EmailPasswordCard} onsuccess={() => changePage("name", true)} />
+  <Card card={EmailPasswordCard} />
 {/if}

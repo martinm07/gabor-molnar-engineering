@@ -48,15 +48,15 @@
   });
 
   interface Props {
-    onsuccess: Function;
+    transitionpage: (name: string) => void;
   }
-  let { onsuccess }: Props = $props();
+  let { transitionpage }: Props = $props();
 
   let form: IForm;
   function onSuccess() {
     // console.log("Hello world!", form.getValue("name"));
     $state.name = form.getValue("name");
-    onsuccess();
+    transitionpage("emailpass");
   }
 </script>
 
@@ -102,13 +102,13 @@
       ]}
       {statusCodeNameMsg}
       submitFunc={setName}
-      formclass="flex"
+      formclass="block sm:flex"
       onsuccess={onSuccess}
     >
       {#snippet submitBtn()}
         <button
           type="submit"
-          class="snap-press border-2 border-rock-800 bg-rock-400 ml-2 p-3 rounded relative flex items-center justify-end shadow-[inset_-7px_-7px] shadow-steel-200 group transition-[margin-right] hover:-mr-4 hover:bg-rock-500 hover:shadow-rock-500 active:mr-0 active:bg-rock-600 active:shadow-rock-600"
+          class="snap-press border-2 border-rock-800 bg-rock-400 p-3 rounded relative flex items-center justify-end shadow-[inset_-7px_-7px] shadow-steel-200 group transition-[margin-right] hover:-mr-4 hover:bg-rock-500 hover:shadow-rock-500 active:mr-0 active:bg-rock-600 active:shadow-rock-600 h-14 mt-3 ml-auto sm:ml-2 sm:mt-0"
         >
           <div
             class="h-1 w-6 bg-rock-800 rounded-xl group-hover:w-10 transition-[width] group-hover:bg-rock-950 group-active:w-6 group-active:bg-rock-950"

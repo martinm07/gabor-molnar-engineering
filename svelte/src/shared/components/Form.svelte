@@ -147,7 +147,7 @@
 <!-- svelte-ignore non_reactive_update -->
 <form
   method="POST"
-  class="relative {formclass}"
+  class="relative max-w-full {formclass}"
   novalidate
   onsubmit={preventDefault(onSubmit)}
   use:getSubmitBtnEl
