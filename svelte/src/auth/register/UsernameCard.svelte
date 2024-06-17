@@ -68,8 +68,10 @@
   let { transitionpage }: Props = $props();
 
   let form: IForm;
+  let leaving: boolean = $state(false);
   function onSuccess() {
     $state_.name = form.getValue("name");
+    leaving = true;
     transitionpage("emailpass");
   }
 </script>
@@ -88,7 +90,7 @@
 <h2 class="text-center shrink text-dark" data-transition-delay="0">
   Already have an account? <a
     class="text-blue-400 underline hover:no-underline"
-    href={urlRoot + "/login"}>Log in</a
+    href={urlRoot + "login"}>Log in</a
   >.
 </h2>
 <div
@@ -143,12 +145,12 @@
 <div class="text-center" data-transition-delay="500">
   <h2 class="text-2xl mb-3">Or, sign up with...</h2>
   <div>
-    {@render oauth("Google", "logo-google", "/register/oauth/google")}
-    {@render oauth("GitHub", "logo-github", "/register/oauth/github")}
-    {@render oauth("LinkedIn", "logo-linkedin", "/register/oauth/linkedin")}
+    {@render oauth("Google", "logo-google", "register/oauth/google")}
+    {@render oauth("GitHub", "logo-github", "register/oauth/github")}
+    {@render oauth("LinkedIn", "logo-linkedin", "register/oauth/linkedin")}
   </div>
 </div>
-{#if $state_.name}
+{#if $state_.name && !leaving}
   <button
     data-transition-delay="100"
     onclick={() => transitionpage("emailpass")}

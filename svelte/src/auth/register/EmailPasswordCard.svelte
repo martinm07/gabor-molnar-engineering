@@ -65,9 +65,11 @@
   let { transitionpage }: Props = $props();
 
   let form: IForm;
+  let leaving: boolean = $state(false);
   function onSuccess() {
     $state_.email = form.getValue("email");
     $state_.password = form.getValue("password");
+    leaving = true;
     // onsuccess();
     transitionpage("passconfirm");
   }
@@ -158,7 +160,7 @@
   class="absolute bottom-0 left-0 px-4 py-2 flex items-center text-lg hover:underline active:no-underline text-text active:text-text-600"
   ><ion-icon name="arrow-back-outline" class="text-xl mr-1"></ion-icon>Go back</button
 >
-{#if $state_.email}
+{#if $state_.email && !leaving}
   <button
     data-transition-delay="100"
     onclick={() => transitionpage("passconfirm")}
