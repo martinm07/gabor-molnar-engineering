@@ -1,6 +1,7 @@
 <script context="module" lang="ts">
   export interface IForm {
     getValue: (name: string) => string;
+    setValue: (name: string, value: any) => void;
   }
 </script>
 
@@ -141,6 +142,14 @@
         `Name not found. Expected one of ${inputs.map((inp) => "'" + inp.name + "'").join(", ")}. Got '${name}'`,
       );
     return inputBinds[i].getValue();
+  }
+  export function setValue(name: string, value: any) {
+    const i = inputs.findIndex((inp) => inp.name === name);
+    if (i === -1)
+      throw new Error(
+        `Name not found. Expected one of ${inputs.map((inp) => "'" + inp.name + "'").join(", ")}. Got '${name}'`,
+      );
+    return inputBinds[i].setValue(value);
   }
 </script>
 

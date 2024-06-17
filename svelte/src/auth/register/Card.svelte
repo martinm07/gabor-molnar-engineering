@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount, type Component } from "svelte";
-  import { changePage, state } from "./store";
+  import { changePage, state_ } from "./store";
   import "/shared/tailwindinit.css";
   import { request2AnimationFrames } from "/shared/helper";
 
@@ -18,7 +18,7 @@
         throw new Error(`Only HTML elements can be transitions. Got ${el}`);
       transEls.push(el);
     }
-    if ($state.doTransition) {
+    if ($state_.doTransition) {
       transEls.forEach((el) => (el.style.opacity = "0"));
       request2AnimationFrames(() => {
         for (const el of transEls) {
@@ -29,7 +29,7 @@
           el.style.opacity = "1";
         }
       });
-      $state.doTransition = false;
+      $state_.doTransition = false;
     }
   });
 

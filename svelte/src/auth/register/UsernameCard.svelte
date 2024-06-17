@@ -1,29 +1,30 @@
-<script lang="ts">
-  import Form, { type IForm } from "/shared/components/Form.svelte";
-  // import Card from "./Card.svelte";
-  import { statusCodeNameMsg } from "./App.svelte";
-  import { onMount } from "svelte";
-  import { fetch_, snapStylesOnActive } from "/shared/helper";
-  import { state } from "./store";
-  import "/shared/tailwindinit.css";
-  import type { ValidationResponse } from "/shared/types";
-
-  async function validateName(name: string): Promise<ValidationResponse> {
+<script context="module" lang="ts">
+  export async function validateName(
+    name: string,
+  ): Promise<ValidationResponse> {
     const name_ = name.trim();
     if (name_.length === 0) return { result: -1, code: "UNM" };
     if (name_.length < 3) return { result: -1, code: "UNS" };
     return { result: 1 };
   }
 
-  async function setName({
+  export async function setName({
     name,
   }: {
     name?: string;
   }): Promise<ValidationResponse> {
     if (typeof name === "undefined") return { result: -1, code: "UNM" };
+    if (name === get(state_).name) return { result: 1 };
 
     let resp;
     try {
+      if (!get(state_).name) {
+        await fetch_("/register/set_loginmode", {
+          method: "POST",
+          body: "password",
+          headers: { "Content-Type": "text/plain" },
+        });
+      }
       resp = await fetch_("/register/add_username", {
         method: "POST",
         body: name,
@@ -35,11 +36,25 @@
     const result: { result: boolean; code?: string } = await resp.json();
     return { result: result.result ? 1 : -1, code: result.code };
   }
+</script>
+
+<script lang="ts">
+  import Form, { type IForm } from "/shared/components/Form.svelte";
+  import { statusCodeNameMsg } from "./App.svelte";
+  import { onMount } from "svelte";
+  import { fetch_, snapStylesOnActive } from "/shared/helper";
+  import { state_ } from "./store";
+  import "/shared/tailwindinit.css";
+  import type { ValidationResponse } from "/shared/types";
+  import { get } from "svelte/store";
 
   const urlRoot = globalThis.jinjaParsed
     ? ""
     : import.meta.env.VITE_DEV_FLASK_SERVER;
 
+  $effect(() => {
+    form.setValue("name", $state_.name ?? "");
+  });
   onMount(() => {
     snapStylesOnActive(document.querySelector(".snap-press")!, [
       "margin-right",
@@ -54,8 +69,7 @@
 
   let form: IForm;
   function onSuccess() {
-    // console.log("Hello world!", form.getValue("name"));
-    $state.name = form.getValue("name");
+    $state_.name = form.getValue("name");
     transitionpage("emailpass");
   }
 </script>
@@ -134,3 +148,12 @@
     {@render oauth("LinkedIn", "logo-linkedin", "/register/oauth/linkedin")}
   </div>
 </div>
+{#if $state_.name}
+  <button
+    data-transition-delay="100"
+    onclick={() => transitionpage("emailpass")}
+    class="absolute bottom-0 right-0 px-4 py-2 flex items-center text-lg hover:underline active:no-underline text-text active:text-text-600"
+    >Go forward<ion-icon name="arrow-forward" class="text-xl ml-1"
+    ></ion-icon></button
+  >
+{/if}

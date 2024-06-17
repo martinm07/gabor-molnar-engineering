@@ -2,6 +2,7 @@
   export interface IInput {
     setValidState: (newValidState: ValidationResponse, doTada: boolean) => void;
     getValue: () => string;
+    setValue: (val: any) => void;
     setInputToValid: () => void;
     focus: () => void;
   }
@@ -57,6 +58,7 @@
 
   let value = $state("");
   export const getValue = () => value;
+  export const setValue = (val: any) => (value = val);
 
   let validState: ValidationResponse = $state({ result: -2 });
   let tadaDisabled: boolean = $state(false);

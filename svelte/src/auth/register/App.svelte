@@ -30,6 +30,10 @@
         return { input: "email", msg: "Email is already taken" };
       case "PWM":
         return { input: "password", msg: "Password is required" };
+      case "CPM":
+        return { input: "confirmpass", msg: "Password is required" };
+      case "PDM":
+        return { input: "confirmpass", msg: "Passwords don't match" };
       default:
         return { input: null, msg: code };
     }
@@ -43,13 +47,18 @@
   import Card from "./Card.svelte";
   import UsernameCard from "./UsernameCard.svelte";
   import EmailPasswordCard from "./EmailPasswordCard.svelte";
-  import { state, changePage } from "./store";
-  import { fetch_ } from "/shared/helper";
+  import { state_ } from "./store";
   import "/shared/tailwindinit.css";
+  import ConfirmPasswordCard from "./ConfirmPasswordCard.svelte";
+  import CongratsCard from "./CongratsCard.svelte";
 </script>
 
-{#if $state.page === "name"}
+{#if $state_.page === "name"}
   <Card card={UsernameCard} />
-{:else if $state.page === "emailpass"}
+{:else if $state_.page === "emailpass"}
   <Card card={EmailPasswordCard} />
+{:else if $state_.page === "passconfirm"}
+  <Card card={ConfirmPasswordCard} />
+{:else if $state_.page === "congrats"}
+  <Card card={CongratsCard} />
 {/if}

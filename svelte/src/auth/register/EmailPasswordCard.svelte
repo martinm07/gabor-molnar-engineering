@@ -26,7 +26,10 @@
     email?: string;
     password?: string;
   }): Promise<ValidationResponse> {
-    if (typeof email === "undefined") return { result: -1, code: "EMM" };
+    if (typeof email === "undefined" || typeof password === "undefined")
+      return { result: -1, code: "EMM" };
+    if (email === get(state_).email && password === get(state_).password)
+      return { result: 1 };
 
     let resp;
     try {
@@ -46,7 +49,7 @@
 </script>
 
 <script lang="ts">
-  import { state, changePage } from "./store";
+  import { state_, changePage } from "./store";
   import type { IForm } from "/shared/components/Form.svelte";
   import Form from "/shared/components/Form.svelte";
   import type { ValidationResponse } from "/shared/types";
@@ -54,6 +57,7 @@
   import { onMount } from "svelte";
   import { fetch_, snapStylesOnActive } from "/shared/helper";
   import "/shared/tailwindinit.css";
+  import { get } from "svelte/store";
 
   interface Props {
     transitionpage: (name: string) => void;
@@ -62,12 +66,15 @@
 
   let form: IForm;
   function onSuccess() {
-    $state.email = form.getValue("email");
-    $state.password = form.getValue("password");
+    $state_.email = form.getValue("email");
+    $state_.password = form.getValue("password");
     // onsuccess();
-    transitionpage("name");
+    transitionpage("passconfirm");
   }
 
+  $effect(() => {
+    form.setValue("email", $state_.email ?? "");
+  });
   onMount(() => {
     snapStylesOnActive(document.querySelector(".snap-press")!, [
       "margin-right",
@@ -80,7 +87,7 @@
   class="text-2xl ml-10 mt-6 text-steel-500 break-words"
   data-transition-delay="0"
 >
-  Hello, {$state.name || "anonymous"}!
+  Hello, {$state_.name || "anonymous"}!
 </h2>
 <div
   class="grow flex items-center justify-center relative"
@@ -151,3 +158,12 @@
   class="absolute bottom-0 left-0 px-4 py-2 flex items-center text-lg hover:underline active:no-underline text-text active:text-text-600"
   ><ion-icon name="arrow-back-outline" class="text-xl mr-1"></ion-icon>Go back</button
 >
+{#if $state_.email}
+  <button
+    data-transition-delay="100"
+    onclick={() => transitionpage("passconfirm")}
+    class="absolute bottom-0 right-0 px-4 py-2 flex items-center text-lg hover:underline active:no-underline text-text active:text-text-600"
+    >Go forward<ion-icon name="arrow-forward" class="text-xl ml-1"
+    ></ion-icon></button
+  >
+{/if}
