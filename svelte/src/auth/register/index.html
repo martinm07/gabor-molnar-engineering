@@ -8,14 +8,16 @@
   </head>
   <body>
     <div id="app"></div>
+    <input id="flask-server" type="hidden" value="%VITE_DEV_FLASK_SERVER%" />
     <script>
       globalThis.jinjaParsed = false;
-      // globalThis.urlRoot = import.meta.env.VITE_DEV_FLASK_SERVER;
+      globalThis.urlRoot = document.getElementById("flask-server").value;
       try {
         if (!Number.parseInt("{{ 1 }}"))
           throw new Error("Jinja wasn't parsed.");
         globalThis.jinjaParsed = true;
-        // globalThis.urlRoot = "";
+        globalThis.urlRoot =
+          "{{ url_for(request.endpoint).split('/')[0] + '/' }}";
 
         globalThis.csrfToken = "{{ csrf_token() }}";
       } catch {}

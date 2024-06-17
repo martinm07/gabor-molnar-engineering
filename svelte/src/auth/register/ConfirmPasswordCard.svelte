@@ -78,10 +78,27 @@
         inputAttrs: {
           type: "password",
           class: inputclass,
+          autocomplete: "new-password",
         },
         label: "Repeat Password:",
         validateFunc: validateConfirmPassword,
         statusclass: "bg-steel-100 -mt-[9px]",
+      },
+    ]}
+    hiddeninputs={[
+      {
+        type: "text",
+        class: "hidden",
+        name: "name",
+        value: get(state_).name,
+        autocomplete: "name",
+      },
+      {
+        type: "email",
+        class: "hidden",
+        name: "email",
+        value: get(state_).email,
+        autocomplete: "email",
       },
     ]}
     {statusCodeNameMsg}
@@ -99,6 +116,7 @@
   </Form>
 </div>
 <button
+  type="button"
   data-transition-delay="100"
   onclick={() => transitionpage("emailpass")}
   class="absolute bottom-0 left-0 px-4 py-2 flex items-center text-lg hover:underline active:no-underline text-text active:text-text-600"

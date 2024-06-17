@@ -110,6 +110,7 @@
           wrapperclass: "mb-5",
           labelclass: "text-base ",
           type: "email",
+          autocomplete: "email",
         },
         label: "Email:",
         validateFunc: validateEmail,
@@ -122,6 +123,7 @@
           class: "w-72 text-base md:w-72 " + inputclass,
           labelclass: "text-base ",
           type: "password",
+          autocomplete: "new-password",
         },
         label: "Password:",
         validateFunc: validatePassword,
@@ -131,6 +133,7 @@
     {statusCodeNameMsg}
     submitFunc={setEmailPassword}
     onsuccess={onSuccess}
+    resubmitValidated={false}
   >
     {#snippet submitBtn()}
       <div class="flex justify-center mt-8 h-14">
@@ -155,6 +158,7 @@
   </Form>
 </div>
 <button
+  type="button"
   data-transition-delay="100"
   onclick={() => transitionpage("name")}
   class="absolute bottom-0 left-0 px-4 py-2 flex items-center text-lg hover:underline active:no-underline text-text active:text-text-600"
@@ -162,6 +166,7 @@
 >
 {#if $state_.email && !leaving}
   <button
+    type="button"
     data-transition-delay="100"
     onclick={() => transitionpage("passconfirm")}
     class="absolute bottom-0 right-0 px-4 py-2 flex items-center text-lg hover:underline active:no-underline text-text active:text-text-600"

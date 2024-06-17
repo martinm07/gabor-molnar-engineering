@@ -53,12 +53,16 @@
   import CongratsCard from "./CongratsCard.svelte";
 </script>
 
-{#if $state_.page === "name"}
-  <Card card={UsernameCard} />
-{:else if $state_.page === "emailpass"}
-  <Card card={EmailPasswordCard} />
-{:else if $state_.page === "passconfirm"}
-  <Card card={ConfirmPasswordCard} />
+{#if $state_.page !== "congrats"}
+  <form method="POST" novalidate>
+    {#if $state_.page === "name"}
+      <Card card={UsernameCard} />
+    {:else if $state_.page === "emailpass"}
+      <Card card={EmailPasswordCard} />
+    {:else if $state_.page === "passconfirm"}
+      <Card card={ConfirmPasswordCard} />
+    {/if}
+  </form>
 {:else if $state_.page === "congrats"}
   <Card card={CongratsCard} />
 {/if}

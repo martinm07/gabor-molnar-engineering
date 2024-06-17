@@ -26,7 +26,6 @@ const STATIC_PATH = "static/";
 
 // IMP: Set the build's entry points here. The key names don't matter
 const entryPoints = {
-  testing: resolve(root, "testing/testing/index.html"),
   register: resolve(root, "auth/register/index.html"),
   home: resolve(root, "intro/home/index.html"),
   about: resolve(root, "intro/about/index.html"),
@@ -36,7 +35,7 @@ const entryPoints = {
 // IMP: Want to extend output.manualChunks? Do so here!
 const manualChunks: ManualChunksOption = (
   id,
-  { getModuleInfo, getModuleIds }
+  { getModuleInfo, getModuleIds },
 ) => {
   return;
 };
@@ -149,11 +148,11 @@ function getSectionSubpath(id: string, getModuleInfo: GetModuleInfo) {
 
 function getChunkName(
   id: string,
-  getModuleInfo: GetModuleInfo
+  getModuleInfo: GetModuleInfo,
 ): { hash: string | null; name_: string } | undefined {
   const { dependentEntryPoints, isDynamic } = findDependentEntryPoints(
     id,
-    getModuleInfo
+    getModuleInfo,
   );
 
   if (dependentEntryPoints.length === 0) return;
@@ -221,7 +220,7 @@ const mediaSections = new Map<string, { sec: string; subpath: string }>();
 
 const inMediaSections = (name?: string) => {
   return Array.from(mediaSections.entries()).find(([key, _]) =>
-    name?.includes(key)
+    name?.includes(key),
   );
 };
 const generateMediaFilePath = (name: string) => {
@@ -263,7 +262,7 @@ export default defineConfig({
           // If the hash for this exact file has already been computed (because resolveId works
           //  not on modules but the source code import statements this can happen) then return that.
           const precomputedId = [...mediaFiles].find(
-            (id) => removeFileHash(id) === resolution.id
+            (id) => removeFileHash(id) === resolution.id,
           );
           if (precomputedId) return precomputedId;
 
@@ -312,11 +311,11 @@ export default defineConfig({
             for (const id_ of getModuleIds()) {
               const id = Array.from(mediaSections.keys()).reduce(
                 (p, c) => p.replace(c, ""),
-                id_
+                id_,
               );
               manualChunksMap.set(
                 id,
-                manualChunks(id, { getModuleInfo, getModuleIds })
+                manualChunks(id, { getModuleInfo, getModuleIds }),
               );
             }
             firstManualChunksCall = false;
@@ -335,10 +334,10 @@ export default defineConfig({
             for (const id of idsGroup) {
               const { dependentEntryPoints } = findDependentEntryPoints(
                 id,
-                getModuleInfo
+                getModuleInfo,
               );
               dependentEntryPoints.forEach((entry) =>
-                allEntryPointsSet.add(entry)
+                allEntryPointsSet.add(entry),
               );
             }
             const dependentEntryPoints = [...allEntryPointsSet];
@@ -413,8 +412,8 @@ export default defineConfig({
               chunkInfo.moduleIds.flatMap(
                 (moduleId) =>
                   findDependentEntryPoints(moduleId, getModuleInfo)
-                    .dependentEntryPoints
-              )
+                    .dependentEntryPoints,
+              ),
             ) || "shared";
 
           // Redundant; expression above does everything
@@ -438,7 +437,7 @@ export default defineConfig({
             chunkInfo.moduleIds.some(
               (id) =>
                 resolve(id) ===
-                resolve(_dirname, "node_modules", "svelte/src/version.js")
+                resolve(_dirname, "node_modules", "svelte/src/version.js"),
             )
           )
             name = "svelte";

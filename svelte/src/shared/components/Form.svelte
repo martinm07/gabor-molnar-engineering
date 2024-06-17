@@ -11,7 +11,7 @@
   import type { IInput } from "./Input.svelte";
   import { type ValidationResponse } from "/shared/types";
   import { preventDefault, splitCodes } from "/shared/helper";
-  import type { Snippet } from "svelte";
+  import { onMount, type Snippet } from "svelte";
   import type { Action } from "svelte/action";
 
   interface InputAttrs extends HTMLInputAttributes {
@@ -28,19 +28,23 @@
       label?: string;
       statusclass?: string;
     }>;
+    hiddeninputs?: Array<HTMLInputAttributes>;
     statusCodeNameMsg: (code: string) => { input: string | null; msg: string };
     submitFunc: (values: Record<string, any>) => Promise<ValidationResponse>;
     submitBtn?: Snippet;
     onsuccess?: Function;
     formclass?: string;
+    resubmitValidated?: boolean;
   }
   let {
     inputs,
+    hiddeninputs = [],
     submitFunc,
     statusCodeNameMsg,
     submitBtn,
     onsuccess,
     formclass = "",
+    resubmitValidated = true,
   }: Props = $props();
 
   const allNames = inputs.map(({ name }) => name);
@@ -60,17 +64,18 @@
 
     // Clear errors and state
     genericError = null;
+    console.log(inputBinds);
     inputBinds.forEach((inp) =>
-      inp.setValidState({ result: 0, code: "" }, false),
+      inp?.setValidState({ result: 0, code: "" }, false),
     );
     // Start validation of all inputs
     const failedIds: number[] = [];
     const promises = inputs.map(({ validateFunc }, i) =>
       validateFunc(inputBinds[i].getValue()).then((state) => {
         if (state.result === -1) {
-          inputBinds[i].setValidState(state, true);
+          inputBinds[i]?.setValidState(state, true);
           failedIds.push(i);
-        } else inputBinds[i].setValidState({ result: -2 }, false);
+        } else inputBinds[i]?.setValidState({ result: -2 }, false);
       }),
     );
 
@@ -115,11 +120,12 @@
         if (onsuccess) onsuccess();
 
         // This is to make sure the browser believes the form was submitted correctly
-        setTimeout(() => {
-          inputBinds.forEach((inp) => inp && inp.setInputToValid());
-          ghostSubmit = true;
-          ghostBtn.click();
-        });
+        if (resubmitValidated)
+          setTimeout(() => {
+            inputBinds.forEach((inp) => inp && inp.setInputToValid());
+            ghostSubmit = true;
+            ghostBtn.click();
+          });
       }
     }
   }
@@ -151,16 +157,22 @@
       );
     return inputBinds[i].setValue(value);
   }
+
+  onMount(() => {
+    function submitev(e: SubmitEvent) {
+      e.preventDefault();
+      onSubmit(e);
+    }
+    document.addEventListener("submit", submitev);
+    return () => document.removeEventListener("submit", submitev);
+  });
 </script>
 
 <!-- svelte-ignore non_reactive_update -->
-<form
-  method="POST"
-  class="relative max-w-full {formclass}"
-  novalidate
-  onsubmit={preventDefault(onSubmit)}
-  use:getSubmitBtnEl
->
+<div class="relative max-w-full {formclass}" use:getSubmitBtnEl>
+  {#each hiddeninputs as props}
+    <input type="hidden" {...props} />
+  {/each}
   {#each inputs as input, i}
     <Input
       bind:this={inputBinds[i]}
@@ -188,4 +200,4 @@
       {genericError}
     </div>
   {/if}
-</form>
+</div>

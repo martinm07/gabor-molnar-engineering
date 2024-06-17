@@ -17,6 +17,11 @@ def testing():
     return render_template("testing/testing.html")
 
 
+@bp.route("/register")
+def register():
+    return render_template("auth/register.html")
+
+
 @bp.route("/get_session_state")
 @cors_enabled()
 def get_session_state():

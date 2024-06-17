@@ -48,10 +48,6 @@
   import type { ValidationResponse } from "/shared/types";
   import { get } from "svelte/store";
 
-  const urlRoot = globalThis.jinjaParsed
-    ? ""
-    : import.meta.env.VITE_DEV_FLASK_SERVER;
-
   $effect(() => {
     form.setValue("name", $state_.name ?? "");
   });
@@ -111,6 +107,7 @@
             placeholder: "your-username",
             class:
               "w-64 shadow-[inset_-7px_-7px_var(--steel-100)] focus:shadow-[inset_-7px_-7px_var(--steel-100),0_0_0_3px_var(--background),0_0_0_7px_var(--steel-200)] focus:ring-0 transition-shadow duration-100",
+            autocomplete: "name",
           },
           statusclass: "bg-steel-100 -mt-[9px]",
           validateFunc: validateName,
@@ -152,6 +149,7 @@
 </div>
 {#if $state_.name && !leaving}
   <button
+    type="button"
     data-transition-delay="100"
     onclick={() => transitionpage("emailpass")}
     class="absolute bottom-0 right-0 px-4 py-2 flex items-center text-lg hover:underline active:no-underline text-text active:text-text-600"
