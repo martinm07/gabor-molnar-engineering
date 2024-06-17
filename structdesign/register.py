@@ -12,12 +12,7 @@ from .models import User, UserLoginOption
 bp = Blueprint("register", __name__, url_prefix="/register")
 
 
-@bp.route("/testing")
-def testing():
-    return render_template("testing/testing.html")
-
-
-@bp.route("/register")
+@bp.route("/")
 def register():
     return render_template("auth/register.html")
 

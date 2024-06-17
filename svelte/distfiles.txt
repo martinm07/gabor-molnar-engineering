@@ -4,7 +4,7 @@ intro\home\index.html
 intro\privacy\index.html
 static\auth\css\register-Bpd_iD4P.css
 static\auth\img\handwritten-congrats-removebg-preview-7KSe5BLc.png
-static\auth\js\register-DVT5wKU_.js
+static\auth\js\register-Ddkl1exQ.js
 static\auth\ttf\IndieFlower-Regular-BeflUZG4.ttf
 static\intro\css\about-_2x5ZmdI.css
 static\intro\css\home-B3yVXxX1.css

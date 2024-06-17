@@ -15,7 +15,6 @@ const queryPage = new URLSearchParams(window.location.search).get("page");
 const startPage = queryPage && pages.includes(queryPage) ? queryPage : pages[0];
 
 export function correctPage(page: string) {
-  return "congrats";
   const pI = pages.findIndex((p) => p === page);
   const maxI = !get(state_).name ? 0 : !get(state_).email ? 1 : 2;
   const newPage = pages[Math.min(pI, maxI)];
