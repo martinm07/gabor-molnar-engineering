@@ -3,7 +3,7 @@
   import { onMount } from "svelte";
   import "./style.css";
   import { get } from "svelte/store";
-  import welcome from "./handwritten-congrats-removebg-preview.png";
+  import welcome from "./WelcomeSign.png";
   import handwrittenfont from "./IndieFlower-Regular.ttf";
   interface Props {
     transitionpage: (name: string) => void;
@@ -23,7 +23,7 @@
 
       const username = get(state_).name || "anonymous";
       const FONT = "32px 'Font name'";
-      const ANGLE = (-8 * Math.PI) / 180;
+      const ANGLE = (-6 * Math.PI) / 180;
 
       ctx.font = FONT;
 
@@ -47,7 +47,7 @@
 
 <div class="grow flex flex-col justify-center" data-transition-delay="500">
   <img class="h-fit" alt="Congratulations!" src={welcome} />
-  <canvas id="name" class="-translate-y-1/2">{$state_.name}</canvas>
+  <canvas id="name" class="">{$state_.name}</canvas>
 </div>
 <div class="mb-5 px-5 text-text" data-transition-delay="1500">
   We have sent an email to your address. Open it within a week and click the
