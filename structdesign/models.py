@@ -1,9 +1,13 @@
 import datetime
 
-from sqlalchemy import ForeignKey, String, func
+from sqlalchemy import ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .extensions import db
+
+###################################################
+##                      USER                     ##
+###################################################
 
 
 class User(db.Model):
@@ -46,3 +50,21 @@ class UserSecret(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id = mapped_column(ForeignKey("users.id"))
     user: Mapped["User"] = relationship(back_populates="secret", single_parent=True)
+
+
+###################################################
+##                      BLOG                     ##
+###################################################
+
+
+class GuidanceDocument(db.Model):
+    __tablename__ = "blogs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    date_created: Mapped[datetime.date] = mapped_column(default=func.current_date())
+    date_updated: Mapped[datetime.date] = mapped_column(default=func.current_date())
+    title: Mapped[str] = mapped_column(String(256))
+    description: Mapped[str] = mapped_column(String(1024))
+    body: Mapped[str] = mapped_column(Text())
+    accent: Mapped[str] = mapped_column(String(11))
+    thumbnail: Mapped[str] = mapped_column(String(4096))
