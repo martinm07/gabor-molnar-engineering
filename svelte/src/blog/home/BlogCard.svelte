@@ -6,8 +6,10 @@
     description: string;
     color?: string;
     svgPath?: string;
-    clientHeight: number;
+    clientHeight?: number;
     style?: string;
+    room?: number;
+    randomBump?: boolean;
   }
 
   let {
@@ -15,21 +17,54 @@
     description,
     color = "235 69 17",
     svgPath = "",
-    clientHeight = $bindable(),
+    clientHeight = $bindable(0),
     style,
+    randomBump = true,
+    room,
   }: Props = $props();
 
-  console.log(color);
-  let ALPHA = $state(0.2);
+  const PUSH_UP = 16;
+  const PUSH_DOWN = 32;
+  const SIDE_HALFWIDTH = 16;
+  const TOP_HEIGHT = 16;
+  let ALPHA = 0.2;
+
   let fadedColor = $derived.by(() => {
     const color_ = color.split(" ").map((str) => Number.parseInt(str));
     return color_.map((c) => ALPHA * c + (1 - ALPHA) * 255).join(" ");
+  });
+
+  const cardWidth = randomBump
+    ? Math.round(380 + Math.random() * 40)
+    : undefined;
+  let cardBumpY: number | null = $state(null);
+
+  let bumpedY: boolean = $state(false);
+  // Set a random y translation once, after we know how much `room` there is
+  $effect(() => {
+    if (!randomBump || !room || bumpedY) return;
+    cardBumpY = Math.round(
+      Math.random() * Math.max(0, room - TOP_HEIGHT - clientHeight),
+    );
+    bumpedY = true;
   });
 </script>
 
 <div
   bind:clientHeight
-  style="--accent: {color}; --accent-light: {fadedColor}; {style}"
+  style="
+  --border-color: var(--rock-500);
+  --push-up: {PUSH_UP}px;
+  --push-down: {PUSH_DOWN}px;
+  --side-halfwidth: {SIDE_HALFWIDTH}px;
+  --top-height: {TOP_HEIGHT}px;
+  
+  --accent: {color}; 
+  --accent-light: {fadedColor}; 
+
+  max-width: {cardWidth}px; 
+  transform: translateY({cardBumpY}px); 
+  {style}"
   class="h-fit card-root max-w-96 relative flex items-center mt-[var(--top-height)] has-[a:hover]:-mt-[calc(var(--push-up)_-_var(--top-height))] transition-all"
 >
   <a

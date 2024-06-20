@@ -1,0 +1,25 @@
+@keyframes slideacross {
+  from {
+    transform: translate(-50%, -100%) rotate(-45deg)
+      translate(0, calc(-1 * var(--crossLen) - 55px));
+  }
+  to {
+    transform: translate(-50%, 0%) rotate(-45deg)
+      translate(0, calc(var(--crossLen) + 55px));
+  }
+}
+
+@keyframes delay-animation {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  50.01% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
