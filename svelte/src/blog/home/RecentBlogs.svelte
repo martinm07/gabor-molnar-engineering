@@ -18,15 +18,18 @@
   const blogCards: Card[] = $state([]);
   addCardsFetch = addCards(blogCards, PAGE_SIZE);
 
-  function showMore() {
+  function showMore(pushState = true) {
     showingAll = true;
-    history.pushState({ showingAll: true }, "", "/documents/all");
+    finishedAllBlogs = false;
+    bottomObserver.resume();
+    if (pushState)
+      history.pushState({ showingAll: true }, "", "/documents/all");
     addCardsFetch = addCards(blogCards, PAGE_SIZE);
   }
 
   let intersectionEl: HTMLElement | undefined = $state();
   let isAtBottom: boolean = $state(false);
-  const bottomOvserver = useIntersectionObserver(
+  const bottomObserver = useIntersectionObserver(
     () => intersectionEl,
     (entries) => {
       const entry = entries[0];
@@ -45,16 +48,17 @@
           const numAfter = blogCards.length;
           if (numAfter < numBefore + PAGE_SIZE) {
             finishedAllBlogs = true;
-            bottomOvserver.stop();
+            bottomObserver.pause();
           }
         });
     },
   );
 
-  history.replaceState({ showingAll: false }, "", document.location.href);
+  history.replaceState({ showingAll }, "", document.location.href);
   window.addEventListener("popstate", (e) => {
-    if (e.state?.showingAll) showingAll = true;
-    else {
+    if (e.state?.showingAll) {
+      showMore(false);
+    } else {
       showingAll = false;
       blogCards.splice(PAGE_SIZE);
     }

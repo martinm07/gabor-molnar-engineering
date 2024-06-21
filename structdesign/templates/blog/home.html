@@ -1,59 +1,41 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" href="{{ url_for('static', filename='/favicon.ico') }}" />
+    <link rel="icon" type="image/svg+xml" href="/cog1-svgrepo-com.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Guidance Documents | Gabor Molnar Engineering</title>
-    <link rel="stylesheet" href="https://use.typekit.net/xuc1dva.css" />
-    <style>
-      html,
-      body {
-        margin: 0;
-        font-family: liberation-sans, sans-serif;
-      }
-    </style>
-    <script type="module" crossorigin src="{{ url_for('static', filename='blog/js/home-0f9456b1.js') }}"></script>
-    <link rel="modulepreload" href="{{ url_for('static', filename='shared/js/Footer-d6965b97.js') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='shared/css/Footer-2b543d48.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='blog/css/home-bf672ca4.css') }}">
+    <script type="module" crossorigin src="/static/blog/js/home-DwtiOZJ6.js"></script>
+    <link rel="modulepreload" crossorigin href="/static/shared/js/svelte-Dn3LxMab.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/index-client-ye65gFmA.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/helper-BdH2pwvn.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/attributes-DIkj7TX0.js">
+    <link rel="stylesheet" crossorigin href="/static/shared/css/tailwindinit-DT_wI7HH.css">
+    <link rel="stylesheet" crossorigin href="/static/blog/css/home-LS8Ft8Z9.css">
   </head>
-
   <body>
-    <div id="app"></div>
-    <script type="text/javascript">
-      "use strict";
-      const routes = ["home.home", "home.gallery"];
+    <div id="app" style="position: relative"></div>
+    <input id="flask-server" type="hidden" value="http://127.0.0.1:5000/" />
+    <script>
+      globalThis.jinjaParsed = false;
+      globalThis.urlRoot = document.getElementById("flask-server").value;
       try {
-        globalThis.jinjaParsed = false;
         if (!Number.parseInt("{{ 1 }}"))
           throw new Error("Jinja wasn't parsed.");
         globalThis.jinjaParsed = true;
+        globalThis.urlRoot =
+          "{{ url_for(request.endpoint).split('/')[0] + '/' }}";
 
-        globalThis.csrf_token = "{{ csrf_token() }}";
-        globalThis.urlRoot = "{{ request.url_root }}";
-        globalThis.loggedIn = JSON.parse("{{ bool(user)|tojson }}");
-        // globalThis.urlRoutes["home.home"] --> {{ url_for('home.home') }}
-        globalThis.urlRoutes = JSON.parse(`{
-          {%- for route in ["home.home", "home.gallery"] %}
-            "{{ route }}": "{{ url_for(route) }}"{% if not loop.last %},{% endif %}
-          {%- endfor %}
-        }`);
-      } catch (err) {
-        globalThis.loggedIn = false;
-        globalThis.urlRoutes = {};
-        routes.forEach((route) => (globalThis.urlRoutes[route] = "#/"));
-        console.log(err);
-      }
+        globalThis.csrfToken = "{{ csrf_token() }}";
+      } catch {}
     </script>
     <script
       type="module"
-      src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"
+      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"
     ></script>
     <script
       nomodule
-      src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"
-    ></script>
-    
+      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"
+    ></script>
   </body>
 </html>

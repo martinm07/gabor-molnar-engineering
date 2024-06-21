@@ -14,6 +14,7 @@ bp = Blueprint("blog", __name__, url_prefix="/documents")
 
 
 @bp.route("/")
+@bp.route("/all")
 def guidance_documents():
     return render_template("blog/home.html", user=None, bool=bool)
 

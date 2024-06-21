@@ -12,7 +12,7 @@
   type DictList = { [key: string]: any }[];
 
   let tags: DictList = $state([]);
-  const tagsFetch = fetch_("documents/get_tagnames")
+  const tagsFetch = fetch_("/documents/get_tagnames")
     .then((resp) => {
       return resp.json();
     })
@@ -31,7 +31,7 @@
       ["name", $state.snapshot(tags)[activeTag].name],
       ["l", PAGE_SIZE],
     ]);
-    tagblogsFetch = fetch_(`documents/get_blogs_tag?${params.toString()}`)
+    tagblogsFetch = fetch_(`/documents/get_blogs_tag?${params.toString()}`)
       .then((resp) => resp.json())
       .then((data) => {
         const cardData = data.map(
