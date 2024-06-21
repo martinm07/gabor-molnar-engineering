@@ -30,13 +30,17 @@
 
   const PAGE_SIZE = 6;
   setContext("PAGE_SIZE", PAGE_SIZE);
+
+  let showingAll: boolean = $state(false);
 </script>
 
 <h1 class="text-center text-5xl text-stone-600 font-bold font-serif py-14">
   Guidance Documents
 </h1>
-<RecentBlogs />
-<TagBlogs />
+<RecentBlogs bind:showingAll />
+{#if !showingAll}
+  <TagBlogs />
+{/if}
 
 <style>
   :global(body) {

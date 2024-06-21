@@ -53,7 +53,12 @@ def get_latest():
 @cors_enabled(methods=["GET"])
 def get_tagnames():
     tags = db.session.scalars(select(DocumentTag)).all()
-    return jsonify([{"name": tag.name, "description": tag.description} for tag in tags])
+    return jsonify(
+        [
+            {"name": tag.name, "description": tag.description, "color": tag.accent}
+            for tag in tags
+        ]
+    )
 
 
 @bp.route("/get_blogs_tag")

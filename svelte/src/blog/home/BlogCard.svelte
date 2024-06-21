@@ -1,3 +1,9 @@
+<script context="module" lang="ts">
+  export interface IBlogCard {
+    recalculateBumps(): void;
+  }
+</script>
+
 <script lang="ts">
   import "/shared/tailwindinit.css";
 
@@ -6,9 +12,10 @@
     description: string;
     color?: string;
     svgPath?: string;
+    clientWidth?: number;
     clientHeight?: number;
     style?: string;
-    room?: number;
+    room?: [x: number, y: number];
     randomBump?: boolean;
   }
 
@@ -17,6 +24,7 @@
     description,
     color = "235 69 17",
     svgPath = "",
+    clientWidth = $bindable(0),
     clientHeight = $bindable(0),
     style,
     randomBump = true,
@@ -37,20 +45,39 @@
   const cardWidth = randomBump
     ? Math.round(380 + Math.random() * 40)
     : undefined;
+  let cardBumpX: number | null = $state(null);
   let cardBumpY: number | null = $state(null);
+
+  let bumpedX: boolean = $state(false);
+  // Set a random x translation once, after we know how much `room` there is
+  $effect(() => {
+    if (!randomBump || !room?.[0] || bumpedX) return;
+    // Since the cards are centered laterally, we take a positive or negative of half the value
+    cardBumpX = Math.round(
+      ((2 * Math.random() - 1) * Math.max(0, room[0] - clientWidth)) / 2,
+    );
+    bumpedX = true;
+  });
 
   let bumpedY: boolean = $state(false);
   // Set a random y translation once, after we know how much `room` there is
   $effect(() => {
-    if (!randomBump || !room || bumpedY) return;
+    if (!randomBump || !room?.[1] || bumpedY) return;
     cardBumpY = Math.round(
-      Math.random() * Math.max(0, room - TOP_HEIGHT - clientHeight),
+      // The TOP_HEIGHT is part of the margin of the card and not counted in clientHeight
+      Math.random() * Math.max(0, room[1] - TOP_HEIGHT - clientHeight),
     );
     bumpedY = true;
   });
+
+  export function recalculateBumps() {
+    bumpedX = false;
+    bumpedY = false;
+  }
 </script>
 
 <div
+  bind:clientWidth
   bind:clientHeight
   style="
   --border-color: var(--rock-500);
@@ -63,7 +90,7 @@
   --accent-light: {fadedColor}; 
 
   max-width: {cardWidth}px; 
-  transform: translateY({cardBumpY}px); 
+  transform: translate({cardBumpX}px, {cardBumpY}px); 
   {style}"
   class="h-fit card-root max-w-96 relative flex items-center mt-[var(--top-height)] has-[a:hover]:-mt-[calc(var(--push-up)_-_var(--top-height))] transition-all"
 >
@@ -116,13 +143,3 @@
     class="absolute z-30 w-0.5 bg-[--border-color] h-[--push-down] right-[calc(2_*_var(--side-halfwidth))] top-0 translate-x-full"
   ></div>
 </div>
-
-<style>
-  .card-root {
-    --border-color: var(--rock-500);
-    --push-up: 1rem;
-    --push-down: 2rem;
-    --side-halfwidth: 1rem;
-    --top-height: 1rem;
-  }
-</style>

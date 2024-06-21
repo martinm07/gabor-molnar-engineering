@@ -9,9 +9,13 @@
   import "/shared/tailwindinit.css";
   const PAGE_SIZE: number = getContext("PAGE_SIZE");
 
+  interface Props {
+    showingAll?: boolean;
+  }
+  let { showingAll = $bindable(false) }: Props = $props();
+
   let addCardsFetch: Promise<any> = $state(Promise.resolve());
   const blogCards: Card[] = $state([]);
-  let showingAll: boolean = $state(false);
   addCardsFetch = addCards(blogCards, PAGE_SIZE);
 
   function showMore() {
@@ -57,6 +61,9 @@
   });
 </script>
 
+<h1 class="text-3xl text-stone-600 font-sans p-8 pt-14 font-bold">
+  Latest Guidance Documents
+</h1>
 <BlogsList cards={blogCards} />
 {#if !showingAll}
   <div class="py-10 text-center">
@@ -90,3 +97,6 @@
     again later.
   </div>
 {/await}
+{#if showingAll}
+  <div class="h-14"></div>
+{/if}
