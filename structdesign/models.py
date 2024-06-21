@@ -1,6 +1,9 @@
-import datetime
+from __future__ import annotations
 
-from sqlalchemy import ForeignKey, String, Text, func
+import datetime
+from typing import List
+
+from sqlalchemy import Column, ForeignKey, String, Table, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .extensions import db
@@ -56,6 +59,13 @@ class UserSecret(db.Model):
 ##                      BLOG                     ##
 ###################################################
 
+document_tag_association_table = Table(
+    "document_tag_association_table",
+    db.Model.metadata,
+    Column("blog_id", ForeignKey("blogs.id")),
+    Column("tag_id", ForeignKey("blogtags.id")),
+)
+
 
 class GuidanceDocument(db.Model):
     __tablename__ = "blogs"
@@ -68,3 +78,19 @@ class GuidanceDocument(db.Model):
     body: Mapped[str] = mapped_column(Text())
     accent: Mapped[str] = mapped_column(String(11))
     thumbnail: Mapped[str] = mapped_column(String(4096))
+    tags: Mapped[List["DocumentTag"]] = relationship(
+        secondary=document_tag_association_table, back_populates="documents"
+    )
+
+
+class DocumentTag(db.Model):
+    __tablename__ = "blogtags"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(32), unique=True)
+    description: Mapped[str] = mapped_column(String(1024))
+    accent: Mapped[str] = mapped_column(String(11), nullable=True)
+
+    documents: Mapped[List["GuidanceDocument"]] = relationship(
+        secondary=document_tag_association_table, back_populates="tags"
+    )

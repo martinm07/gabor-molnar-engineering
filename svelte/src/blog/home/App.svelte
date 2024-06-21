@@ -26,6 +26,7 @@
   import type { Card } from "./BlogsList.svelte";
   import "/shared/tailwindinit.css";
   import RecentBlogs from "./RecentBlogs.svelte";
+  import TagBlogs from "./TagBlogs.svelte";
 
   const PAGE_SIZE = 6;
   setContext("PAGE_SIZE", PAGE_SIZE);
@@ -35,6 +36,7 @@
   Guidance Documents
 </h1>
 <RecentBlogs />
+<TagBlogs />
 
 <style>
   :global(body) {
