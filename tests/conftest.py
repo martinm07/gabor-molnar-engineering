@@ -1,8 +1,13 @@
 import os
+import time
+from pathlib import Path
 
+import docker
 import mysql.connector
 import pytest
+import requests
 import sqlalchemy as sa
+import typesense
 from dotenv import load_dotenv
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
@@ -83,6 +88,75 @@ def enable_transactional_tests(database: SQLAlchemy):
     database.session.close()
     transaction.rollback()
     connection.close()
+
+
+@pytest.fixture(scope="session")
+def typesense_client():
+    client = docker.from_env()
+
+    project_root = Path(__file__).parent
+    instance_folder = os.path.join(project_root, "instance")
+
+    container = next(
+        (
+            container
+            for container in client.containers.list(all=True)
+            if container.name == "typesense_tes_gab_mol_eng"
+        ),
+        None,
+    )
+
+    if not container:
+        container = client.containers.run(
+            "typesense/typesense:26.0",
+            name="typesense_tes_gab_mol_eng",
+            detach=True,
+            ports={"8109/tcp": 8109},
+            volumes=[f"{os.path.join(instance_folder, "typesense-data")}:/data"],
+            command=[
+                "--data-dir",
+                "/data",
+                "--api-key",
+                "testing",
+                "--api-port",
+                "8109",
+                "--enable-cors",
+            ],
+        )
+    else:
+        if not container.status == "running":
+            container.start()
+
+    typesense_client = typesense.Client(
+        {
+            "nodes": [
+                {
+                    "host": "localhost",
+                    "port": "8109",
+                    "protocol": "http",
+                }
+            ],
+            "api_key": "testing",
+            "connection_timeout_seconds": 2,
+        }
+    )
+
+    timeout = 30
+    sleep_time = 0.5
+    elapsed_time = 0
+    while True:
+        try:
+            resp = requests.get("http://localhost:8109/health").json()
+            if resp.get("ok") or elapsed_time > timeout:
+                break
+        except requests.exceptions.ConnectionError:
+            pass
+        time.sleep(sleep_time)
+        elapsed_time += sleep_time
+
+    yield typesense_client
+
+    # container.kill("SIGINT")
 
 
 @pytest.fixture(scope="session")

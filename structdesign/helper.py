@@ -1,3 +1,4 @@
+import datetime
 import functools
 import os
 import smtplib
@@ -420,3 +421,12 @@ def send_email_info(email_filename, address, **kwargs):
         server.login(sender_email, "PaledzygavimaiGrafologijos")
         server.sendmail(sender_email, address, message.as_string())
     return
+
+
+def collection_exists(client, collection_name: str):
+    return collection_name in [
+        schema["name"] for schema in client.collections.retrieve()
+    ]
+
+def get_unix_timestamp(d: datetime.date):
+    return int(datetime.datetime(d.year, d.month, d.day).timestamp())

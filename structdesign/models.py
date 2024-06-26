@@ -94,3 +94,16 @@ class DocumentTag(db.Model):
     documents: Mapped[List["GuidanceDocument"]] = relationship(
         secondary=document_tag_association_table, back_populates="tags"
     )
+
+
+documents_schema = {
+    "name": "documents",
+    "fields": [
+        {"name": "title", "type": "string"},
+        {"name": "description", "type": "string"},
+        {"name": "body", "type": "string", "stem": True},
+        {"name": "date_created", "type": "int64"},
+        {"name": "tags", "type": "string[]", "facet": True},
+        {"name": "doc_id", "type": "int64", "index": False},
+    ],
+}
