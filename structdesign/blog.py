@@ -113,9 +113,9 @@ def get_blogs_tag():
     )
 
 
-@bp.route("/search")
+@bp.route("/query")
 @cors_enabled(methods=["GET"])
-def search():
+def query():
     query = request.args.get("q", "*")
     sort_by = request.args.get("sort", "relevance")
     sort_descending = request.args.get("desc", True)
@@ -145,18 +145,19 @@ def create_documents_jsonl():
         }
         for row in rows
     ]
-    with open("documentdata.jsonl", "w+") as f:
+    with open("instance/documentdata.jsonl", "w+") as f:
         f.write("\n".join([json.dumps(row) for row in data]))
 
 
 @bp.cli.command("populate_typesense")
 def populate_typesense():
-    if not collection_exists(typesense_client, "documents"):
-        typesense_client.collections.create(documents_schema)
+    if collection_exists(typesense_client, "documents"):
+        typesense_client.collections["documents"].delete()
+    typesense_client.collections.create(documents_schema)
 
-    with open("documentdata.jsonl", "r") as jsonl_file:
+    with open("instance/documentdata.jsonl", "r") as jsonl_file:
         typesense_client.collections["documents"].documents.import_(
-            jsonl_file.read().encode("utf-8"), {"action": "emplace"}
+            jsonl_file.read().encode("utf-8"), {"action": "create"}
         )
 
 

@@ -145,9 +145,9 @@ def test_get_blogs_tag(client: FlaskClient):
     assert [f"title{i}" for i in range(1, 5)] == [doc["title"] for doc in resp]
 
 
-def test_search(client: FlaskClient, typesense_client, mocker):
+def test_query(client: FlaskClient, typesense_client, mocker):
     def get(**kwargs):
-        return client.get("/documents/search", query_string=kwargs).json
+        return client.get("/documents/query", query_string=kwargs).json
 
     # This is necessary of all tests for all collections they interact with,
     #  in order to maintain test atomicity.

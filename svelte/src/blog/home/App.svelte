@@ -25,6 +25,7 @@
   import { fetch_ } from "/shared/helper";
   import type { Card } from "./BlogsList.svelte";
   import "/shared/tailwindinit.css";
+  import SearchBar from "../search/SearchBar.svelte";
   import RecentBlogs from "./RecentBlogs.svelte";
   import TagBlogs from "./TagBlogs.svelte";
 
@@ -37,9 +38,12 @@
   // if (window.location.pathname.startsWith("/documents/all")) showingAll = true;
 </script>
 
-<h1 class="text-center text-5xl text-stone-600 font-bold font-serif py-14">
+<h1
+  class="text-center text-5xl text-stone-600 font-bold font-serif pb-14 pt-28"
+>
   Guidance Documents
 </h1>
+<SearchBar />
 <RecentBlogs bind:showingAll />
 {#if !showingAll}
   <TagBlogs />
