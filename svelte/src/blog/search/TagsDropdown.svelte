@@ -1,6 +1,6 @@
 <script lang="ts">
   import { flip } from "svelte/animate";
-  import { send, receive } from "./transition";
+  import { crossfade } from "svelte/transition";
   import Dropdown, { type IDropdown } from "./Dropdown.svelte";
   import { fadeColor, darkenColor, fetch_ } from "/shared/helper";
   import { getContext, type Snippet } from "svelte";
@@ -13,35 +13,9 @@
   let tagDropdown: IDropdown;
   const divider: Snippet = getContext("divider");
 
-  let tagsContainer: HTMLElement;
-  function fixBreaks() {
-    console.log("HEllo?", tagsContainer.children);
-    let prevTop: number = 0;
-    for (let i = 0; i < tagsContainer.childElementCount; i++) {
-      const child = <HTMLElement>tagsContainer.children[i];
-      // child.classList.contains("item");
-      if (
-        child.classList.contains("item") &&
-        child.offsetTop > prevTop &&
-        i !== 0
-      ) {
-        console.log(`Inserting br after child ${i}, ${child}`);
-        child.insertAdjacentElement(
-          "beforebegin",
-          document.createElement("br"),
-        );
-      }
-      prevTop = child.offsetTop;
-    }
-  }
-
-  function removeBreaks() {
-    // document.delet
-    for (let i = 0; i < tagsContainer.childElementCount; i++) {
-      const child = <HTMLElement>tagsContainer.children[i];
-      if (child.nodeName === "BR") child.remove();
-    }
-  }
+  export const [send, receive] = crossfade({
+    duration: (d) => Math.sqrt(d * 200),
+  });
 
   type Dict = { [key: string]: any };
   function reset() {
@@ -63,7 +37,7 @@
 <Dropdown label="Filter by Tag" bind:this={tagDropdown}>
   {#snippet content()}
     {@render divider()}
-    <div class="py-3 bg-rock-100 text-center" bind:this={tagsContainer}>
+    <div class="py-3 bg-rock-100 text-center">
       {#if tags.find((tag) => tag.selected)}
         <div class="text-right px-4 -mt-2">
           <button

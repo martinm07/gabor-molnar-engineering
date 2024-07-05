@@ -34,20 +34,20 @@
   );
 
   let finishedAllBlogs: boolean = $state(false);
-  // watch(
-  //   () => isAtBottom,
-  //   (atBottom) => {
-  //     const numBefore = blogCards.length;
-  //     if (!finishedAllBlogs && atBottom)
-  //       addCardsFetch = addCards(blogCards, PAGE_SIZE).then(() => {
-  //         const numAfter = blogCards.length;
-  //         if (numAfter < numBefore + PAGE_SIZE) {
-  //           finishedAllBlogs = true;
-  //           bottomOvserver.stop();
-  //         }
-  //       });
-  //   },
-  // );
+  watch(
+    () => isAtBottom,
+    (atBottom) => {
+      const numBefore = blogCards.length;
+      if (!finishedAllBlogs && atBottom)
+        addCardsFetch = addCards(blogCards, PAGE_SIZE).then(() => {
+          const numAfter = blogCards.length;
+          if (numAfter < numBefore + PAGE_SIZE) {
+            finishedAllBlogs = true;
+            bottomOvserver.stop();
+          }
+        });
+    },
+  );
 </script>
 
 <BlogsList cards={blogCards} />

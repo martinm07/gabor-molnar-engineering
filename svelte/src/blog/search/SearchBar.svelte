@@ -30,7 +30,7 @@
   });
   onDestroy(offScroll);
 
-  let value = $state("definitely real");
+  let value = $state("");
   let results: TypesenseResults | undefined = $state();
   let searchEmpty = $state(true);
   let searchHidden = $state(false);

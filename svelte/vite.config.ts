@@ -28,9 +28,7 @@ const STATIC_PATH = "static/";
 const entryPoints = {
   register: resolve(root, "auth/register/index.html"),
   bloghome: resolve(root, "blog/home/index.html"),
-  home: resolve(root, "intro/home/index.html"),
-  about: resolve(root, "intro/about/index.html"),
-  privacy: resolve(root, "intro/privacy/index.html"),
+  blogsearch: resolve(root, "blog/search/index.html"),
 };
 
 // IMP: Want to extend output.manualChunks? Do so here!
