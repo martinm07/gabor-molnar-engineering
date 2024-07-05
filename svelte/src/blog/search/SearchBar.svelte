@@ -2,7 +2,9 @@
   import { onDestroy } from "svelte";
   import { on } from "svelte/events";
   import { fetch_, preventDefault } from "/shared/helper";
+  import type { TypesenseResults } from "/shared/types";
   import { watch } from "runed";
+  import SearchCard from "./SearchCard.svelte";
 
   let bgEl: HTMLElement;
 
@@ -29,23 +31,7 @@
   onDestroy(offScroll);
 
   let value = $state("definitely real");
-  interface Results {
-    search_time_ms: number;
-    found: number;
-    out_of: number;
-    hits: Array<{
-      document: { [key: string]: any };
-      highlight: {
-        [key: string]: any;
-      };
-      highlights: Array<{
-        field: string;
-        matched_tokens: string[];
-        snippet: string;
-      }>;
-    }>;
-  }
-  let results: Results | undefined = $state();
+  let results: TypesenseResults | undefined = $state();
   let searchEmpty = $state(true);
   let searchHidden = $state(false);
   watch(
@@ -87,18 +73,6 @@
       searchHidden = true;
     }
   }
-
-  function snipText(text: string, cutoff: number = 30) {
-    if (text.split(" ").length <= cutoff) return text;
-    return text.slice(0, cutoff).trimEnd() + " [...]";
-  }
-  function processSnippet(snippet: string, fullField: string) {
-    // console.log(snippet, fullField);
-    if (!snippet) return snippet;
-    const snippetRaw = snippet.replace(/(<mark>)|(<\/mark>)/g, "");
-    if (snippetRaw === fullField) return snippet;
-    return "[...] " + snippet.trim() + " [...]";
-  }
 </script>
 
 <svelte:body onclick={bodyClick} />
@@ -116,44 +90,11 @@
           >
         </div>
       {/if}
-      {#each results.hits as result}
-        {@const subSnip =
-          processSnippet(
-            result.highlight.description?.snippet,
-            result.document.description,
-          ) ??
-          processSnippet(
-            result.highlight.body?.snippet,
-            result.document.body,
-          ) ??
-          snipText(result.document.description)}
-        <a
-          href="/read/article"
-          class="search-result border-b-2 last-of-type:border-b-0 border-rock-400 p-3 relative group hover:bg-rock-100 block"
-        >
-          <h3 class="font-serif text-xl text-rock-700">
-            {@html result.highlight.title?.snippet ?? result.document.title}
-          </h3>
-          <ul class="mb-3">
-            {#each (result.highlight.tags)?.map((el: any) => el.snippet) ?? result.document.tags as tagName}
-              <li
-                class="inline-block w-fit px-1 border-2 border-rock-300 rounded text-xs font-bold mx-1 text-rock-500"
-              >
-                {@html tagName}
-              </li>
-            {/each}
-          </ul>
-          <p class="px-3 text-stone-600 text-center pb-5">
-            {@html subSnip}
-          </p>
-          <div
-            style="--accent: rgb({result.document.accent});"
-            class="absolute bottom-1 right-3 font-bold underline group-hover:no-underline text-stone-500"
-          >
-            Read document
-          </div>
-        </a>
-      {/each}
+      {#key results.hits}
+        {#each results.hits as result}
+          <SearchCard info={result} />
+        {/each}
+      {/key}
     </div>
   </div>
 {/if}
@@ -182,13 +123,3 @@
     ></ion-icon></button
   >
 </form>
-
-<style>
-  :global(.search-result mark) {
-    background-color: var(--rock-100);
-    color: inherit;
-  }
-  :global(.search-result:hover mark) {
-    background-color: var(--rock-200);
-  }
-</style>

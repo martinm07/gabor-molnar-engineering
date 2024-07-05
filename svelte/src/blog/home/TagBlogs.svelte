@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getContext, onDestroy } from "svelte";
   import { on } from "svelte/events";
-  import { fetch_ } from "/shared/helper";
+  import { fetch_, fadeColor, darkenColor } from "/shared/helper";
   import BlogsList from "./BlogsList.svelte";
   import type { IBlogsList } from "./BlogsList.svelte";
   import DummyCard from "./DummyCard.svelte";
@@ -49,15 +49,6 @@
         return cardData;
       });
   });
-
-  function fadeColor(color: string, alpha: number) {
-    const color_ = color.split(" ").map((str) => Number.parseInt(str));
-    return color_.map((c) => alpha * c + (1 - alpha) * 255).join(" ");
-  }
-  function darkenColor(color: string, alpha: number) {
-    const color_ = color.split(" ").map((str) => Number.parseInt(str));
-    return color_.map((c) => alpha * c).join(" ");
-  }
 
   let mousePos: { x: number; y: number } = { x: 0, y: 0 };
   const offMouse = on(document, "mousemove", (e) => {

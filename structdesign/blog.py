@@ -1,5 +1,6 @@
 import json
 import random
+from datetime import date
 from itertools import islice
 from typing import Iterable
 
@@ -128,6 +129,69 @@ def query():
     }
 
     return typesense_client.collections["documents"].documents.search(search_parameters)
+
+
+def onfalsey(val, fallback):
+    return val if val else fallback
+
+
+@bp.route("/advanced_query")
+@cors_enabled(methods=["GET"])
+def advanced_query():
+    query = onfalsey(request.args.get("q"), "*")
+    sort_by = onfalsey(request.args.get("sort"), "relevance")
+    sort_descending = json.loads(onfalsey(request.args.get("desc"), "true"))
+    tags = request.args.get("tags", None)
+    from_date = request.args.get("fromdate", None)
+    to_date = request.args.get("todate", None)
+    page = onfalsey(request.args.get("page"), "1")
+
+    filter_args = []
+    if tags:
+        for tag in tags.split(","):
+            filter_args.append(f"tags:=[{tag}]")
+
+    if from_date:
+        filter_args.append(
+            f"date_created:>={get_unix_timestamp(date.fromisoformat(from_date))}"
+        )
+    if to_date:
+        filter_args.append(
+            f"date_created:<={get_unix_timestamp(date.fromisoformat(to_date))}"
+        )
+
+    sort_str = f"{sort_by if sort_by != "relevance" else '_text_match'}:{'desc' if sort_descending else 'asc'}"
+    search_parameters = {
+        "q": query,
+        "query_by": ",".join(["title", "description", "body", "tags"]),
+        "sort_by": f"{sort_str}{',_text_match:desc' if sort_by != "relevance" else ''}",
+        "filter_by": " && ".join(filter_args),
+        "facet_by": "tags",
+        "page": page,
+    }
+    results = typesense_client.collections["documents"].documents.search(
+        search_parameters
+    )
+    print(search_parameters)
+
+    # This whole getting the tags in oder to add the color is very slow
+    tags_i = next(
+        (
+            i
+            for i, val in enumerate(results["facet_counts"])
+            if val["field_name"] == "tags"
+        ),
+        None,
+    )
+    if tags_i is not None:
+        tags_list = results["facet_counts"][tags_i]["counts"]
+        for tag in tags_list:
+            tag_accent = db.session.scalars(
+                select(DocumentTag.accent).filter_by(name=tag["value"])
+            ).first()
+            tag["color"] = tag_accent
+
+    return results
 
 
 @bp.cli.command("create_documents_jsonl")

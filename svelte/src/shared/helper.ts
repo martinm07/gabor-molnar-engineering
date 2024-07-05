@@ -120,3 +120,12 @@ export function splitCodes(codes: string) {
 export function request2AnimationFrames(callback: FrameRequestCallback) {
   requestAnimationFrame(() => requestAnimationFrame(callback));
 }
+
+export function fadeColor(color: string, alpha: number) {
+  const color_ = color.split(" ").map((str) => Number.parseInt(str));
+  return color_.map((c) => alpha * c + (1 - alpha) * 255).join(" ");
+}
+export function darkenColor(color: string, alpha: number) {
+  const color_ = color.split(" ").map((str) => Number.parseInt(str));
+  return color_.map((c) => alpha * c).join(" ");
+}

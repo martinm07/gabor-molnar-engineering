@@ -1,6 +1,7 @@
 import datetime
 
 from flask.testing import FlaskClient
+from sqlalchemy import select
 
 from structdesign.extensions import db
 from structdesign.helper import collection_exists, get_unix_timestamp
@@ -30,6 +31,32 @@ def populate_blogs(num: int, **kwargs) -> list[GuidanceDocument]:
         db.session.add(doc)
     db.session.commit()
     return docs
+
+
+def populate_tags(num: int, docs, **kwargs) -> list[DocumentTag]:
+    def getval(name: str, i: int, default=None):
+        return (
+            kwargs.get(name)[i]
+            if kwargs.get(name) and kwargs.get(name)[i:]
+            else default
+        )
+
+    blogs = db.session.scalars(select(GuidanceDocument)).all() if not docs else docs
+
+    tags = []
+    for i in range(num):
+        tag = DocumentTag(
+            name=getval("name", i, f"tag{i}"),
+            description=getval("description", i, f"tagdescription{i}"),
+            accent=getval("accent", "0 0 0"),
+        )
+        if getval("doc_ids", i):
+            doc_ids = getval("doc_ids", i)
+            [blog.tags.append(tag) for blog in blogs if blog.id in doc_ids]
+        tags.append(tag)
+        db.session.add(tag)
+    db.session.commit()
+    return tags
 
 
 def import_docs(docs, client):
@@ -185,3 +212,22 @@ def test_query(client: FlaskClient, typesense_client, mocker):
     assert len(resp["hits"]) == 2
     assert resp["hits"][0]["document"]["title"] == "candy apples"
     assert resp["hits"][1]["document"]["title"] == "apple shoes"
+
+
+def test_advanced_query(client: FlaskClient, typesense_client, mocker):
+    def get(**kwargs):
+        return client.get("/documents/advanced_query", query_string=kwargs).json
+
+    if collection_exists(typesense_client, "documents"):
+        typesense_client.collections["documents"].delete()
+    typesense_client.collections.create(documents_schema)
+
+    mocker.patch("structdesign.blog.typesense_client", typesense_client)
+
+    docs = populate_blogs(5)
+    populate_tags(2, docs, doc_ids=[[1, 2, 3], [3, 4]])
+    import_docs(docs, typesense_client)
+
+    resp = get(q="title1")
+    assert len(resp["hits"]) == 1
+    assert len(resp["facet_counts"]) == 1
