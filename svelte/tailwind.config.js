@@ -75,6 +75,9 @@ export default {
           950: "#0b0e0c",
         },
       },
+      fontFamily: {
+        source: ['"Source Sans Pro"', "ui-sans-serif", "system-ui", "sans"],
+      },
     },
   },
   plugins: [],

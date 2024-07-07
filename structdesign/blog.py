@@ -11,6 +11,7 @@ from sqlalchemy import select
 from .extensions import db, typesense_client
 from .helper import collection_exists, cors_enabled, get_unix_timestamp
 from .models import (
+    DocumentFeedback,
     DocumentTag,
     GuidanceDocument,
     document_tag_association_table,
@@ -114,6 +115,56 @@ def get_blogs_tag():
     )
 
 
+@bp.route("/get")
+@cors_enabled(methods=["GET"])
+def get():
+    id_ = json.loads(onfalsey(request.args.get("id"), "1"))
+    doc = db.session.scalars(select(GuidanceDocument).filter_by(id=id_)).first()
+    if not doc:
+        return f"Document {id_} not found", 404
+    return {
+        "id": str(id_),
+        "title": doc.title,
+        "description": doc.description,
+        "body": doc.body,
+    }
+
+
+@bp.route("/sendfeedback", methods=["OPTIONS", "POST"])
+@cors_enabled(methods=["OPTIONS", "POST"])
+def sendfeedback():
+    data = json.loads(request.data.decode("utf-8"))
+    blog_id = int(data.get("id"))
+    comment = data.get("comment")
+    email = data.get("email")
+    if not comment:
+        return "Comment required", 400
+
+    feedback = DocumentFeedback(blog_id=blog_id, body=comment, email=email)
+    db.session.add(feedback)
+    db.session.commit()
+    return {"result": True}
+
+
+@bp.route("/heart", methods=["OPTIONS", "POST"])
+@cors_enabled(methods=["OPTIONS", "POST"])
+def heart():
+    data = json.loads(request.data.decode("utf-8"))
+    blog_id = int(data.get("id"))
+    value = int(data.get("value"))
+
+    blog = db.session.execute(
+        select(GuidanceDocument).filter_by(id=blog_id)
+    ).scalar_one()
+    if value > 0:
+        blog.hearts += 1
+    elif value < 0:
+        blog.hearts -= 1
+
+    db.session.commit()
+    return {"result": True}
+
+
 @bp.route("/query")
 @cors_enabled(methods=["GET"])
 def query():
@@ -172,7 +223,6 @@ def advanced_query():
     results = typesense_client.collections["documents"].documents.search(
         search_parameters
     )
-    print(search_parameters)
 
     # This whole getting the tags in oder to add the color is very slow
     tags_i = next(

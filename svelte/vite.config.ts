@@ -29,6 +29,7 @@ const entryPoints = {
   register: resolve(root, "auth/register/index.html"),
   bloghome: resolve(root, "blog/home/index.html"),
   blogsearch: resolve(root, "blog/search/index.html"),
+  blogread: resolve(root, "blog/read/index.html"),
 };
 
 // IMP: Want to extend output.manualChunks? Do so here!
@@ -56,6 +57,11 @@ function isMediaFile(name: string) {
   if (/caf|3ga|snd|m4p|m4r|mmf|movpkg|mp3|l16|pcm|ad4|iff/i.test(ext)) return "aud";
 
   if (/txt|md|pdf|asc|docx?|rtf|msg|wpd|wps/i.test(ext)) return "txt";
+
+  if (/vfb|pfa|fnt|vlw|jfproj|woff2?|sfd|pfb|otf|bdf|glif|fot|ttf|odttf|fon|chr|pmt|ttc/i.test(ext)) return "font";
+  if (/amfm|bmfc|mf|pf2|pfm|compositefont|gxf|etx|abf|fnt|pcf|dfont|sfp|gf|mxf|ufo|tte|/i.test(ext)) return "font";
+  if (/vnf|bf|xfn|pfr|tfm|gdr|afm|xft|eot|txf|acfm|pk|suit|ffil|nftr|t65|euf|mcf|cha|ytf/i.test(ext)) return "font";
+  if (/lwfn|f3f|fea|pft|sft/i.test(ext)) return "font";
 
   // The custom plugin should generally be able to work for all cases (thus we could 
   //  always return true), however it doesn't for resolving dependent packages (e.g. svelte)

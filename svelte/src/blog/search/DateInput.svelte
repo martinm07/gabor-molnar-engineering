@@ -21,7 +21,6 @@
 
   let prevWas0: boolean = false;
   function fixDates(e: KeyboardEvent) {
-    console.log(e.key);
     if (e.key === "Shift") return;
     if (e.key === "0" && !prevWas0) prevWas0 = true;
     else if (e.key !== "Tab") prevWas0 = false;

@@ -81,6 +81,7 @@ class GuidanceDocument(db.Model):
     tags: Mapped[List["DocumentTag"]] = relationship(
         secondary=document_tag_association_table, back_populates="documents"
     )
+    hearts: Mapped[int]
 
 
 class DocumentTag(db.Model):
@@ -107,3 +108,12 @@ documents_schema = {
         {"name": "doc_id", "type": "int64", "index": False},
     ],
 }
+
+
+class DocumentFeedback(db.Model):
+    __tablename__ = "blogfeedbacks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    blog_id: Mapped[int] = mapped_column(ForeignKey("blogs.id"))
+    body: Mapped[str] = mapped_column(Text())
+    email: Mapped[str] = mapped_column(String(100))
