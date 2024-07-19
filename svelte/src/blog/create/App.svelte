@@ -2,12 +2,9 @@
   import "/shared/tailwindinit.css";
   import starterPath from "./starter.txt";
   import NodeSelect from "./cursormodes/NodeSelect.svelte";
-  import Toolbar from "./Toolbar.svelte";
   import EditText from "./cursormodes/EditText.svelte";
-  import { cursorMode } from "./store";
   import Sidebar from "./Sidebar.svelte";
-  import { fetch_ } from "/shared/helper";
-  import firefoxStylesPath from "./firefoxDefaultCSS.txt";
+  import firefoxStylesPath from "./css/firefoxDefaultCSS.txt";
   import EditProps from "./cursormodes/EditProps.svelte";
   import { setContext } from "svelte";
 
