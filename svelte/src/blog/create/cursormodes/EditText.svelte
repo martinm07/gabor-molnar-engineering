@@ -1,11 +1,5 @@
 <script lang="ts">
-  import { cursorMode } from "../store";
-
-  interface Props {
-    nodeHoverTarget: Element | undefined;
-  }
-
-  let { nodeHoverTarget }: Props = $props();
+  import { cursorMode, nodeHoverTarget } from "../store";
 
   $effect(() => {
     if ($cursorMode !== "edit" && editTarget) {
@@ -17,11 +11,11 @@
   let editTarget: HTMLElement | undefined;
   function onKeydown(e: KeyboardEvent) {
     if (e.key === "t" && $cursorMode === "select") {
-      if (!(nodeHoverTarget instanceof HTMLElement)) return;
+      if (!($nodeHoverTarget instanceof HTMLElement)) return;
       $cursorMode = "edit";
-      editTarget = nodeHoverTarget;
-      nodeHoverTarget.contentEditable = "true";
-      nodeHoverTarget.focus();
+      editTarget = $nodeHoverTarget;
+      $nodeHoverTarget.contentEditable = "true";
+      $nodeHoverTarget.focus();
       e.preventDefault();
 
       // Set the cursor to the mouse position

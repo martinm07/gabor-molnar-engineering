@@ -1,33 +1,34 @@
 <script lang="ts">
   import { getCSSProps, splitStringAtChar } from "./handlecss";
-  import { cssStyles } from "../store";
+  import { cssStyles, nodeHoverTarget } from "../store";
   import { on } from "svelte/events";
-  import { onDestroy } from "svelte";
-
-  interface Props {
-    nodeHoverTarget: Element | undefined;
-  }
-
-  let { nodeHoverTarget }: Props = $props();
+  import { onDestroy, getContext } from "svelte";
+  import { watch } from "runed";
 
   let styles = $state("");
   let stylesEl: HTMLElement;
+  const updateHighlight: () => void = getContext("updateHighlight");
 
-  $effect(() => {
-    if (!nodeHoverTarget) return;
+  console.log("HELLO WORLD!");
 
-    let styles_ = $cssStyles.get(nodeHoverTarget);
-    if (!styles_) {
-      const genStyles = getCSSProps(nodeHoverTarget);
-      $cssStyles.set(nodeHoverTarget, genStyles);
-      styles_ = genStyles;
-    }
+  watch(
+    () => $nodeHoverTarget,
+    (target) => {
+      if (!target) return;
+      let styles_ = $cssStyles.get(target);
+      if (!styles_) {
+        const genStyles = getCSSProps(target);
+        $cssStyles.set(target, genStyles);
+        styles_ = genStyles;
+      }
 
-    styles = parseStylesStr(
-      styles_.map((style) => `${style[0]}:${style[1]};`).join(" "),
-    );
-    if (stylesEl?.innerHTML) stylesEl.innerHTML = styles;
-  });
+      styles = parseStylesStr(
+        styles_.map((style) => `${style[0]}:${style[1]};`).join(" "),
+        false,
+      );
+      if (stylesEl?.innerHTML) stylesEl.innerHTML = styles;
+    },
+  );
 
   function endsWith(str: string, regex: RegExp) {
     const result = regex.exec(str);
@@ -61,7 +62,7 @@
     return propStrs.join("<br />");
   }
 
-  function parseStylesStr(inp?: HTMLElement | string) {
+  function parseStylesStr(inp?: HTMLElement | string, updateStyles = true) {
     let str = typeof inp === "string" ? inp : inp?.textContent ?? "";
 
     const props = splitStringAtChar(str, ":").map((el, i, a) => {
@@ -69,7 +70,7 @@
         const valprop = splitStringAtChar(el, ";");
         if (valprop.length === 1) return ["", valprop[0]];
         else return valprop;
-      } else return i === 0 ? ["", el] : [el, ""];
+      } else return ["", el];
     });
 
     const reflowed = props
@@ -81,17 +82,41 @@
     // console.log(reflowed);
 
     // console.log(str, props);
+    let textStr = "";
     let propStr = reflowed
       .map((prop, i, a) => {
-        if (i === 0) return `<b>${prop[1].trim()}</b>`;
-        // if (i === a.length - 1)
-        //   return `<em>${prop[0]}</em><div class="semic">;</div>`;
-        if (!prop[1].trim())
+        if (i === 0) {
+          textStr += `${prop[1].trim()}:`;
+          return `<b>${prop[1].trim()}</b>`;
+        }
+        if (!prop[1].trim()) {
+          textStr += `${prop[0]};:`;
           return `<em>${prop[0]}</em><div class="semic">;</div><br />`;
+        }
+        textStr += `${prop[0]};${prop[1].trim()}:`;
         return `<em>${prop[0]}</em><div class="semic">;</div><br /><b>${prop[1].trim()}</b>`;
       })
       .join('<div class="colon">:</div>');
     if (propStr.endsWith("<br />")) propStr = propStr.slice(0, -6);
+
+    if (updateStyles && $nodeHoverTarget instanceof HTMLElement) {
+      textStr = textStr.slice(0, -1);
+      const props = splitStringAtChar(textStr, ";");
+      $nodeHoverTarget.removeAttribute("style");
+      const propsList: [k: string, v: string][] = props.map((propStr) => {
+        const prop = splitStringAtChar(propStr, ":");
+        if (prop.length < 2) return ["", ""];
+        $nodeHoverTarget.style.setProperty(prop[0], prop[1]);
+        return [prop[0], prop[1]];
+      });
+
+      $cssStyles.set(
+        $nodeHoverTarget,
+        propsList.filter((el) => el[0] && el[1]),
+      );
+      updateHighlight();
+    }
+
     return propStr;
   }
 
