@@ -9,8 +9,6 @@
   let stylesEl: HTMLElement;
   const updateHighlight: () => void = getContext("updateHighlight");
 
-  console.log("HELLO WORLD!");
-
   watch(
     () => $nodeHoverTarget,
     (target) => {

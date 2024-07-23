@@ -54,8 +54,10 @@
 <EditText />
 <EditProps />
 
-<div class="grid grid-cols-[2fr_5fr] grid-rows-[48px_1fr] h-screen">
-  <div class="row-span-2 border-r-2 border-rock-300 bg-background p-2">
+<div class="grid grid-cols-[30%_1fr] grid-rows-[48px_1fr] h-screen">
+  <div
+    class="row-span-2 border-r-2 border-rock-300 bg-background p-2 overflow-y-scroll"
+  >
     <Sidebar />
   </div>
   <div class="border-b-2 border-rock-300 bg-rock-50 bg-opacity-85"></div>

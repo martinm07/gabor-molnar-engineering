@@ -1,4 +1,5 @@
 <script lang="ts">
+  import AttributesEditor from "./attributes/AttributesEditor.svelte";
   import CssEditor from "./css/CSSEditor.svelte";
   import { nodeHoverTarget } from "./store";
 </script>
@@ -12,4 +13,7 @@
 {/if}
 <div class:hidden={!$nodeHoverTarget} class="w-full h-fit p-2 text-center mt-8">
   <CssEditor />
+</div>
+<div class:hidden={!$nodeHoverTarget}>
+  <AttributesEditor />
 </div>

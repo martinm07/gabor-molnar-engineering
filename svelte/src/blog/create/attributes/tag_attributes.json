@@ -1,0 +1,2294 @@
+[
+  {
+    "tag": "html",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/html",
+    "attributes": [
+      {
+        "name": "version",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/html#version"
+      },
+      {
+        "name": "xmlns",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/html#xmlns"
+      }
+    ]
+  },
+  {
+    "tag": "base",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base",
+    "attributes": [
+      {
+        "name": "href",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base#href"
+      },
+      {
+        "name": "target",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base#target"
+      }
+    ]
+  },
+  {
+    "tag": "head",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/head",
+    "attributes": [
+      {
+        "name": "profile",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/head#profile"
+      }
+    ]
+  },
+  {
+    "tag": "link",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link",
+    "attributes": [
+      {
+        "name": "as",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#as"
+      },
+      {
+        "name": "blocking",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#blocking"
+      },
+      {
+        "name": "crossorigin",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/crossorigin"
+      },
+      {
+        "name": "disabled",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#disabled"
+      },
+      {
+        "name": "fetchpriority",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#fetchpriority"
+      },
+      {
+        "name": "href",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#href"
+      },
+      {
+        "name": "hreflang",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#hreflang"
+      },
+      {
+        "name": "imagesizes",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#imagesizes"
+      },
+      {
+        "name": "imagesrcset",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#imagesrcset"
+      },
+      {
+        "name": "integrity",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#integrity"
+      },
+      {
+        "name": "media",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#media"
+      },
+      {
+        "name": "referrerpolicy",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#referrerpolicy"
+      },
+      {
+        "name": "rel",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/rel"
+      },
+      {
+        "name": "sizes",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#sizes"
+      },
+      {
+        "name": "title",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#title"
+      },
+      {
+        "name": "type",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/link#type"
+      }
+    ]
+  },
+  {
+    "tag": "meta",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta",
+    "attributes": [
+      {
+        "name": "charset",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta#charset"
+      },
+      {
+        "name": "content",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta#content"
+      },
+      {
+        "name": "http-equiv",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta#http-equiv"
+      },
+      {
+        "name": "name",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meta#name"
+      }
+    ]
+  },
+  {
+    "tag": "style",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/style",
+    "attributes": [
+      {
+        "name": "blocking",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/style#blocking"
+      },
+      {
+        "name": "media",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/style#media"
+      },
+      {
+        "name": "nonce",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/style#nonce"
+      },
+      {
+        "name": "title",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/style#title"
+      }
+    ]
+  },
+  {
+    "tag": "title",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/title",
+    "attributes": []
+  },
+  {
+    "tag": "body",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body",
+    "attributes": [
+      {
+        "name": "alink",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#alink"
+      },
+      {
+        "name": "background",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#background"
+      },
+      {
+        "name": "bgcolor",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#bgcolor"
+      },
+      {
+        "name": "bottommargin",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#bottommargin"
+      },
+      {
+        "name": "leftmargin",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#leftmargin"
+      },
+      {
+        "name": "link",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#link"
+      },
+      {
+        "name": "onafterprint",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onafterprint"
+      },
+      {
+        "name": "onbeforeprint",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onbeforeprint"
+      },
+      {
+        "name": "onbeforeunload",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onbeforeunload"
+      },
+      {
+        "name": "onblur",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onblur"
+      },
+      {
+        "name": "onerror",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onerror"
+      },
+      {
+        "name": "onfocus",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onfocus"
+      },
+      {
+        "name": "onhashchange",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onhashchange"
+      },
+      {
+        "name": "onlanguagechange",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onlanguagechange"
+      },
+      {
+        "name": "onload",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onload"
+      },
+      {
+        "name": "onmessage",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onmessage"
+      },
+      {
+        "name": "onoffline",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onoffline"
+      },
+      {
+        "name": "ononline",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#ononline"
+      },
+      {
+        "name": "onpopstate",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onpopstate"
+      },
+      {
+        "name": "onresize",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onresize"
+      },
+      {
+        "name": "onstorage",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onstorage"
+      },
+      {
+        "name": "onunload",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#onunload"
+      },
+      {
+        "name": "rightmargin",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#rightmargin"
+      },
+      {
+        "name": "text",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#text"
+      },
+      {
+        "name": "topmargin",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#topmargin"
+      },
+      {
+        "name": "vlink",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/body#vlink"
+      }
+    ]
+  },
+  {
+    "tag": "address",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/address",
+    "attributes": []
+  },
+  {
+    "tag": "article",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/article",
+    "attributes": []
+  },
+  {
+    "tag": "aside",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/aside",
+    "attributes": []
+  },
+  {
+    "tag": "footer",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/footer",
+    "attributes": []
+  },
+  {
+    "tag": "header",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/header",
+    "attributes": []
+  },
+  {
+    "tag": "h1",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Heading_Elements",
+    "attributes": []
+  },
+  {
+    "tag": "h2",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Heading_Elements",
+    "attributes": []
+  },
+  {
+    "tag": "h3",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Heading_Elements",
+    "attributes": []
+  },
+  {
+    "tag": "h4",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Heading_Elements",
+    "attributes": []
+  },
+  {
+    "tag": "h5",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Heading_Elements",
+    "attributes": []
+  },
+  {
+    "tag": "h6",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Heading_Elements",
+    "attributes": []
+  },
+  {
+    "tag": "hgroup",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/hgroup",
+    "attributes": []
+  },
+  {
+    "tag": "main",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/main",
+    "attributes": []
+  },
+  {
+    "tag": "nav",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/nav",
+    "attributes": []
+  },
+  {
+    "tag": "section",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/section",
+    "attributes": []
+  },
+  {
+    "tag": "search",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/search",
+    "attributes": []
+  },
+  {
+    "tag": "blockquote",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/blockquote",
+    "attributes": [
+      {
+        "name": "cite",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/blockquote#cite"
+      }
+    ]
+  },
+  {
+    "tag": "dd",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dd",
+    "attributes": []
+  },
+  {
+    "tag": "div",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/div",
+    "attributes": []
+  },
+  {
+    "tag": "dl",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dl",
+    "attributes": []
+  },
+  {
+    "tag": "dt",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dt",
+    "attributes": []
+  },
+  {
+    "tag": "figcaption",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/figcaption",
+    "attributes": []
+  },
+  {
+    "tag": "figure",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/figure",
+    "attributes": []
+  },
+  {
+    "tag": "hr",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/hr",
+    "attributes": [
+      {
+        "name": "align",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/hr#align"
+      },
+      {
+        "name": "color",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/hr#color"
+      },
+      {
+        "name": "noshade",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/hr#noshade"
+      },
+      {
+        "name": "size",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/hr#size"
+      },
+      {
+        "name": "width",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/hr#width"
+      }
+    ]
+  },
+  {
+    "tag": "li",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/li",
+    "attributes": [
+      {
+        "name": "value",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/li#value"
+      },
+      {
+        "name": "type",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/li#type"
+      }
+    ]
+  },
+  {
+    "tag": "menu",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/menu",
+    "attributes": []
+  },
+  {
+    "tag": "ol",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ol",
+    "attributes": [
+      {
+        "name": "reversed",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ol#reversed"
+      },
+      {
+        "name": "start",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ol#start"
+      },
+      {
+        "name": "type",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ol#type"
+      }
+    ]
+  },
+  {
+    "tag": "p",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/p",
+    "attributes": []
+  },
+  {
+    "tag": "pre",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/pre",
+    "attributes": [
+      {
+        "name": "width",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/pre#width"
+      },
+      {
+        "name": "wrap",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/pre#wrap"
+      }
+    ]
+  },
+  {
+    "tag": "ul",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ul",
+    "attributes": [
+      {
+        "name": "compact",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ul#compact"
+      },
+      {
+        "name": "type",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ul#type"
+      }
+    ]
+  },
+  {
+    "tag": "a",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a",
+    "attributes": [
+      {
+        "name": "attributionsrc",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#attributionsrc"
+      },
+      {
+        "name": "download",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#download"
+      },
+      {
+        "name": "href",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#href"
+      },
+      {
+        "name": "hreflang",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#hreflang"
+      },
+      {
+        "name": "ping",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#ping"
+      },
+      {
+        "name": "referrerpolicy",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#referrerpolicy"
+      },
+      {
+        "name": "rel",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/rel"
+      },
+      {
+        "name": "target",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#target"
+      },
+      {
+        "name": "type",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/a#type"
+      }
+    ]
+  },
+  {
+    "tag": "abbr",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/abbr",
+    "attributes": []
+  },
+  {
+    "tag": "b",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/b",
+    "attributes": []
+  },
+  {
+    "tag": "bdi",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/bdi",
+    "attributes": []
+  },
+  {
+    "tag": "bdo",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/bdo",
+    "attributes": [
+      {
+        "name": "dir",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/bdo#dir"
+      }
+    ]
+  },
+  {
+    "tag": "br",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/br",
+    "attributes": []
+  },
+  {
+    "tag": "cite",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/cite",
+    "attributes": []
+  },
+  {
+    "tag": "code",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/code",
+    "attributes": []
+  },
+  {
+    "tag": "data",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/data",
+    "attributes": [
+      {
+        "name": "value",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/data#value"
+      }
+    ]
+  },
+  {
+    "tag": "dfn",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dfn",
+    "attributes": []
+  },
+  {
+    "tag": "em",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/em",
+    "attributes": []
+  },
+  {
+    "tag": "i",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/i",
+    "attributes": []
+  },
+  {
+    "tag": "kbd",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/kbd",
+    "attributes": []
+  },
+  {
+    "tag": "mark",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/mark",
+    "attributes": []
+  },
+  {
+    "tag": "q",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/q",
+    "attributes": [
+      {
+        "name": "cite",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/q#cite"
+      }
+    ]
+  },
+  {
+    "tag": "rp",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/rp",
+    "attributes": []
+  },
+  {
+    "tag": "rt",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/rt",
+    "attributes": []
+  },
+  {
+    "tag": "ruby",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ruby",
+    "attributes": []
+  },
+  {
+    "tag": "s",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/s",
+    "attributes": []
+  },
+  {
+    "tag": "samp",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/samp",
+    "attributes": []
+  },
+  {
+    "tag": "small",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/small",
+    "attributes": []
+  },
+  {
+    "tag": "span",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/span",
+    "attributes": []
+  },
+  {
+    "tag": "strong",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/strong",
+    "attributes": []
+  },
+  {
+    "tag": "sub",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/sub",
+    "attributes": []
+  },
+  {
+    "tag": "sup",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/sup",
+    "attributes": []
+  },
+  {
+    "tag": "time",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/time",
+    "attributes": [
+      {
+        "name": "datetime",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/time#datetime"
+      }
+    ]
+  },
+  {
+    "tag": "u",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/u",
+    "attributes": []
+  },
+  {
+    "tag": "var",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/var",
+    "attributes": []
+  },
+  {
+    "tag": "wbr",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/wbr",
+    "attributes": []
+  },
+  {
+    "tag": "area",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/area",
+    "attributes": [
+      {
+        "name": "alt",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/area#alt"
+      },
+      {
+        "name": "coords",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/area#coords"
+      },
+      {
+        "name": "download",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/area#download"
+      },
+      {
+        "name": "href",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/area#href"
+      },
+      {
+        "name": "ping",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/area#ping"
+      },
+      {
+        "name": "referrerpolicy",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/area#referrerpolicy"
+      },
+      {
+        "name": "rel",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/rel"
+      },
+      {
+        "name": "shape",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/area#shape"
+      },
+      {
+        "name": "target",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/area#target"
+      }
+    ]
+  },
+  {
+    "tag": "audio",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio",
+    "attributes": [
+      {
+        "name": "autoplay",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio#autoplay"
+      },
+      {
+        "name": "controls",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio#controls"
+      },
+      {
+        "name": "controlslist",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio#controlslist"
+      },
+      {
+        "name": "crossorigin",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/crossorigin"
+      },
+      {
+        "name": "disableremoteplayback",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio#disableremoteplayback"
+      },
+      {
+        "name": "loop",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio#loop"
+      },
+      {
+        "name": "muted",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio#muted"
+      },
+      {
+        "name": "preload",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio#preload"
+      },
+      {
+        "name": "src",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/audio#src"
+      }
+    ]
+  },
+  {
+    "tag": "img",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img",
+    "attributes": [
+      {
+        "name": "alt",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/API/HTMLImageElement/alt#usage_notes"
+      },
+      {
+        "name": "attributionsrc",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#attributionsrc"
+      },
+      {
+        "name": "crossorigin",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/crossorigin"
+      },
+      {
+        "name": "decoding",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#decoding"
+      },
+      {
+        "name": "elementtiming",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/elementtiming"
+      },
+      {
+        "name": "fetchpriority",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#fetchpriority"
+      },
+      {
+        "name": "height",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#height"
+      },
+      {
+        "name": "ismap",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#ismap"
+      },
+      {
+        "name": "loading",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#loading"
+      },
+      {
+        "name": "referrerpolicy",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#referrerpolicy"
+      },
+      {
+        "name": "sizes",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#sizes"
+      },
+      {
+        "name": "src",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#src"
+      },
+      {
+        "name": "srcset",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#srcset"
+      },
+      {
+        "name": "width",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#width"
+      },
+      {
+        "name": "usemap",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/img#usemap"
+      }
+    ]
+  },
+  {
+    "tag": "map",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/map",
+    "attributes": [
+      {
+        "name": "name",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/map#name"
+      }
+    ]
+  },
+  {
+    "tag": "track",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/track",
+    "attributes": [
+      {
+        "name": "default",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/track#default"
+      },
+      {
+        "name": "kind",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/track#kind"
+      },
+      {
+        "name": "label",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/track#label"
+      },
+      {
+        "name": "src",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/track#src"
+      },
+      {
+        "name": "srclang",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/track#srclang"
+      }
+    ]
+  },
+  {
+    "tag": "video",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video",
+    "attributes": [
+      {
+        "name": "autoplay",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#autoplay"
+      },
+      {
+        "name": "controls",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#controls"
+      },
+      {
+        "name": "controlslist",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#controlslist"
+      },
+      {
+        "name": "crossorigin",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/crossorigin"
+      },
+      {
+        "name": "disablepictureinpicture",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#disablepictureinpicture"
+      },
+      {
+        "name": "disableremoteplayback",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#disableremoteplayback"
+      },
+      {
+        "name": "height",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#height"
+      },
+      {
+        "name": "loop",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#loop"
+      },
+      {
+        "name": "muted",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#muted"
+      },
+      {
+        "name": "playsinline",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#playsinline"
+      },
+      {
+        "name": "poster",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#poster"
+      },
+      {
+        "name": "preload",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#preload"
+      },
+      {
+        "name": "src",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#src"
+      },
+      {
+        "name": "width",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/video#width"
+      }
+    ]
+  },
+  {
+    "tag": "embed",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/embed",
+    "attributes": [
+      {
+        "name": "height",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/embed#height"
+      },
+      {
+        "name": "src",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/embed#src"
+      },
+      {
+        "name": "type",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/embed#type"
+      },
+      {
+        "name": "width",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/embed#width"
+      }
+    ]
+  },
+  {
+    "tag": "iframe",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe",
+    "attributes": [
+      {
+        "name": "allow",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#allow"
+      },
+      {
+        "name": "allowfullscreen",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#allowfullscreen"
+      },
+      {
+        "name": "allowpaymentrequest",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#allowpaymentrequest"
+      },
+      {
+        "name": "browsingtopics",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#browsingtopics"
+      },
+      {
+        "name": "credentialless",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#credentialless"
+      },
+      {
+        "name": "csp",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#csp"
+      },
+      {
+        "name": "height",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#height"
+      },
+      {
+        "name": "loading",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#loading"
+      },
+      {
+        "name": "name",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#name"
+      },
+      {
+        "name": "referrerpolicy",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#referrerpolicy"
+      },
+      {
+        "name": "sandbox",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#sandbox"
+      },
+      {
+        "name": "src",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#src"
+      },
+      {
+        "name": "srcdoc",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#srcdoc"
+      },
+      {
+        "name": "width",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#width"
+      }
+    ]
+  },
+  {
+    "tag": "object",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object",
+    "attributes": [
+      {
+        "name": "archive",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#archive"
+      },
+      {
+        "name": "border",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#border"
+      },
+      {
+        "name": "classid",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#classid"
+      },
+      {
+        "name": "codebase",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#codebase"
+      },
+      {
+        "name": "codetype",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#codetype"
+      },
+      {
+        "name": "data",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#data"
+      },
+      {
+        "name": "declare",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#declare"
+      },
+      {
+        "name": "form",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#form"
+      },
+      {
+        "name": "height",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#height"
+      },
+      {
+        "name": "name",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#name"
+      },
+      {
+        "name": "standby",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#standby"
+      },
+      {
+        "name": "type",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#type"
+      },
+      {
+        "name": "usemap",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#usemap"
+      },
+      {
+        "name": "width",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/object#width"
+      }
+    ]
+  },
+  {
+    "tag": "picture",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/picture",
+    "attributes": []
+  },
+  {
+    "tag": "portal",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/portal",
+    "attributes": [
+      {
+        "name": "referrerpolicy",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/portal#referrerpolicy"
+      },
+      {
+        "name": "src",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/portal#src"
+      }
+    ]
+  },
+  {
+    "tag": "source",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/source",
+    "attributes": [
+      {
+        "name": "type",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/source#type"
+      },
+      {
+        "name": "src",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/source#src"
+      },
+      {
+        "name": "srcset",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/source#srcset"
+      },
+      {
+        "name": "sizes",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/source#sizes"
+      },
+      {
+        "name": "media",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/source#media"
+      },
+      {
+        "name": "height",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/source#height"
+      },
+      {
+        "name": "width",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/source#width"
+      }
+    ]
+  },
+  {
+    "tag": "svg",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/SVG/Element/svg",
+    "attributes": [
+      {
+        "name": "baseProfile",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/baseProfile"
+      },
+      {
+        "name": "height",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/height"
+      },
+      {
+        "name": "preserveAspectRatio",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/preserveAspectRatio"
+      },
+      {
+        "name": "version",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/version"
+      },
+      {
+        "name": "viewBox",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/viewBox"
+      },
+      {
+        "name": "width",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/width"
+      },
+      {
+        "name": "x",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/x"
+      },
+      {
+        "name": "y",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/y"
+      }
+    ]
+  },
+  {
+    "tag": "math",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/MathML/Element/math",
+    "attributes": [
+      {
+        "name": "display",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/MathML/Element/math#display"
+      }
+    ]
+  },
+  {
+    "tag": "canvas",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas",
+    "attributes": [
+      {
+        "name": "height",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas#height"
+      },
+      {
+        "name": "moz-opaque",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas#moz-opaque"
+      },
+      {
+        "name": "width",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/canvas#width"
+      }
+    ]
+  },
+  {
+    "tag": "noscript",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/noscript",
+    "attributes": []
+  },
+  {
+    "tag": "script",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script",
+    "attributes": [
+      {
+        "name": "async",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#async"
+      },
+      {
+        "name": "attributionsrc",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#attributionsrc"
+      },
+      {
+        "name": "blocking",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#blocking"
+      },
+      {
+        "name": "crossorigin",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/crossorigin"
+      },
+      {
+        "name": "defer",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#defer"
+      },
+      {
+        "name": "fetchpriority",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#fetchpriority"
+      },
+      {
+        "name": "integrity",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#integrity"
+      },
+      {
+        "name": "nomodule",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#nomodule"
+      },
+      {
+        "name": "nonce",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#nonce"
+      },
+      {
+        "name": "referrerpolicy",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#referrerpolicy"
+      },
+      {
+        "name": "src",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script#src"
+      },
+      {
+        "name": "type",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/script/type"
+      }
+    ]
+  },
+  {
+    "tag": "del",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/del",
+    "attributes": [
+      {
+        "name": "cite",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/del#cite"
+      },
+      {
+        "name": "datetime",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/del#datetime"
+      }
+    ]
+  },
+  {
+    "tag": "ins",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ins",
+    "attributes": [
+      {
+        "name": "cite",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ins#cite"
+      },
+      {
+        "name": "datetime",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/ins#datetime"
+      }
+    ]
+  },
+  {
+    "tag": "caption",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/caption",
+    "attributes": []
+  },
+  {
+    "tag": "col",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/col",
+    "attributes": [
+      {
+        "name": "span",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/col#span"
+      }
+    ]
+  },
+  {
+    "tag": "colgroup",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/colgroup",
+    "attributes": [
+      {
+        "name": "span",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/colgroup#span"
+      }
+    ]
+  },
+  {
+    "tag": "table",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/table",
+    "attributes": []
+  },
+  {
+    "tag": "tbody",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/tbody",
+    "attributes": []
+  },
+  {
+    "tag": "td",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/td",
+    "attributes": [
+      {
+        "name": "colspan",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/td#colspan"
+      },
+      {
+        "name": "headers",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/td#headers"
+      },
+      {
+        "name": "rowspan",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/td#rowspan"
+      }
+    ]
+  },
+  {
+    "tag": "tfoot",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/tfoot",
+    "attributes": []
+  },
+  {
+    "tag": "th",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/th",
+    "attributes": [
+      {
+        "name": "abbr",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/th#abbr"
+      },
+      {
+        "name": "colspan",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/th#colspan"
+      },
+      {
+        "name": "headers",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/th#headers"
+      },
+      {
+        "name": "rowspan",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/th#rowspan"
+      },
+      {
+        "name": "scope",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/th#scope"
+      }
+    ]
+  },
+  {
+    "tag": "thead",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/thead",
+    "attributes": []
+  },
+  {
+    "tag": "tr",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/tr",
+    "attributes": []
+  },
+  {
+    "tag": "button",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button",
+    "attributes": [
+      {
+        "name": "autofocus",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#autofocus"
+      },
+      {
+        "name": "disabled",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/disabled"
+      },
+      {
+        "name": "form",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#form"
+      },
+      {
+        "name": "formaction",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#formaction"
+      },
+      {
+        "name": "formenctype",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#formenctype"
+      },
+      {
+        "name": "formmethod",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#formmethod"
+      },
+      {
+        "name": "formnovalidate",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#formnovalidate"
+      },
+      {
+        "name": "formtarget",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#formtarget"
+      },
+      {
+        "name": "name",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#name"
+      },
+      {
+        "name": "popovertarget",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#popovertarget"
+      },
+      {
+        "name": "popovertargetaction",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#popovertargetaction"
+      },
+      {
+        "name": "type",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#type"
+      },
+      {
+        "name": "value",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/button#value"
+      }
+    ]
+  },
+  {
+    "tag": "datalist",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/datalist",
+    "attributes": []
+  },
+  {
+    "tag": "fieldset",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/fieldset",
+    "attributes": [
+      {
+        "name": "disabled",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/disabled"
+      },
+      {
+        "name": "form",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/fieldset#form"
+      },
+      {
+        "name": "name",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/fieldset#name"
+      }
+    ]
+  },
+  {
+    "tag": "form",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form",
+    "attributes": [
+      {
+        "name": "accept",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form#accept"
+      },
+      {
+        "name": "accept-charset",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form#accept-charset"
+      },
+      {
+        "name": "autocapitalize",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form#autocapitalize"
+      },
+      {
+        "name": "autocomplete",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete"
+      },
+      {
+        "name": "name",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/form#name"
+      },
+      {
+        "name": "rel",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/rel"
+      }
+    ]
+  },
+  {
+    "tag": "input",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input",
+    "attributes": [
+      {
+        "name": "accept",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/accept"
+      },
+      {
+        "name": "alt",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#alt"
+      },
+      {
+        "name": "autocapitalize",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#autocapitalize"
+      },
+      {
+        "name": "autocomplete",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete"
+      },
+      {
+        "name": "autofocus",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#autofocus"
+      },
+      {
+        "name": "capture",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/capture"
+      },
+      {
+        "name": "checked",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#checked"
+      },
+      {
+        "name": "dirname",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/dirname"
+      },
+      {
+        "name": "disabled",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/disabled"
+      },
+      {
+        "name": "form",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#form"
+      },
+      {
+        "name": "formaction",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#formaction"
+      },
+      {
+        "name": "formenctype",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#formenctype"
+      },
+      {
+        "name": "formmethod",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#formmethod"
+      },
+      {
+        "name": "formnovalidate",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#formnovalidate"
+      },
+      {
+        "name": "formtarget",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#formtarget"
+      },
+      {
+        "name": "height",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#height"
+      },
+      {
+        "name": "id",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#id"
+      },
+      {
+        "name": "inputmode",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#inputmode"
+      },
+      {
+        "name": "list",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#list"
+      },
+      {
+        "name": "max",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/max"
+      },
+      {
+        "name": "maxlength",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/maxlength"
+      },
+      {
+        "name": "min",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/min"
+      },
+      {
+        "name": "minlength",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/minlength"
+      },
+      {
+        "name": "multiple",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/multiple"
+      },
+      {
+        "name": "name",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#name"
+      },
+      {
+        "name": "pattern",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/pattern"
+      },
+      {
+        "name": "placeholder",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/placeholder"
+      },
+      {
+        "name": "popovertarget",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#popovertarget"
+      },
+      {
+        "name": "popovertargetaction",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#popovertargetaction"
+      },
+      {
+        "name": "readonly",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/readonly"
+      },
+      {
+        "name": "required",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/required"
+      },
+      {
+        "name": "size",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/size"
+      },
+      {
+        "name": "src",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#src"
+      },
+      {
+        "name": "step",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/step"
+      },
+      {
+        "name": "tabindex",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#tabindex"
+      },
+      {
+        "name": "title",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#title"
+      },
+      {
+        "name": "type",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#type"
+      },
+      {
+        "name": "value",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#value"
+      },
+      {
+        "name": "width",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input#width"
+      }
+    ]
+  },
+  {
+    "tag": "label",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/label",
+    "attributes": [
+      {
+        "name": "for",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/for"
+      }
+    ]
+  },
+  {
+    "tag": "legend",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/legend",
+    "attributes": []
+  },
+  {
+    "tag": "meter",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meter",
+    "attributes": [
+      {
+        "name": "value",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meter#value"
+      },
+      {
+        "name": "min",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/min"
+      },
+      {
+        "name": "max",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/max"
+      },
+      {
+        "name": "low",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meter#low"
+      },
+      {
+        "name": "high",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meter#high"
+      },
+      {
+        "name": "optimum",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meter#optimum"
+      },
+      {
+        "name": "form",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/meter#form"
+      }
+    ]
+  },
+  {
+    "tag": "optgroup",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/optgroup",
+    "attributes": [
+      {
+        "name": "disabled",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/disabled"
+      },
+      {
+        "name": "label",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/optgroup#label"
+      }
+    ]
+  },
+  {
+    "tag": "option",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/option",
+    "attributes": [
+      {
+        "name": "disabled",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/disabled"
+      },
+      {
+        "name": "label",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/option#label"
+      },
+      {
+        "name": "selected",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/option#selected"
+      },
+      {
+        "name": "value",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/option#value"
+      }
+    ]
+  },
+  {
+    "tag": "output",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/output",
+    "attributes": [
+      {
+        "name": "for",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/for"
+      },
+      {
+        "name": "form",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/output#form"
+      },
+      {
+        "name": "name",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/output#name"
+      }
+    ]
+  },
+  {
+    "tag": "progress",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/progress",
+    "attributes": [
+      {
+        "name": "max",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/max"
+      },
+      {
+        "name": "value",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/progress#value"
+      }
+    ]
+  },
+  {
+    "tag": "select",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/select",
+    "attributes": [
+      {
+        "name": "autocomplete",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete"
+      },
+      {
+        "name": "autofocus",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/select#autofocus"
+      },
+      {
+        "name": "disabled",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/disabled"
+      },
+      {
+        "name": "form",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/select#form"
+      },
+      {
+        "name": "multiple",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/multiple"
+      },
+      {
+        "name": "name",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/select#name"
+      },
+      {
+        "name": "required",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/required"
+      },
+      {
+        "name": "size",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/size"
+      }
+    ]
+  },
+  {
+    "tag": "textarea",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/textarea",
+    "attributes": [
+      {
+        "name": "autocapitalize",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/textarea#autocapitalize"
+      },
+      {
+        "name": "autocomplete",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/autocomplete"
+      },
+      {
+        "name": "autocorrect",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/textarea#autocorrect"
+      },
+      {
+        "name": "autofocus",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/textarea#autofocus"
+      },
+      {
+        "name": "cols",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/textarea#cols"
+      },
+      {
+        "name": "dirname",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/dirname"
+      },
+      {
+        "name": "disabled",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/disabled"
+      },
+      {
+        "name": "form",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/textarea#form"
+      },
+      {
+        "name": "maxlength",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/maxlength"
+      },
+      {
+        "name": "minlength",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/minlength"
+      },
+      {
+        "name": "name",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/textarea#name"
+      },
+      {
+        "name": "placeholder",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/placeholder"
+      },
+      {
+        "name": "readonly",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/readonly"
+      },
+      {
+        "name": "required",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Attributes/required"
+      },
+      {
+        "name": "rows",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/textarea#rows"
+      },
+      {
+        "name": "spellcheck",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/textarea#spellcheck"
+      },
+      {
+        "name": "wrap",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/textarea#wrap"
+      }
+    ]
+  },
+  {
+    "tag": "details",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/details",
+    "attributes": [
+      {
+        "name": "open",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/details#open"
+      },
+      {
+        "name": "name",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/details#name"
+      }
+    ]
+  },
+  {
+    "tag": "dialog",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dialog",
+    "attributes": [
+      {
+        "name": "open",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dialog#open"
+      }
+    ]
+  },
+  {
+    "tag": "summary",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/summary",
+    "attributes": []
+  },
+  {
+    "tag": "slot",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/slot",
+    "attributes": [
+      {
+        "name": "name",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/slot#name"
+      }
+    ]
+  },
+  {
+    "tag": "template",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template",
+    "attributes": [
+      {
+        "name": "shadowrootmode",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template#shadowrootmode"
+      },
+      {
+        "name": "shadowrootclonable",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template#shadowrootclonable"
+      },
+      {
+        "name": "shadowrootdelegatesfocus",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template#shadowrootdelegatesfocus"
+      },
+      {
+        "name": "shadowrootserializable",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template#shadowrootserializable"
+      }
+    ]
+  },
+  {
+    "tag": "GLOBAL",
+    "url": "",
+    "attributes": [
+      {
+        "name": "accesskey",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/accesskey"
+      },
+      {
+        "name": null,
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/anchor"
+      },
+      {
+        "name": "autocapitalize",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/autocapitalize"
+      },
+      {
+        "name": "autofocus",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/autofocus"
+      },
+      {
+        "name": "class",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/class"
+      },
+      {
+        "name": "contenteditable",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/contenteditable"
+      },
+      {
+        "name": "data-*",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/data-*"
+      },
+      {
+        "name": "dir",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/dir"
+      },
+      {
+        "name": "draggable",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/draggable"
+      },
+      {
+        "name": "enterkeyhint",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/enterkeyhint"
+      },
+      {
+        "name": "exportparts",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/exportparts"
+      },
+      {
+        "name": "hidden",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/hidden"
+      },
+      {
+        "name": "id",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/id"
+      },
+      {
+        "name": "inert",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/inert"
+      },
+      {
+        "name": "inputmode",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/inputmode"
+      },
+      {
+        "name": "is",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/is"
+      },
+      {
+        "name": "itemid",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/itemid"
+      },
+      {
+        "name": "itemprop",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/itemprop"
+      },
+      {
+        "name": "itemref",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/itemref"
+      },
+      {
+        "name": "itemscope",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/itemscope"
+      },
+      {
+        "name": "itemtype",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/itemtype"
+      },
+      {
+        "name": "lang",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/lang"
+      },
+      {
+        "name": "nonce",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/nonce"
+      },
+      {
+        "name": "part",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/part"
+      },
+      {
+        "name": "popover",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/popover"
+      },
+      {
+        "name": "role",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Roles"
+      },
+      {
+        "name": "slot",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/slot"
+      },
+      {
+        "name": "spellcheck",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/spellcheck"
+      },
+      {
+        "name": "style",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/style"
+      },
+      {
+        "name": "tabindex",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/tabindex"
+      },
+      {
+        "name": "title",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/title"
+      },
+      {
+        "name": "translate",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/translate"
+      },
+      {
+        "name": null,
+        "url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes/virtualkeyboardpolicy"
+      },
+      {
+        "name": "aria-activedescendant",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-activedescendant"
+      },
+      {
+        "name": "aria-atomic",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-atomic"
+      },
+      {
+        "name": "aria-autocomplete",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-autocomplete"
+      },
+      {
+        "name": "aria-braillelabel",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-braillelabel"
+      },
+      {
+        "name": "aria-brailleroledescription",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-brailleroledescription"
+      },
+      {
+        "name": "aria-busy",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-busy"
+      },
+      {
+        "name": "aria-checked",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-checked"
+      },
+      {
+        "name": "aria-colcount",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-colcount"
+      },
+      {
+        "name": "aria-colindex",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-colindex"
+      },
+      {
+        "name": "aria-colindextext",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-colindextext"
+      },
+      {
+        "name": "aria-colspan",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-colspan"
+      },
+      {
+        "name": "aria-controls",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-controls"
+      },
+      {
+        "name": "aria-current",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-current"
+      },
+      {
+        "name": "aria-describedby",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-describedby"
+      },
+      {
+        "name": "aria-description",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-description"
+      },
+      {
+        "name": "aria-details",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-details"
+      },
+      {
+        "name": "aria-disabled",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-disabled"
+      },
+      {
+        "name": "aria-dropeffect",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-dropeffect"
+      },
+      {
+        "name": "aria-errormessage",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-errormessage"
+      },
+      {
+        "name": "aria-expanded",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-expanded"
+      },
+      {
+        "name": "aria-flowto",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-flowto"
+      },
+      {
+        "name": "aria-grabbed",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-grabbed"
+      },
+      {
+        "name": "aria-haspopup",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-haspopup"
+      },
+      {
+        "name": "aria-hidden",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-hidden"
+      },
+      {
+        "name": "aria-invalid",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-invalid"
+      },
+      {
+        "name": "aria-keyshortcuts",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-keyshortcuts"
+      },
+      {
+        "name": "aria-label",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-label"
+      },
+      {
+        "name": "aria-labelledby",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-labelledby"
+      },
+      {
+        "name": "aria-level",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-level"
+      },
+      {
+        "name": "aria-live",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-live"
+      },
+      {
+        "name": "aria-modal",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-modal"
+      },
+      {
+        "name": "aria-multiline",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-multiline"
+      },
+      {
+        "name": "aria-multiselectable",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-multiselectable"
+      },
+      {
+        "name": "aria-orientation",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-orientation"
+      },
+      {
+        "name": "aria-owns",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-owns"
+      },
+      {
+        "name": "aria-placeholder",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-placeholder"
+      },
+      {
+        "name": "aria-posinset",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-posinset"
+      },
+      {
+        "name": "aria-pressed",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-pressed"
+      },
+      {
+        "name": "aria-readonly",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-readonly"
+      },
+      {
+        "name": "aria-relevant",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-relevant"
+      },
+      {
+        "name": "aria-required",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-required"
+      },
+      {
+        "name": "aria-roledescription",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-roledescription"
+      },
+      {
+        "name": "aria-rowcount",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-rowcount"
+      },
+      {
+        "name": "aria-rowindex",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-rowindex"
+      },
+      {
+        "name": "aria-rowindextext",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-rowindextext"
+      },
+      {
+        "name": "aria-rowspan",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-rowspan"
+      },
+      {
+        "name": "aria-selected",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-selected"
+      },
+      {
+        "name": "aria-setsize",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-setsize"
+      },
+      {
+        "name": "aria-sort",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-sort"
+      },
+      {
+        "name": "aria-valuemax",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-valuemax"
+      },
+      {
+        "name": "aria-valuemin",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-valuemin"
+      },
+      {
+        "name": "aria-valuenow",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-valuenow"
+      },
+      {
+        "name": "aria-valuetext",
+        "url": "https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/Attributes/aria-valuetext"
+      }
+    ]
+  }
+]

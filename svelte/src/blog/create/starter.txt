@@ -1,6 +1,6 @@
 <h1>Introducing a Light, Visual HTML Editor</h1>
 <p>
-  Embracing HTML and CSS directely, rather than overshadow it with our own
+  Embracing HTML and CSS directly, rather than overshadow it with our own
   limited, unintuitive idea of document editing.
 </p>
 <div>
