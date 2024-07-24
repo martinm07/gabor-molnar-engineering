@@ -6,7 +6,7 @@
   } from "./cursormodes/NodeSelect.svelte";
   import EditText from "./cursormodes/EditText.svelte";
   import Sidebar from "./Sidebar.svelte";
-  import firefoxStylesPath from "./css/firefoxDefaultCSS.txt";
+  import firefoxStylesPath from "./editors/css/firefoxDefaultCSS.txt";
   import EditProps from "./cursormodes/EditProps.svelte";
   import { setContext } from "svelte";
   import { nodeHoverTarget } from "./store";

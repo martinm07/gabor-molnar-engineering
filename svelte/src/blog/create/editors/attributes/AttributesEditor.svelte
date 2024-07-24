@@ -1,7 +1,7 @@
 <script lang="ts">
   import { getContext } from "svelte";
   import { watch } from "runed";
-  import { nodeHoverTarget } from "../store";
+  import { nodeHoverTarget } from "../../store";
   import tagAttributes from "./tag_attributes.json";
   import FitContentInput from "/shared/components/FitContentInput.svelte";
 

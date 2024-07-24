@@ -1,16 +1,13 @@
 <script lang="ts">
-  import AttributesEditor from "./attributes/AttributesEditor.svelte";
-  import CssEditor from "./css/CSSEditor.svelte";
+  import AttributesEditor from "./editors/attributes/AttributesEditor.svelte";
+  import CssEditor from "./editors/css/CSSEditor.svelte";
+  import TagNameEditor from "./editors/tag/TagNameEditor.svelte";
   import { nodeHoverTarget } from "./store";
 </script>
 
-{#if $nodeHoverTarget}
-  <div class="text-center font-mono text-lg font-bold text-rock-700">
-    <span class="bg-steel-100 p-2 rounded">
-      &#60;{$nodeHoverTarget.tagName.toLowerCase()}&#62;
-    </span>
-  </div>
-{/if}
+<div class:hidden={!$nodeHoverTarget} class="text-center">
+  <TagNameEditor />
+</div>
 <div class:hidden={!$nodeHoverTarget} class="w-full h-fit p-2 text-center mt-8">
   <CssEditor />
 </div>

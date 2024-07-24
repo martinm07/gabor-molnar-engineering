@@ -1,6 +1,73 @@
+<script context="module" lang="ts">
+  export function calculateTotalOffset(
+    parentEl?: Element,
+    targetNode?: Node | null,
+    targetOffset?: number,
+  ) {
+    if (!targetNode || !parentEl) return 0;
+
+    // Target node is the outer div, which can happen when a child element is removed
+    //  (through all the text content getting deleted)
+    if (targetNode === parentEl) {
+      return Array(...parentEl.children)
+        .slice(0, targetOffset ?? 0)
+        .map((node) => node.textContent?.length ?? 0)
+        .reduce((p, c) => p + c, 0);
+      // Target node is one of the elements, which can happen when pressing Enter inside one of the elements,
+      //  splitting it into a [<text> <br> <text>].
+    } else if (targetNode instanceof Element) {
+      let children = Array(...parentEl.children);
+      children = children.slice(0, children.indexOf(targetNode));
+      const elOffset = children
+        .map((child) => child.textContent?.length ?? 0)
+        .reduce((p, c) => p + c, 0);
+      const nodeOffset = Array(...targetNode.childNodes)
+        .slice(0, targetOffset ?? 0)
+        .map((node) => node.textContent?.length ?? 0)
+        .reduce((p, c) => p + c, 0);
+      return elOffset + nodeOffset;
+    }
+
+    // Target node is one of the text nodes, which is the case for usual insertions/deletions
+    const textNodes = getTextNodes(parentEl);
+    let totalOffset = 0;
+    for (const textNode of textNodes) {
+      if (textNode === targetNode) break;
+      totalOffset += textNode.length;
+    }
+    return totalOffset + (targetOffset ?? 0);
+  }
+
+  export function findNodeFromOffset(
+    el: Element | undefined,
+    offset: number,
+  ): [node: Text, offset: number] {
+    if (!el) return [Object.create(Text), 0];
+    const textNodes = getTextNodes(el);
+    let remainingOffset = offset;
+    let currentNode: Text = Object.create(Text);
+    for (const textNode of textNodes) {
+      currentNode = textNode;
+      if (textNode.length >= remainingOffset) break;
+      else remainingOffset -= textNode.length;
+    }
+    return [currentNode, remainingOffset];
+  }
+
+  const isTextNode = (node: Node): node is Text =>
+    node.nodeType === Node.TEXT_NODE;
+  function getTextNodes(node: Node): Text[] {
+    if (isTextNode(node)) {
+      return [node];
+    } else {
+      return Array(...node.childNodes).flatMap((node) => getTextNodes(node));
+    }
+  }
+</script>
+
 <script lang="ts">
   import { getCSSProps, splitStringAtChar } from "./handlecss";
-  import { cssStyles, nodeHoverTarget } from "../store";
+  import { cssStyles, nodeHoverTarget } from "../../store";
   import { on } from "svelte/events";
   import { onDestroy, getContext } from "svelte";
   import { watch } from "runed";
@@ -118,77 +185,17 @@
     return propStr;
   }
 
-  function calculateTotalOffset(
-    targetNode?: Node | null,
-    targetOffset?: number,
-  ) {
-    if (!targetNode || !stylesEl) return 0;
-
-    // Target node is the outer div, which can happen when a child element is removed
-    //  (through all the text content getting deleted)
-    if (targetNode === stylesEl) {
-      return Array(...stylesEl.children)
-        .slice(0, targetOffset ?? 0)
-        .map((node) => node.textContent?.length ?? 0)
-        .reduce((p, c) => p + c, 0);
-      // Target node is one of the elements, which can happen when pressing Enter inside one of the elements,
-      //  splitting it into a [<text> <br> <text>].
-    } else if (targetNode instanceof Element) {
-      let children = Array(...stylesEl.children);
-      children = children.slice(0, children.indexOf(targetNode));
-      const elOffset = children
-        .map((child) => child.textContent?.length ?? 0)
-        .reduce((p, c) => p + c, 0);
-      const nodeOffset = Array(...targetNode.childNodes)
-        .slice(0, targetOffset ?? 0)
-        .map((node) => node.textContent?.length ?? 0)
-        .reduce((p, c) => p + c, 0);
-      return elOffset + nodeOffset;
-    }
-
-    // Target node is one of the text nodes, which is the case for usual insertions/deletions
-    const textNodes = getTextNodes(stylesEl);
-    let totalOffset = 0;
-    for (const textNode of textNodes) {
-      if (textNode === targetNode) break;
-      totalOffset += textNode.length;
-    }
-    return totalOffset + (targetOffset ?? 0);
-  }
-
-  function findNodeFromOffset(offset: number): [node: Text, offset: number] {
-    if (!stylesEl) return [Object.create(Text), 0];
-    const textNodes = getTextNodes(stylesEl);
-    let remainingOffset = offset;
-    let currentNode: Text = Object.create(Text);
-    for (const textNode of textNodes) {
-      currentNode = textNode;
-      if (textNode.length >= remainingOffset) break;
-      else remainingOffset -= textNode.length;
-    }
-    return [currentNode, remainingOffset];
-  }
-
-  const isTextNode = (node: Node): node is Text =>
-    node.nodeType === Node.TEXT_NODE;
-  function getTextNodes(node: Node): Text[] {
-    if (isTextNode(node)) {
-      return [node];
-    } else {
-      return Array(...node.childNodes).flatMap((node) => getTextNodes(node));
-    }
-  }
-
   function onInput(e_: any) {
     const e = e_ as InputEvent;
     if (!stylesEl) return;
     const selection = document.getSelection();
     const offset = calculateTotalOffset(
+      stylesEl,
       selection?.focusNode,
       selection?.focusOffset,
     );
     stylesEl.innerHTML = parseStylesStr(stylesEl);
-    const [node, newOffset] = findNodeFromOffset(offset);
+    const [node, newOffset] = findNodeFromOffset(stylesEl, offset);
     if (enterPressed) selection?.setPosition(stylesEl, enterPressed);
     else selection?.setPosition(node, newOffset);
     enterPressed = undefined;
