@@ -52,7 +52,7 @@
             id: attributeID++,
           };
         })
-        .filter((el) => el.name !== "style");
+        .filter((el) => el.name !== "style" && el.name !== "contenteditable");
     },
   );
 
