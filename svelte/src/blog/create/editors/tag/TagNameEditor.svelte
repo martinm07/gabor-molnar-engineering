@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import { nodeHoverTarget } from "../../store";
+  import { nodeHoverTarget, nodesSelection } from "../../store";
   import {
     calculateTotalOffset,
     findNodeFromOffset,
@@ -10,27 +10,41 @@
   import { watch } from "runed";
   import { request2AnimationFrames } from "/shared/helper";
 
+  interface Props {
+    selected: Element[];
+  }
+  let { selected }: Props = $props();
+
+  function allSameName(tags: Element[]): boolean {
+    return Boolean(
+      tags.map((el) => el.tagName).reduce((p, c) => (p === c ? c : "")),
+    );
+  }
+
   function parseTagStr(str: string) {
     const strLower = str.toLowerCase();
     const strFiltered = strLower.match(/[a-z1-6]/g)?.join("") ?? "";
 
     tagNameURL = getTagURL(strFiltered);
-    if (tagNameURL && $nodeHoverTarget && tagName !== strFiltered) {
-      const replacement = document.createElement(strFiltered);
-      // Moves all the children to the new element
-      while ($nodeHoverTarget.firstChild)
-        replacement.appendChild($nodeHoverTarget.firstChild);
-      // Copy attributes
-      for (let i = $nodeHoverTarget.attributes.length - 1; i >= 0; --i) {
-        replacement.attributes.setNamedItem(
-          $nodeHoverTarget.attributes[i].cloneNode() as Attr,
-        );
-      }
+    if (tagNameURL && tagName !== strFiltered) {
+      const replacements: HTMLElement[] = [];
+      for (const target of selected) {
+        const replacement = document.createElement(strFiltered);
+        // Moves all the children to the new element
+        while (target.firstChild) replacement.appendChild(target.firstChild);
+        // Copy attributes
+        for (let i = target.attributes.length - 1; i >= 0; --i) {
+          replacement.attributes.setNamedItem(
+            target.attributes[i].cloneNode() as Attr,
+          );
+        }
 
-      // Replace with replacement
-      $nodeHoverTarget.parentNode?.replaceChild(replacement, $nodeHoverTarget);
-      $nodeHoverTarget = undefined;
-      request2AnimationFrames(() => ($nodeHoverTarget = replacement));
+        // Replace with replacement
+        target.parentNode?.replaceChild(replacement, target);
+        replacements.push(replacement);
+      }
+      $nodesSelection = [];
+      request2AnimationFrames(() => ($nodesSelection = replacements));
     }
 
     return `&#60;<span>${strFiltered}</span>&#62;`;
@@ -41,12 +55,12 @@
   let tagNameURL: string | null = $state(null);
 
   watch(
-    () => $nodeHoverTarget,
+    () => selected,
     () => {
-      if (!$nodeHoverTarget || !tagEl) return;
-      tagName = $nodeHoverTarget?.tagName.toLowerCase();
-      tagEl.innerHTML = parseTagStr(tagName);
-      tagNameURL = getTagURL(tagName);
+      if (!tagEl || selected.length === 0) return;
+      tagName = allSameName(selected) ? selected[0].tagName.toLowerCase() : "";
+      tagEl.innerHTML = parseTagStr(tagName ?? "");
+      tagNameURL = getTagURL(tagName ?? "");
     },
   );
 
@@ -134,7 +148,7 @@
   class:invalid={!tagNameURL}
   class="tagname bg-steel-100 p-2 rounded font-mono text-lg font-bold text-rock-700 focus:outline-none"
 >
-  &#60;<span>{$nodeHoverTarget?.tagName.toLowerCase()}</span>&#62;
+  &#60;<span>{tagName}</span>&#62;
 </span>
 <a
   href={tagNameURL}

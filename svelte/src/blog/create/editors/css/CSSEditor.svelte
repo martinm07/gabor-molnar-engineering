@@ -67,7 +67,7 @@
 
 <script lang="ts">
   import { getCSSProps, splitStringAtChar } from "./handlecss";
-  import { cssStyles, nodeHoverTarget } from "../../store";
+  import { cssStyles, nodeHoverTarget, nodesSelection } from "../../store";
   import { on } from "svelte/events";
   import { onDestroy, getContext } from "svelte";
   import { watch } from "runed";
@@ -76,24 +76,47 @@
   let stylesEl: HTMLElement;
   const updateHighlight: () => void = getContext("updateHighlight");
 
-  watch(
-    () => $nodeHoverTarget,
-    (target) => {
-      if (!target) return;
-      let styles_ = $cssStyles.get(target);
-      if (!styles_) {
-        const genStyles = getCSSProps(target);
-        $cssStyles.set(target, genStyles);
-        styles_ = genStyles;
-      }
+  interface Props {
+    selected: Element[];
+  }
+  let { selected }: Props = $props();
 
+  type StylesList = [k: string, v: string][];
+
+  watch(
+    () => selected,
+    (targets) => {
+      let commonStyles: StylesList | undefined;
+      for (const target of targets) {
+        let styles_ = $cssStyles.get(target);
+        if (!styles_) {
+          const genStyles = getCSSProps(target);
+          $cssStyles.set(target, genStyles);
+          styles_ = genStyles;
+        }
+        commonStyles = commonStyles
+          ? stylesIntersection(commonStyles, styles_)
+          : styles_;
+      }
+      if (!commonStyles) return;
       styles = parseStylesStr(
-        styles_.map((style) => `${style[0]}:${style[1]};`).join(" "),
+        commonStyles.map((style) => `${style[0]}:${style[1]};`).join(" "),
         false,
       );
       if (stylesEl?.innerHTML) stylesEl.innerHTML = styles;
     },
   );
+
+  function stylesIntersection(s1: StylesList, s2: StylesList): StylesList {
+    return s1.filter((s, i) => s[0] === s2[i]?.[0] && s[1] === s2[i]?.[1]);
+  }
+  function stylesApply(base: StylesList, applied: StylesList): StylesList {
+    const final = [...applied];
+    base.forEach((s) => {
+      if (!final.some((s_) => s_[0] === s[0])) final.push(s);
+    });
+    return final;
+  }
 
   function endsWith(str: string, regex: RegExp) {
     const result = regex.exec(str);
@@ -127,6 +150,7 @@
     return propStrs.join("<br />");
   }
 
+  let prevPropsList: StylesList = [];
   function parseStylesStr(inp?: HTMLElement | string, updateStyles = true) {
     let str = typeof inp === "string" ? inp : inp?.textContent ?? "";
 
@@ -164,22 +188,45 @@
       .join('<div class="colon">:</div>');
     if (propStr.endsWith("<br />")) propStr = propStr.slice(0, -6);
 
-    if (updateStyles && $nodeHoverTarget instanceof HTMLElement) {
+    if (updateStyles) {
+      // the textStr always ends something like this: "...in:10px;:" so we remove that final colon
       textStr = textStr.slice(0, -1);
+
       const props = splitStringAtChar(textStr, ";");
-      $nodeHoverTarget.removeAttribute("style");
-      const propsList: [k: string, v: string][] = props.map((propStr) => {
+      const propsList: StylesList = props.map((propStr) => {
         const prop = splitStringAtChar(propStr, ":");
         if (prop.length < 2) return ["", ""];
-        $nodeHoverTarget.style.setProperty(prop[0], prop[1]);
         return [prop[0], prop[1]];
       });
-
-      $cssStyles.set(
-        $nodeHoverTarget,
-        propsList.filter((el) => el[0] && el[1]),
+      // Find the props that were removed since last update
+      const removeProps = prevPropsList.filter(
+        (prop) => !propsList.some((p) => p[0] === prop[0]),
       );
+
+      for (const target of selected) {
+        if (target instanceof HTMLElement) {
+          removeProps.forEach((prop) => target.style.removeProperty(prop[0]));
+          propsList.forEach((prop) =>
+            target.style.setProperty(prop[0], prop[1]),
+          );
+
+          // After adding/updating and removing all the properties, we recollect them
+          //  to set in the cssStyles map.
+          const elProps = splitStringAtChar(
+            target.getAttribute("style") ?? "",
+            ";",
+          );
+          // The string always ends in ";", so we have to slice away the last item in the array
+          const elPropsList = elProps
+            .map((propStr) =>
+              splitStringAtChar(propStr, ":").map((str) => str.trim()),
+            )
+            .slice(0, -1);
+          $cssStyles.set(target, elPropsList as StylesList);
+        }
+      }
       updateHighlight();
+      prevPropsList = propsList;
     }
 
     return propStr;

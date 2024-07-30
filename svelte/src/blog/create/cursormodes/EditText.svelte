@@ -10,7 +10,7 @@
 
   $effect(() => {
     if ($cursorMode !== "edit" && editTarget) {
-      editTarget.contentEditable = "false";
+      editTarget.removeAttribute("contenteditable");
       editTarget = undefined;
     }
   });
@@ -59,15 +59,6 @@
     $cursorMode = "select";
   }
 
-  function onKeydown(e: KeyboardEvent) {
-    if (e.key === "t" && $cursorMode === "select") {
-    } else if (e.key === "Escape" && editTarget) {
-      editTarget.contentEditable = "false";
-      editTarget = undefined;
-      $cursorMode = "select";
-    }
-  }
-
   let mouseX: number = 0;
   let mouseY: number = 0;
 
@@ -78,7 +69,7 @@
       e.target.closest(".doc")
     ) {
       $cursorMode = "select";
-      e.target.contentEditable = "false";
+      e.target.removeAttribute("contenteditable");
       editTarget = undefined;
     }
   }

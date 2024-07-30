@@ -7,6 +7,11 @@
 
   const updateHighlight: () => void = getContext("updateHighlight");
 
+  interface Props {
+    selected: Element[];
+  }
+  let { selected }: Props = $props();
+
   interface Attribute {
     name: string;
     value: string;
@@ -17,6 +22,7 @@
 
   let attributeID: number = 0;
   let attributes: Attribute[] = $state([]);
+  let prevAttributes: Attribute[];
 
   // Sync updates to the 'attributes' state to the DOM
   watch(
@@ -24,25 +30,41 @@
       attributes.map((el) => {
         return { name: el.name, value: el.value, valid: el.valid };
       }),
-    (current, prev) => {
-      if (!$nodeHoverTarget) return;
-      if (prev)
-        // Remove attributes that are no longer part of the list
-        prev.forEach((attr) => {
-          if (!current.some((el) => el.name === attr.name))
-            $nodeHoverTarget.removeAttribute(attr.name);
+    () => {
+      if (!selected) return;
+      const removeAttrs =
+        prevAttributes?.filter(
+          (attr) => !attributes.some((el) => el.name === attr.name),
+        ) ?? [];
+      for (const target of selected) {
+        removeAttrs.forEach((attr) => target.removeAttribute(attr.name));
+        attributes.forEach((attr) => {
+          if (attr.valid) target.setAttribute(attr.name, attr.value);
         });
-      current.forEach((attr) => {
-        if (attr.valid) $nodeHoverTarget.setAttribute(attr.name, attr.value);
-      });
+      }
       updateHighlight();
     },
   );
+
+  function attributesIntersection(els: Element[]) {
+    if (els.length === 0) return [];
+    return els
+      .map((el) => Array(...el.attributes))
+      .reduce((p, c) =>
+        c.filter((attr) =>
+          p.some(
+            (a) =>
+              attr.nodeName === a.nodeName && attr.nodeValue === a.nodeValue,
+          ),
+        ),
+      );
+  }
+
   // Refresh 'attributes' state when the element (i.e. nodeHoverTarget) changes
   watch(
-    () => $nodeHoverTarget,
+    () => selected,
     () => {
-      attributes = Array(...($nodeHoverTarget?.attributes ?? []))
+      prevAttributes = attributesIntersection(selected)
         .map((attr) => {
           return {
             name: attr.nodeName,
@@ -53,26 +75,34 @@
           };
         })
         .filter((el) => el.name !== "style" && el.name !== "contenteditable");
+      attributes = prevAttributes;
     },
   );
 
   function attrURL(attribute: string) {
-    if (!$nodeHoverTarget) return null;
+    if (!selected) return null;
     if (attribute === "style") return null;
-    const tag = $nodeHoverTarget.tagName.toLowerCase();
-    const tagAttrs =
-      tagAttributes.find((tag_) => tag_.tag === tag)?.attributes ?? [];
+
     const globalAttrs =
       tagAttributes.find((tag_) => tag_.tag === "GLOBAL")?.attributes ?? [];
-    const valid = [...tagAttrs, ...globalAttrs].find(
-      (attr) => attr.name === attribute,
-    );
-    return valid?.url ?? null;
+
+    let finalURL: string | null = selected.length !== 0 ? "true" : null;
+    // Only return a URL if every element of 'selected' considers the attribute valid
+    for (const target of selected) {
+      const tag = target.tagName.toLowerCase();
+      const tagAttrs =
+        tagAttributes.find((tag_) => tag_.tag === tag)?.attributes ?? [];
+      const valid = [...tagAttrs, ...globalAttrs].find(
+        (attr) => attr.name === attribute,
+      );
+      finalURL = finalURL && (valid?.url ?? null);
+    }
+    return finalURL;
   }
 
   // Determine validity & add MDN url when attribute names change
   watch(
-    () => [...attributes.map((attr) => attr.name), $nodeHoverTarget],
+    () => [...attributes.map((attr) => attr.name), selected],
     () => {
       attributes.forEach((attr, i) => {
         const url = attrURL(attr.name);

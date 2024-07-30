@@ -11,6 +11,9 @@
   import { setContext } from "svelte";
   import { nodeHoverTarget, cursorMode } from "./store";
   import AddNode from "./cursormodes/AddNode.svelte";
+  import MultipleSelect, {
+    type IMultipleSelect,
+  } from "./cursormodes/MultipleSelect.svelte";
 
   let document_: string = $state("");
   fetch(starterPath)
@@ -36,12 +39,13 @@
     });
 
   let nodeSelect: INodeSelect | undefined = $state();
+  let multipleSelect: IMultipleSelect | undefined = $state();
 
   setContext("resetHoverTarget", () => ($nodeHoverTarget = undefined));
-  setContext(
-    "updateHighlight",
-    () => nodeSelect && nodeSelect.updateHighlight(),
-  );
+  setContext("updateHighlight", () => {
+    nodeSelect?.updateHighlight();
+    multipleSelect?.updateHighlights();
+  });
 
   let editText: IEditText;
   const startEdit: typeof editText.startEdit = (e) => editText.startEdit(e);
@@ -53,13 +57,15 @@
         "[contenteditable='true'],[contenteditable='plaintext-only'],input,textarea",
       ),
     );
-    if (e.key === "s" && !inTextField) {
-      $cursorMode = "noselect";
+    if (e.key === "s" && !inTextField && multipleSelect) {
+      // $cursorMode = "noselect";
+      multipleSelect.addToSelection();
     } else if (e.key === "t" && !inTextField) {
       editText.startEdit(e);
     } else if (e.key === "a" && !inTextField) {
       $cursorMode = "add";
     } else if (e.key === "Escape") {
+      multipleSelect?.removeSelection();
       $cursorMode = "select";
     }
   }
@@ -89,6 +95,7 @@
   <div class="flex col-span-1 justify-center relative z-0 overflow-auto">
     {#if docEl}
       <NodeSelect {shiftPressed} doc={docEl} bind:this={nodeSelect} />
+      <MultipleSelect bind:this={multipleSelect} />
       <AddNode doc={docEl} />
     {/if}
     <div class="doc w-3/4 max-w-[600px]" bind:this={docEl}>

@@ -235,6 +235,7 @@
     if (addedActive.length === 1) {
       addedActive[0][1].classList.add("active");
       activeLocation = addedActive[0][1];
+      doc.style.cursor = "pointer";
     } else if (addedActive.length > 1) {
       // Find and select the element with the smallest euclidean distance
       const activeDists: [number, HTMLElement][] = addedActive.map((el) => {
@@ -244,7 +245,11 @@
       const bestI = activeDists.reduce((p, c, i, a) => c[0] < a[p][0] ? i : p, 0);
       activeDists[bestI][1].classList.add("active");
       activeLocation = addedActive[bestI][1];
-    } else activeLocation = undefined;
+      doc.style.cursor = "pointer";
+    } else {
+      activeLocation = undefined;
+      doc.style.cursor = "initial";
+    }
   }}
   onclick={() => {
     if ($cursorMode === "add" && activeLocation) {
@@ -264,9 +269,11 @@
     border-radius: 5px;
   }
   :global(.potential-location.active) {
-    box-shadow:
+    /* box-shadow:
       0 0 0 3px var(--rock-200),
       0 0 0 4px var(--rock-500);
-    background: var(--rock-200);
+    background: var(--rock-200); */
+    box-shadow: 0 0 0 2px #0060df;
+    background: #0060df;
   }
 </style>

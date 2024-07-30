@@ -7,3 +7,4 @@ export const cssStyles: Writable<Map<Element, [k: string, v: string][]>> =
   writable(new Map());
 
 export const nodeHoverTarget: Writable<Element | undefined> = writable();
+export const nodesSelection: Writable<Element[]> = writable([]);

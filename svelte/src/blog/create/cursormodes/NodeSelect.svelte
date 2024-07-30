@@ -20,22 +20,27 @@
   let targetOriginal: Element | undefined;
   let ancestorCount: number = 0;
 
+  let doSelect = $derived($cursorMode === "select");
+  let displaySelection = $derived(
+    $cursorMode !== "edit" && $cursorMode !== "add",
+  );
   // When we're not in select mode, we still want to keep track of the 'theoretical hover target'
   //  so that when we go back to select mode we can instantly be back in sync with the mouse position.
   $effect(() => {
-    if ($cursorMode === "select") $nodeHoverTarget = targetOriginal;
+    if (doSelect) $nodeHoverTarget = targetOriginal;
   });
 
   const off1 = on(doc, "mouseover", (e) => {
     if (!(e.target instanceof Element)) return;
-    if ($cursorMode === "select") $nodeHoverTarget = e.target;
-    targetOriginal = e.target;
+    const target = e.target === doc ? undefined : e.target;
+    if (doSelect) $nodeHoverTarget = target;
+    targetOriginal = target;
     ancestorCount = 0;
   });
   onDestroy(off1);
 
   const off2 = on(doc, "mouseleave", (e) => {
-    if ($cursorMode === "select") $nodeHoverTarget = undefined;
+    if (doSelect) $nodeHoverTarget = undefined;
     targetOriginal = undefined;
     ancestorCount = 0;
   });
@@ -87,9 +92,7 @@
 
 <svelte:window onwheel={onWheel} />
 <div
-  class:hidden={!$nodeHoverTarget ||
-    $cursorMode === "edit" ||
-    $cursorMode === "add"}
+  class:hidden={!$nodeHoverTarget || !displaySelection}
   class="absolute ring-8 rounded ring-rock-500 ring-opacity-50 pointer-events-none z-10"
   bind:this={highlight}
 ></div>
