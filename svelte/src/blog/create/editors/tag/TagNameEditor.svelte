@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import { nodeHoverTarget, nodesSelection } from "../../store";
+  import { nodesSelection } from "../../store";
   import {
     calculateTotalOffset,
     findNodeFromOffset,

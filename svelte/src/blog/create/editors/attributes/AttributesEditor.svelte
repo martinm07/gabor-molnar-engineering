@@ -1,7 +1,6 @@
 <script lang="ts">
   import { getContext } from "svelte";
   import { watch } from "runed";
-  import { nodeHoverTarget } from "../../store";
   import tagAttributes from "./tag_attributes.json";
   import FitContentInput from "/shared/components/FitContentInput.svelte";
 
@@ -31,11 +30,11 @@
         return { name: el.name, value: el.value, valid: el.valid };
       }),
     () => {
-      if (!selected) return;
       const removeAttrs =
         prevAttributes?.filter(
           (attr) => !attributes.some((el) => el.name === attr.name),
         ) ?? [];
+      prevAttributes = [...attributes];
       for (const target of selected) {
         removeAttrs.forEach((attr) => target.removeAttribute(attr.name));
         attributes.forEach((attr) => {
@@ -75,7 +74,7 @@
           };
         })
         .filter((el) => el.name !== "style" && el.name !== "contenteditable");
-      attributes = prevAttributes;
+      attributes = [...prevAttributes];
     },
   );
 

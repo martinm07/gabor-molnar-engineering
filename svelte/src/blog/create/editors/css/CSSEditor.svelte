@@ -67,7 +67,7 @@
 
 <script lang="ts">
   import { getCSSProps, splitStringAtChar } from "./handlecss";
-  import { cssStyles, nodeHoverTarget, nodesSelection } from "../../store";
+  import { cssStyles } from "../../store";
   import { on } from "svelte/events";
   import { onDestroy, getContext } from "svelte";
   import { watch } from "runed";
@@ -107,15 +107,9 @@
     },
   );
 
+  // Take the intersection of styles to have the same name and value
   function stylesIntersection(s1: StylesList, s2: StylesList): StylesList {
     return s1.filter((s, i) => s[0] === s2[i]?.[0] && s[1] === s2[i]?.[1]);
-  }
-  function stylesApply(base: StylesList, applied: StylesList): StylesList {
-    const final = [...applied];
-    base.forEach((s) => {
-      if (!final.some((s_) => s_[0] === s[0])) final.push(s);
-    });
-    return final;
   }
 
   function endsWith(str: string, regex: RegExp) {
