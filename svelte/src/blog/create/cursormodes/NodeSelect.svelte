@@ -22,7 +22,7 @@
 
   let doSelect = $derived($cursorMode === "select");
   let displaySelection = $derived(
-    $cursorMode !== "edit" && $cursorMode !== "add",
+    $cursorMode !== "edit" && $cursorMode !== "add" && $cursorMode !== "move",
   );
   // When we're not in select mode, we still want to keep track of the 'theoretical hover target'
   //  so that when we go back to select mode we can instantly be back in sync with the mouse position.

@@ -9,11 +9,13 @@
   import firefoxStylesPath from "./editors/css/firefoxDefaultCSS.txt";
   import EditProps from "./cursormodes/EditProps.svelte";
   import { setContext } from "svelte";
-  import { nodeHoverTarget, cursorMode } from "./store";
+  import { nodeHoverTarget, cursorMode, nodesSelection } from "./store";
   import AddNode from "./cursormodes/AddNode.svelte";
   import MultipleSelect, {
     type IMultipleSelect,
   } from "./cursormodes/MultipleSelect.svelte";
+  import MoveNodes from "./cursormodes/MoveNodes.svelte";
+  import { type IAttributesEditor } from "./editors/attributes/AttributesEditor.svelte";
 
   let document_: string = $state("");
   fetch(starterPath)
@@ -51,6 +53,13 @@
   const startEdit: typeof editText.startEdit = (e) => editText.startEdit(e);
   setContext("startEdit", startEdit);
 
+  let attributesEditor: IAttributesEditor | undefined = $state();
+  setContext(
+    "startAttributeUsage",
+    (name: string, value?: string | null, elements?: Element[]) =>
+      attributesEditor?.startAttributeUsage(name, value, elements),
+  );
+
   function onKeydown(e: KeyboardEvent) {
     const inTextField = Boolean(
       document.activeElement?.closest(
@@ -63,9 +72,12 @@
     } else if (e.key === "t" && !inTextField) {
       editText.startEdit(e);
     } else if (e.key === "a" && !inTextField) {
-      $cursorMode = "add";
-    } else if (e.key === "Escape") {
       multipleSelect?.removeSelection();
+      $cursorMode = "add";
+    } else if (e.key === "m" && !inTextField && $nodesSelection.length !== 0) {
+      $cursorMode = "move";
+    } else if (e.key === "Escape") {
+      if ($cursorMode === "select") multipleSelect?.removeSelection();
       $cursorMode = "select";
     }
   }
@@ -89,7 +101,7 @@
     style="scrollbar-color: #cdcdcd var(--background);"
     class="row-span-2 border-r-2 border-rock-300 bg-background p-2 overflow-y-scroll"
   >
-    <Sidebar />
+    <Sidebar bind:attributesEditor />
   </div>
   <div class="border-b-2 border-rock-300 bg-rock-50 bg-opacity-85"></div>
   <div class="flex col-span-1 justify-center relative z-0 overflow-auto">
@@ -97,6 +109,7 @@
       <NodeSelect {shiftPressed} doc={docEl} bind:this={nodeSelect} />
       <MultipleSelect bind:this={multipleSelect} />
       <AddNode doc={docEl} />
+      <MoveNodes doc={docEl} />
     {/if}
     <div class="doc w-3/4 max-w-[600px]" bind:this={docEl}>
       {@html document_}

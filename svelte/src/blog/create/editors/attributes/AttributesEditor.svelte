@@ -1,3 +1,24 @@
+<script context="module" lang="ts">
+  export interface IAttributesEditor {
+    startAttributeUsage(
+      name: string,
+      value?: string | null,
+      elements?: Element[],
+    ): [
+      endAttributeUsage: () => void,
+      updateUsedAttribute: (value?: string | null) => void,
+    ];
+  }
+
+  export interface Attribute {
+    name: string;
+    value: string;
+    referenceUrl: string;
+    valid: boolean;
+    id: number;
+  }
+</script>
+
 <script lang="ts">
   import { getContext } from "svelte";
   import { watch } from "runed";
@@ -8,22 +29,106 @@
 
   interface Props {
     selected: Element[];
+    attributes?: Attribute[];
   }
-  let { selected }: Props = $props();
-
-  interface Attribute {
-    name: string;
-    value: string;
-    referenceUrl: string;
-    valid: boolean;
-    id: number;
-  }
+  let { selected, attributes = $bindable([]) }: Props = $props();
 
   let attributeID: number = 0;
-  let attributes: Attribute[] = $state([]);
+  // let attributes: Attribute[] = $state([]);
   let prevAttributes: Attribute[];
 
-  // Sync updates to the 'attributes' state to the DOM
+  function setAttribute(el: Element, name: string, value?: string | null) {
+    if (value) el.setAttribute(name, value);
+    else el.removeAttribute(name);
+  }
+
+  interface MaskAttribute {
+    name: string;
+    value?: string | null;
+    affectedEls: [Element, string | null | undefined][];
+  }
+  const maskedAttributes: MaskAttribute[] = [];
+
+  export function startAttributeUsage(
+    name: string,
+    value?: string | null,
+    elements?: Element[],
+  ): [
+    endAttributeUsage: () => void,
+    updateUsedAttribute: (value?: string | null) => void,
+  ] {
+    // The attribute is no longer synced to the DOM
+    // When the selection changes the elements of the previous selection that
+    //  have stayed in the new one don't have this attribute read from the DOM,
+    //  but keep the same user-facing value.
+    const obj: MaskAttribute = {
+      name,
+      value,
+      affectedEls: (elements ?? selected).map((el) => [
+        el,
+        el.attributes.getNamedItem(name)?.nodeValue,
+      ]),
+    };
+    maskedAttributes.push(obj);
+    (elements ?? selected).forEach((el) => setAttribute(el, name, value));
+    return [
+      () => {
+        const i = maskedAttributes.findIndex((el) => obj === el);
+        if (i === -1) return;
+        maskedAttributes[i].affectedEls.forEach(([el, userVal]) =>
+          setAttribute(el, maskedAttributes[i].name, userVal),
+        );
+        maskedAttributes.splice(i, 1);
+      },
+      (value?: string | null) => {
+        obj.value = value;
+        obj.affectedEls.forEach(([el]) => setAttribute(el, obj.name, value));
+      },
+    ];
+  }
+
+  function attributeMasked(el: Element, name: string) {
+    return maskedAttributes
+      .filter((mask) => mask.name === name)
+      .some((mask) => mask.affectedEls.some(([el_]) => el === el_));
+  }
+  function getAttributes(el: Element): Attribute[] {
+    const attrs = Array(...el.attributes);
+    const maskedAttrVals: Map<string, string | null | undefined> = new Map();
+    maskedAttributes
+      .filter((mask) => mask.affectedEls.some(([el_]) => el === el_))
+      .forEach((mask) =>
+        maskedAttrVals.set(
+          mask.name,
+          mask.affectedEls.find(([el_]) => el === el_)?.[1],
+        ),
+      );
+
+    const toAttribute = (name: string, value: string) => {
+      return {
+        name,
+        value: value!,
+        referenceUrl: "",
+        valid: true,
+        id: attributeID++,
+      };
+    };
+
+    const maskedAttrValsEntries = Array(...maskedAttrVals.entries());
+    const finalMasked: Attribute[] = maskedAttrValsEntries
+      .filter(([_, value]) => typeof value === "string")
+      .map(([name, value]) => toAttribute(name, value!));
+    const finalNormal: Attribute[] = attrs
+      .filter(
+        (attr) =>
+          typeof attr.nodeValue === "string" &&
+          !maskedAttrValsEntries.some(([name]) => attr.nodeName === name),
+      )
+      .map((attr) => toAttribute(attr.nodeName, attr.nodeValue!));
+    return [...finalMasked, ...finalNormal];
+  }
+
+  // Sync updates to the 'attributes' state to the DOM and user-facing values for attribute masks
   watch(
     () =>
       attributes.map((el) => {
@@ -34,11 +139,37 @@
         prevAttributes?.filter(
           (attr) => !attributes.some((el) => el.name === attr.name),
         ) ?? [];
+
+      // Sync the user-facing values of attribute masks
+      const syncMaskedAttributes = (
+        attrs: Attribute[],
+        remove: boolean = false,
+      ) =>
+        attrs.forEach((attribute) => {
+          const masks = maskedAttributes.filter(
+            ({ name }) => name === attribute.name,
+          );
+          // For each element of each mask (that masks this attribute) that is part of the current selection,
+          //  set that element's user-facing value in the maskedAttributes array.
+          masks.forEach((mask) => {
+            mask.affectedEls
+              .filter(([el]) => selected.includes(el))
+              .forEach((elval) => (elval[1] = remove ? null : attribute.value));
+          });
+        });
+      syncMaskedAttributes(attributes);
+      syncMaskedAttributes(removeAttrs, true);
+
+      // Sync attributes to the DOM
       prevAttributes = [...attributes];
       for (const target of selected) {
-        removeAttrs.forEach((attr) => target.removeAttribute(attr.name));
+        removeAttrs.forEach((attr) => {
+          if (!attributeMasked(target, attr.name))
+            target.removeAttribute(attr.name);
+        });
         attributes.forEach((attr) => {
-          if (attr.valid) target.setAttribute(attr.name, attr.value);
+          if (attr.valid && !attributeMasked(target, attr.name))
+            target.setAttribute(attr.name, attr.value);
         });
       }
       updateHighlight();
@@ -48,32 +179,23 @@
   function attributesIntersection(els: Element[]) {
     if (els.length === 0) return [];
     return els
-      .map((el) => Array(...el.attributes))
+      .map((el) => getAttributes(el))
       .reduce((p, c) =>
         c.filter((attr) =>
-          p.some(
-            (a) =>
-              attr.nodeName === a.nodeName && attr.nodeValue === a.nodeValue,
-          ),
+          p.some((a) => attr.name === a.name && attr.value === a.value),
         ),
       );
   }
 
-  // Refresh 'attributes' state when the element (i.e. nodeHoverTarget) changes
+  // Refresh 'attributes' state when the selection changes
   watch(
     () => selected,
     () => {
-      prevAttributes = attributesIntersection(selected)
-        .map((attr) => {
-          return {
-            name: attr.nodeName,
-            value: attr.nodeValue ?? "",
-            referenceUrl: "",
-            valid: true,
-            id: attributeID++,
-          };
-        })
-        .filter((el) => el.name !== "style" && el.name !== "contenteditable");
+      // TODO: What we're doing with attribute masking and the 'draggable' attribute could also be done
+      //        with contenteditable, instead of this check here
+      prevAttributes = attributesIntersection(selected).filter(
+        (el) => el.name !== "style" && el.name !== "contenteditable",
+      );
       attributes = [...prevAttributes];
     },
   );
