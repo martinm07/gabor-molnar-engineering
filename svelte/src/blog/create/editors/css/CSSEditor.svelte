@@ -66,11 +66,12 @@
 </script>
 
 <script lang="ts">
-  import { getCSSProps, splitStringAtChar } from "./handlecss";
-  import { cssStyles } from "../../store";
-  import { on } from "svelte/events";
+  import { diffChars } from "diff";
   import { onDestroy, getContext } from "svelte";
+  import { on } from "svelte/events";
   import { watch } from "runed";
+  import { cssStyles } from "../../store";
+  import { charInStrQuoted, getCSSProps, splitStringAtChar } from "./handlecss";
 
   let styles = $state("");
   let stylesEl: HTMLElement;
@@ -99,9 +100,8 @@
           : styles_;
       }
       if (!commonStyles) return;
-      styles = parseStylesStr(
+      [styles] = parseStylesStr(
         commonStyles.map((style) => `${style[0]}:${style[1]};`).join(" "),
-        false,
       );
       if (stylesEl?.innerHTML) stylesEl.innerHTML = styles;
     },
@@ -112,122 +112,84 @@
     return s1.filter((s, i) => s[0] === s2[i]?.[0] && s[1] === s2[i]?.[1]);
   }
 
-  function endsWith(str: string, regex: RegExp) {
-    const result = regex.exec(str);
-    if (!result) return false;
-    return str.length === result.index + result[0].length;
-  }
-
-  const insertAtIndex = (insert: string, str?: string | null, id?: number) => {
-    if (!str) return "";
-    return str.slice(0, id) + insert + str.slice(id);
-  };
-
-  // Traverses up the parent chain until it finds a parent with a next sibling
-  function findNextSibling(node: Node): Node | null {
-    if (node.nextSibling) return node.nextSibling;
-    else return node.parentNode ? findNextSibling(node.parentNode) : null;
-  }
-
-  function parseStylesStr2(inp?: HTMLElement | string) {
-    let str = typeof inp === "string" ? inp : inp?.textContent ?? "";
-    const props = splitStringAtChar(str, ";").map((prop) =>
-      splitStringAtChar(prop, ":"),
-    );
-    // parseStylesStr2(str);
-    const propStrs = props.map((prop) => {
-      if (prop.length === 0) return "";
-      if (prop.length === 1)
-        return `<b>${prop[0].trim()}</b><div class="colon">:</div><div class="semic">;</div>`;
-      return `<b>${prop[0].trim()}</b><div class="colon">:</div><em>${prop[1]}</em><div class="semic">;</div>`;
-    });
-    return propStrs.join("<br />");
-  }
-
-  let prevPropsList: StylesList = [];
-  function parseStylesStr(inp?: HTMLElement | string, updateStyles = true) {
+  function parseStylesStr(inp?: HTMLElement | string): [string, StylesList] {
     let str = typeof inp === "string" ? inp : inp?.textContent ?? "";
 
-    const props = splitStringAtChar(str, ":").map((el, i, a) => {
-      if (i !== 0) {
-        const valprop = splitStringAtChar(el, ";");
-        if (valprop.length === 1) return ["", valprop[0]];
-        else return valprop;
-      } else return ["", el];
-    });
-
-    const reflowed = props
-      .flat()
-      .map((el, i, a) => (i % 2 === 0 ? [el, a.at(i + 1) ?? ""] : []))
-      .filter((_, i) => i % 2 === 0)
-      .filter((el, i, a) => el[0] || el[1] || i === a.length - 1);
-    if (reflowed.at(-1)?.at(1)) reflowed.push(["", ""]);
-    // console.log(reflowed);
-
-    // console.log(str, props);
-    let textStr = "";
-    let propStr = reflowed
-      .map((prop, i, a) => {
-        if (i === 0) {
-          textStr += `${prop[1].trim()}:`;
-          return `<b>${prop[1].trim()}</b>`;
-        }
-        if (!prop[1].trim()) {
-          textStr += `${prop[0]};:`;
-          return `<em>${prop[0]}</em><div class="semic">;</div><br />`;
-        }
-        textStr += `${prop[0]};${prop[1].trim()}:`;
-        return `<em>${prop[0]}</em><div class="semic">;</div><br /><b>${prop[1].trim()}</b>`;
+    const props = splitStringAtChar(str, ";")
+      .map((propStr) => {
+        const keyval = splitStringAtChar(propStr, ":");
+        if (propStr.length === 0) return null;
+        if (keyval.length === 1) return [keyval[0], ""];
+        // if (keyval.length === 3) return []
+        return keyval;
       })
-      .join('<div class="colon">:</div>');
-    if (propStr.endsWith("<br />")) propStr = propStr.slice(0, -6);
+      .filter((keyval) => keyval);
+    let reflowed = props
+      .flat()
+      .map((item, i, a) => (i % 2 === 0 ? [item, a.at(i + 1) ?? ""] : []))
+      .filter((_, i) => i % 2 === 0) as StylesList;
+    reflowed = reflowed.map(([propname, val]) => [
+      propname.replace(/[^a-zA-Z0-9\-_]/g, ""),
+      val,
+    ]);
 
-    if (updateStyles) {
-      // the textStr always ends something like this: "...in:10px;:" so we remove that final colon
-      textStr = textStr.slice(0, -1);
+    let htmlStr = reflowed
+      .map((prop, i) => {
+        return `<b>${prop[0]}</b><div class="colon">:</div><em>${prop[1]}</em>`;
+      })
+      .join('<div class="semic">;</div><br />');
+    htmlStr += '<div class="semic">;</div>';
 
-      const props = splitStringAtChar(textStr, ";");
-      const propsList: StylesList = props.map((propStr) => {
-        const prop = splitStringAtChar(propStr, ":");
-        if (prop.length < 2) return ["", ""];
-        return [prop[0], prop[1]];
-      });
-      // Find the props that were removed since last update
-      const removeProps = prevPropsList.filter(
-        (prop) => !propsList.some((p) => p[0] === prop[0]),
-      );
-
-      for (const target of selected) {
-        if (target instanceof HTMLElement) {
-          removeProps.forEach((prop) => target.style.removeProperty(prop[0]));
-          propsList.forEach((prop) =>
-            target.style.setProperty(prop[0], prop[1]),
-          );
-
-          // After adding/updating and removing all the properties, we recollect them
-          //  to set in the cssStyles map.
-          const elProps = splitStringAtChar(
-            target.getAttribute("style") ?? "",
-            ";",
-          );
-          // The string always ends in ";", so we have to slice away the last item in the array
-          const elPropsList = elProps
-            .map((propStr) =>
-              splitStringAtChar(propStr, ":").map((str) => str.trim()),
-            )
-            .slice(0, -1);
-          $cssStyles.set(target, elPropsList as StylesList);
-        }
-      }
-      updateHighlight();
-      prevPropsList = propsList;
-    }
-
-    return propStr;
+    return [htmlStr, reflowed];
   }
 
+  function syncStyles(styles: string | StylesList) {
+    let styleStr: string;
+    let propsList: StylesList;
+
+    if (typeof styles === "string") {
+      styleStr = styles;
+      propsList = splitStringAtChar(styleStr, ";").map((propStr) =>
+        splitStringAtChar(propStr, ":").map((str) => str.trim()),
+      ) as StylesList;
+    } else {
+      propsList = styles;
+      styleStr = propsList.map((item) => item.join(":")).join(";");
+    }
+    for (const target of selected) {
+      if (!(target instanceof HTMLElement)) continue;
+      target.setAttribute("style", styleStr);
+      $cssStyles.set(target, propsList as StylesList);
+    }
+    updateHighlight();
+  }
+
+  function preventColonsDeletion(styleStr: string, prevStyleStr: string) {
+    const diff = diffChars(prevStyleStr, styleStr);
+    let finalStr = "";
+    for (const change of diff) {
+      if (!change.removed) finalStr += change.value;
+      else {
+        const del = change.value;
+        let toBeAdded = [...del.matchAll(/[;:]/g)]
+          .map((exp) => (!charInStrQuoted(del, exp.index) ? exp[0] : ""))
+          .join("");
+        // :;: <-- margin:0;position:rela
+        // :;:; <-- margin:0;position:relative;disp
+        // ;:; <-- 0px;display:block;
+        // ;:;: <-- 0px;display:block;position:rela
+        toBeAdded = toBeAdded.replace(/(?<!^):;/g, "");
+        // toBeAdded will at most be 3 long
+        if (toBeAdded.startsWith(":;") && finalStr.at(-1) === ";")
+          toBeAdded = toBeAdded.slice(2);
+        finalStr += toBeAdded;
+      }
+    }
+    return finalStr;
+  }
+
+  let prevStyleStr: string;
   function onInput(e_: any) {
-    const e = e_ as InputEvent;
     if (!stylesEl) return;
     const selection = document.getSelection();
     const offset = calculateTotalOffset(
@@ -235,11 +197,25 @@
       selection?.focusNode,
       selection?.focusOffset,
     );
-    stylesEl.innerHTML = parseStylesStr(stylesEl);
-    const [node, newOffset] = findNodeFromOffset(stylesEl, offset);
+
+    const styleStr = preventColonsDeletion(
+      stylesEl.textContent ?? "",
+      prevStyleStr,
+    );
+    let propsList: StylesList;
+    [stylesEl.innerHTML, propsList] = parseStylesStr(styleStr);
+    syncStyles(propsList);
+
     if (enterPressed) selection?.setPosition(stylesEl, enterPressed);
-    else selection?.setPosition(node, newOffset);
+    else {
+      const [node, newOffset] = findNodeFromOffset(
+        stylesEl,
+        offset + Number(backspaceRemoveLine),
+      );
+      selection?.setPosition(node, newOffset);
+    }
     enterPressed = undefined;
+    backspaceRemoveLine = false;
   }
 
   const off1 = on(document, "selectionchange", (e) => {
@@ -299,7 +275,7 @@
     for (const focus of anchorfocus) {
       adjustSelection((el) => el.classList.contains("semic"), 0, "prev", focus);
       adjustSelection((el) => el.classList.contains("colon"), 0, "prev", focus);
-      // adjustSelection((el) => el.classList.contains("colon"), 1, "next", focus);
+      adjustSelection((el) => el.classList.contains("colon"), 1, "next", focus);
     }
   });
   onDestroy(off1);
@@ -334,6 +310,7 @@
   }
 
   let enterPressed: number | undefined;
+  let backspaceRemoveLine: boolean = false;
   function onKeydown(e: KeyboardEvent) {
     if (e.key === "Backspace" && stylesEl) {
       const line = getSelectionLine();
@@ -347,7 +324,7 @@
         line.forEach((node) => {
           if (stylesEl && stylesEl.contains(node)) stylesEl?.removeChild(node);
         });
-        e.preventDefault();
+        backspaceRemoveLine = true;
       }
     } else if (e.key === "Enter" && stylesEl) {
       const line = getSelectionLine();
@@ -362,6 +339,20 @@
       // Two after the final node of the line is where the next line starts
       // Must set the selection after the innerHTML is refreshed
       enterPressed = offset + 2;
+    } else if (e.key === ":" && stylesEl) {
+      e.preventDefault();
+      const line = getSelectionLine();
+      if (!line) return;
+      const selection = getSelection();
+      const colon = line.find((node) => node.textContent === ":") ?? null;
+      selection?.setPosition(colon, 1);
+    } else if (e.key === ";" && stylesEl) {
+      e.preventDefault();
+      const line = getSelectionLine();
+      if (!line) return;
+      const selection = getSelection();
+      const semic = line.find((node) => node.textContent === ";") ?? null;
+      selection?.setPosition(semic, 1);
     }
   }
 </script>
@@ -371,6 +362,9 @@
   bind:this={stylesEl}
   contenteditable="true"
   oninput={onInput}
+  onbeforeinput={(e) => {
+    prevStyleStr = stylesEl.textContent ?? "";
+  }}
   onkeydown={onKeydown}
   class="styles-display font-mono inline-block text-left text-rock-700 bg-steel-100 p-2 rounded focus:outline-none text-sm"
 >

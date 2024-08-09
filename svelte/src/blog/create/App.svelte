@@ -66,9 +66,9 @@
         "[contenteditable='true'],[contenteditable='plaintext-only'],input,textarea",
       ),
     );
-    if (e.key === "s" && !inTextField && multipleSelect) {
+    if (e.key === "s" && !inTextField) {
       // $cursorMode = "noselect";
-      multipleSelect.addToSelection();
+      multipleSelect?.addToSelection();
     } else if (e.key === "t" && !inTextField) {
       editText.startEdit(e);
     } else if (e.key === "a" && !inTextField) {
@@ -76,6 +76,13 @@
       $cursorMode = "add";
     } else if (e.key === "m" && !inTextField && $nodesSelection.length !== 0) {
       $cursorMode = "move";
+    } else if (e.key === "Delete" && !inTextField) {
+      if ($nodesSelection.length > 0) {
+        $nodesSelection.forEach((el) => el.remove());
+        multipleSelect?.removeSelection();
+      } else if ($nodeHoverTarget) {
+        $nodeHoverTarget.remove();
+      }
     } else if (e.key === "Escape") {
       if ($cursorMode === "select") multipleSelect?.removeSelection();
       $cursorMode = "select";

@@ -1,4 +1,6 @@
 <script context="module" lang="ts">
+  import { prevSibling, nextSibling, firstChild, lastChild } from "../helper";
+
   export type Rect = { x: number; y: number; w: number; h: number };
   // Represents line segment locked only to a change in x or a change in y (but not both)
   interface CardinalSegment {
@@ -103,39 +105,6 @@
       }
     });
   }
-
-  function recurseIgnoreWhitspace(
-    traverseFromNode: (node: Node, ...args: any) => Node | null,
-    recurse: (
-      func: (node: Node, ...args: any) => Node | null,
-      node: Node,
-      ...args: any
-    ) => Node | null,
-  ) {
-    const returnFunc = (node: Node, ...args: any) => {
-      const next = traverseFromNode(node, ...args);
-      if (next?.nodeType === Node.TEXT_NODE && next.textContent?.trim() === "")
-        return recurse(returnFunc, node, ...args);
-      else return next;
-    };
-    return returnFunc;
-  }
-  const prevSibling = recurseIgnoreWhitspace(
-    (node) => node.previousSibling,
-    (func, node) => func(node.previousSibling!),
-  );
-  const nextSibling = recurseIgnoreWhitspace(
-    (node) => node.nextSibling,
-    (func, node) => func(node.nextSibling!),
-  );
-  const firstChild = recurseIgnoreWhitspace(
-    (node, nth) => node.childNodes[nth ?? 0],
-    (func, node, nth) => func(node, (nth ?? 0) + 1),
-  );
-  const lastChild = recurseIgnoreWhitspace(
-    (node, nth) => node.childNodes[node.childNodes.length - 1 - nth ?? 0],
-    (func, node, nth) => func(node, (nth ?? 0) + 1),
-  );
 
   // Calculates the squared euclidean distance to the closest point on a CardinalSegment
   function distanceToCardinaLSeg(seg: CardinalSegment, p: Vec2) {
@@ -293,7 +262,7 @@
         this.locationMap.delete(key),
       );
       this.locationGroups.splice(0, this.locationGroups.length);
-      this.doc.style.cursor = "initial";
+      this.doc.parentElement!.style.cursor = "initial";
       this.addedLocs = false;
     }
 

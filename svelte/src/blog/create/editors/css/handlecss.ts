@@ -129,7 +129,6 @@ function specificityGreater(spec1: Specificity, spec2: Specificity) {
     null as null | boolean,
   );
 }
-console.log(specificityGreater([1, 1, 0, 0], [1, 0, 0, 0]));
 
 // A logical property has a certain list of physical properties it can map to,
 //  and if all those properties are already set with higher precedence then it should
@@ -222,7 +221,7 @@ const splitOn = (str: string, ...indices: number[]) =>
 
 // Splits a string 'str' by a character 'char', like str.split(char),
 //  but it ignore 'char's that are escaped by a backslash, or are
-//  inside a quoted string, in single (') or double ("") quotes.
+//  inside a quoted string, in single (') or double (") quotes.
 export function splitStringAtChar(str: string, char: string) {
   const getMatchRanges = (regex: RegExp) =>
     [...str.matchAll(regex)].map((exp) => [
@@ -249,5 +248,17 @@ export function splitStringAtChar(str: string, char: string) {
   return split;
 }
 
-const STR = 'con\\;tent: "boo; yah";hello: world;';
-console.log(STR, splitStringAtChar(STR, ";"));
+export function charInStrQuoted(str: string, index: number) {
+  if (index < 0 || index >= str.length) throw new Error("Index out of range");
+  if (str[index - 1] === "\\") return true;
+  const getMatchRanges = (regex: RegExp): [start: number, end: number][] =>
+    [...str.matchAll(regex)].map((exp) => [
+      exp.index,
+      exp.index + exp[0].length,
+    ]);
+  const dQuoteRanges = getMatchRanges(/"([^"\\]|\\.)*"/g);
+  const sQuoteRanges = getMatchRanges(/'([^'\\]|\\.)*'/g);
+  const allRanges = [...dQuoteRanges, ...sQuoteRanges];
+
+  return allRanges.some((range) => index > range[0] && index < range[1]);
+}
