@@ -1,6 +1,6 @@
 <script context="module" lang="ts">
   export interface IMultipleSelect {
-    addToSelection: () => void;
+    toggleToSelection: (nodes?: Node[] | Node) => void;
     removeSelection: () => void;
     updateHighlights: () => void;
   }
@@ -67,15 +67,26 @@
     () => updateHighlights,
   );
 
-  export function addToSelection() {
-    if (!$nodeHoverTarget) return;
-    const nodeI = $nodesSelection.findIndex((el) => el === $nodeHoverTarget);
-    if (nodeI !== -1)
-      $nodesSelection = [
-        ...$nodesSelection.slice(0, nodeI),
-        ...$nodesSelection.slice(nodeI + 1),
-      ];
-    else $nodesSelection = [$nodeHoverTarget, ...$nodesSelection];
+  export function toggleToSelection(nodes_?: Node[] | Node) {
+    let nodes: Element[];
+    if (nodes_) {
+      if (nodes_ instanceof Element) nodes = [nodes_];
+      else if (!(nodes_ instanceof Node))
+        nodes = nodes_.filter((node) => node instanceof Element);
+      else return;
+    } else if ($nodeHoverTarget) nodes = [$nodeHoverTarget];
+    else return;
+    if (nodes.length === 0) return;
+
+    const selectionRemovals = $nodesSelection.filter((el) => {
+      if (nodes.includes(el)) {
+        // Make sure to not later add nodes that were already in the selection and are now being toggled 'off'
+        nodes = nodes.filter((node) => node !== el);
+        return false;
+      } else return true;
+    });
+
+    $nodesSelection = [...nodes, ...selectionRemovals];
   }
   export function removeSelection() {
     $nodesSelection = [];

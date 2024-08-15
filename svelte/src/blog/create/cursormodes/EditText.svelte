@@ -6,7 +6,14 @@
 </script>
 
 <script lang="ts">
+  import { onDestroy } from "svelte";
+  import { on } from "svelte/events";
   import { cursorMode, nodeHoverTarget } from "../store";
+
+  interface Props {
+    doc: HTMLElement;
+  }
+  let { doc }: Props = $props();
 
   $effect(() => {
     if ($cursorMode !== "edit" && editTarget) {
@@ -73,6 +80,29 @@
       editTarget = undefined;
     }
   }
+
+  function getAllTextNodes(node: Node): Node[] {
+    return Array(...node.childNodes)
+      .flatMap((child) => getAllTextNodes(child))
+      .filter((node) => node.nodeType === Node.TEXT_NODE);
+  }
+
+  // const off = on(doc, "input", (e) => {
+  //   if (e.target instanceof HTMLElement && e.target.isContentEditable) {
+  //     if (e.target.innerText.trim() === "") e.target.innerText = "";
+  //     if (e.target.innerText === "") {
+  //       const allTextNodes = getAllTextNodes(e.target);
+  //       if (allTextNodes.length > 0) {
+  //         allTextNodes[0].textContent = "\u00A0";
+  //         getSelection()?.selectAllChildren(allTextNodes[0]);
+  //       } else {
+  //         e.target.insertAdjacentText("afterbegin", "\u00A0");
+  //         getSelection()?.selectAllChildren(e.target);
+  //       }
+  //     }
+  //   }
+  // });
+  // onDestroy(off);
 
   // UNUSED (but cool)
   let cursor: HTMLElement;

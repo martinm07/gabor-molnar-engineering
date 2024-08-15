@@ -73,7 +73,7 @@ def get_global_attrs():
 
         results = soup.find(id=id_)
         if not results:
-            raise Exception("Page has no ID 'list_of_global_attributes'.")
+            raise Exception(f"Page has no ID '{id_}'.")
         dls = [child for child in results.next_sibling.children if child.name == "dl"]
         dts = []
         [

@@ -26,6 +26,7 @@
   },
   "dependencies": {
     "@types/diff": "^5.2.1",
+    "css-selector-parser": "^3.0.5",
     "css-shorthand-expand": "^1.2.0",
     "diff": "^5.2.0",
     "runed": "^0.15.0"

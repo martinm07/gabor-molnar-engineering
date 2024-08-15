@@ -28,7 +28,7 @@ export const firstChild = recurseIgnoreWhitspace(
   (func, node, nth) => func(node, (nth ?? 0) + 1),
 );
 export const lastChild = recurseIgnoreWhitspace(
-  (node, nth) => node.childNodes[node.childNodes.length - 1 - nth ?? 0],
+  (node, nth) => node.childNodes[node.childNodes.length - 1 - (nth ?? 0)],
   (func, node, nth) => func(node, (nth ?? 0) + 1),
 );
 
@@ -55,123 +55,91 @@ export const insertAtIndex = (
   return str.slice(0, id) + insert + str.slice(id);
 };
 
-export function getElsList(
-  commonAncestor: Node,
-  optionalArgs?: { startNode?: Node; endNode?: Node },
-) {
-  const { startNode, endNode } = optionalArgs || {};
-  const domEls: Node[] = [];
-  let beforeStart = false;
-  let afterEnd = false;
+export class ClonedSelection implements Selection {
+  anchorNode: Node | null;
+  anchorOffset: number;
+  focusNode: Node | null;
+  focusOffset: number;
+  isCollapsed: boolean;
+  rangeCount: number;
+  type: string;
+  private ranges: Range[];
 
-  function getEl(nodeOrEl: Node) {
-    if (nodeOrEl?.nodeType === Node.ELEMENT_NODE)
-      //type 1 is el
-      return nodeOrEl;
-    else return nodeOrEl?.parentElement;
-  }
+  constructor(selection: Selection) {
+    this.anchorNode = selection.anchorNode;
+    this.anchorOffset = selection.anchorOffset;
+    this.focusNode = selection.focusNode;
+    this.focusOffset = selection.focusOffset;
+    this.isCollapsed = selection.isCollapsed;
+    this.rangeCount = selection.rangeCount;
+    this.type = selection.type;
+    this.ranges = [];
 
-  //go backward and out:
-  const commonAncestorEl = getEl(commonAncestor);
-  let endEl = commonAncestorEl;
-  let startEl = commonAncestorEl;
-  if (endNode) endEl = getEl(endNode);
-  if (startNode) {
-    startEl = getEl(startNode);
-    beforeStart = true;
-  }
-  let currentEl = startEl;
-  const listEls: Array<Node | null> = [];
-  do {
-    listEls.push(currentEl);
-  } while (
-    currentEl !== commonAncestorEl &&
-    (currentEl = currentEl?.parentElement ?? null)
-  );
-  if (
-    endEl !== commonAncestorEl &&
-    startEl !== commonAncestorEl &&
-    endEl !== startEl
-  ) {
-    listEls.pop();
-  }
-  listEls.reverse(); //backward and out becomes forward and in
-
-  //go forward and in:
-  function walkTrees(branch: Node) {
-    const branchNodes = branch.childNodes;
-    for (let i = 0; !afterEnd && i < branchNodes.length; i++) {
-      let currentNode = branchNodes[i];
-      if (currentNode === startNode) {
-        beforeStart = false;
-      }
-      if (!beforeStart && currentNode.nodeType === 1) {
-        domEls.push(currentNode);
-      }
-      if (currentNode === endNode) {
-        afterEnd = true;
-      } else {
-        walkTrees(currentNode);
-      }
-    }
-  }
-  walkTrees(commonAncestor);
-
-  return domEls;
-}
-
-export function* getNodeInRange(range: AbstractRange) {
-  let [start, end] = [range.startContainer, range.endContainer];
-  if (start.nodeType < Node.TEXT_NODE || Node.COMMENT_NODE < start.nodeType) {
-    start = start.childNodes[range.startOffset];
-  }
-  if (end.nodeType < Node.TEXT_NODE || Node.COMMENT_NODE < end.nodeType) {
-    end = end.childNodes[range.endOffset - 1];
-  }
-  const relation = start.compareDocumentPosition(end);
-  if (relation & Node.DOCUMENT_POSITION_PRECEDING) {
-    [start, end] = [end, start];
-  }
-
-  const walker = document.createTreeWalker(document, NodeFilter.SHOW_ALL);
-  walker.currentNode = start;
-  yield start;
-  while (walker.parentNode()) yield walker.currentNode;
-
-  if (!start.isSameNode(end)) {
-    walker.currentNode = start;
-    while (walker.nextNode()) {
-      yield walker.currentNode;
-      if (walker.currentNode.isSameNode(end)) break;
+    for (let i = 0; i < selection.rangeCount; i++) {
+      this.ranges.push(selection.getRangeAt(i).cloneRange());
     }
   }
 
-  const subWalker = document.createTreeWalker(end, NodeFilter.SHOW_ALL);
-  while (subWalker.nextNode()) yield subWalker.currentNode;
-}
-
-export function getNodesInRange(range: Range) {
-  const nodes = [];
-  const treeWalker = document.createTreeWalker(
-    range.commonAncestorContainer,
-    NodeFilter.SHOW_ALL,
-    {
-      acceptNode(node) {
-        // Only consider nodes that are part of the selection range
-        if (range.intersectsNode(node)) {
-          return NodeFilter.FILTER_ACCEPT;
-        }
-        return NodeFilter.FILTER_REJECT;
-      },
-    },
-  );
-
-  let currentNode: Node | null = treeWalker.currentNode;
-
-  while (currentNode) {
-    if (currentNode.nodeType === Node.TEXT_NODE) nodes.push(currentNode);
-    currentNode = treeWalker.nextNode();
+  getRangeAt(index: number): Range {
+    if (index < 0 || index >= this.rangeCount) {
+      throw new Error("Invalid index");
+    }
+    return this.ranges[index];
   }
 
-  return nodes;
+  addRange(range: Range): void {
+    this.ranges.push(range.cloneRange());
+    this.rangeCount = this.ranges.length;
+  }
+
+  removeRange(range: Range): void {
+    const index = this.ranges.findIndex((r) => r === range);
+    if (index !== -1) {
+      this.ranges.splice(index, 1);
+      this.rangeCount = this.ranges.length;
+    }
+  }
+
+  removeAllRanges(): void {
+    this.ranges = [];
+    this.rangeCount = 0;
+  }
+
+  // Implement other methods of the Selection interface
+  // These methods won't modify the actual document selection
+  // but will update the ClonedSelection object
+  collapse(node: Node | null, offset?: number | undefined): void {}
+  extend(node: Node, offset?: number | undefined): void {}
+  setBaseAndExtent(
+    anchorNode: Node,
+    anchorOffset: number,
+    focusNode: Node,
+    focusOffset: number,
+  ): void {}
+  selectAllChildren(node: Node): void {}
+  setPosition(node: Node | null, offset?: number | undefined): void {}
+
+  // These methods return constant values for a cloned selection
+  containsNode(
+    node: Node,
+    allowPartialContainment?: boolean | undefined,
+  ): boolean {
+    return false;
+  }
+
+  deleteFromDocument(): void {
+    // No action for cloned selection
+  }
+
+  empty(): void {
+    this.removeAllRanges();
+  }
+
+  collapseToEnd(): void {}
+  collapseToStart(): void {}
+  modify(alter?: string, direction?: string, granularity?: string): void {}
+
+  toString(): string {
+    return this.ranges.map((range) => range.toString()).join("");
+  }
 }

@@ -66,12 +66,19 @@
 </script>
 
 <script lang="ts">
+  import MDNLinks from "./mdn_links.json";
   import { diffChars } from "diff";
   import { onDestroy, getContext } from "svelte";
   import { on } from "svelte/events";
   import { watch } from "runed";
   import { cssStyles } from "../../store";
-  import { charInStrQuoted, getCSSProps, splitStringAtChar } from "./handlecss";
+  import {
+    charInStrQuoted,
+    getCSSProps,
+    splitStringAtChar,
+    allowedPropNames,
+  } from "./handlecss";
+  import { ClonedSelection, insertAtIndex } from "../../helper";
 
   let styles = $state("");
   let stylesEl: HTMLElement;
@@ -93,6 +100,10 @@
         if (!styles_) {
           const genStyles = getCSSProps(target);
           $cssStyles.set(target, genStyles);
+          target.setAttribute(
+            "style",
+            genStyles.map((item) => item.join(":")).join(";"),
+          );
           styles_ = genStyles;
         }
         commonStyles = commonStyles
@@ -100,6 +111,7 @@
           : styles_;
       }
       if (!commonStyles) return;
+      prevSyncedStyles = commonStyles;
       [styles] = parseStylesStr(
         commonStyles.map((style) => `${style[0]}:${style[1]};`).join(" "),
       );
@@ -135,7 +147,14 @@
 
     let htmlStr = reflowed
       .map((prop, i) => {
-        return `<b>${prop[0]}</b><div class="colon">:</div><em>${prop[1]}</em>`;
+        const url = MDNLinks.find((item) => item.name === prop[0])?.url;
+        const urlMarkup = url
+          ? `<a href=${url} contenteditable="false" target="_blank"><ion-icon name="help-circle-outline"></ion-icon></a>`
+          : "";
+        const validMarkup = allowedPropNames.includes(prop[0])
+          ? ""
+          : ' class="invalid"';
+        return `<b${validMarkup}>${urlMarkup}${prop[0]}</b><div class="colon">:</div><em>${prop[1]}</em>`;
       })
       .join('<div class="semic">;</div><br />');
     htmlStr += '<div class="semic">;</div>';
@@ -143,24 +162,52 @@
     return [htmlStr, reflowed];
   }
 
-  function syncStyles(styles: string | StylesList) {
-    let styleStr: string;
-    let propsList: StylesList;
+  let prevSyncedStyles: StylesList;
+  function syncStyles(propsList: StylesList) {
+    const removeProps = prevSyncedStyles.filter(
+      (prop) => !propsList.some((p) => p[0] === prop[0]),
+    );
 
-    if (typeof styles === "string") {
-      styleStr = styles;
-      propsList = splitStringAtChar(styleStr, ";").map((propStr) =>
-        splitStringAtChar(propStr, ":").map((str) => str.trim()),
-      ) as StylesList;
-    } else {
-      propsList = styles;
-      styleStr = propsList.map((item) => item.join(":")).join(";");
-    }
     for (const target of selected) {
       if (!(target instanceof HTMLElement)) continue;
-      target.setAttribute("style", styleStr);
-      $cssStyles.set(target, propsList as StylesList);
+
+      let targetProps: StylesList;
+
+      if (target.getAttribute("style"))
+        targetProps = splitStringAtChar(
+          target.getAttribute("style") ?? "",
+          ";",
+        ).map((propStr) =>
+          splitStringAtChar(propStr, ":").map((str) => str.trim()),
+        ) as StylesList;
+      else targetProps = [];
+
+      // Remove props from removeProps, if they exist, and don't include propsList props, which we'll add afterwards
+      const notIncluded = [...removeProps, ...propsList];
+      targetProps = targetProps.filter(
+        ([propname]) => !notIncluded.some((p) => p[0] === propname),
+      );
+      targetProps = [...targetProps, ...propsList];
+
+      target.setAttribute(
+        "style",
+        targetProps.map((item) => item.join(":")).join(";"),
+      );
+      $cssStyles.set(target, targetProps);
+
+      // If the element's innerText is just a single nbsp character, that indicates
+      //  the user would like this element to be empty, but we don't allow that
+      //  unless the element has some non-zero area that could be hovered and selected.
+      // Likewise, if the &nbsp; is gutted because it's unnecessary, and then a later
+      //  style updates makes it necessary, we should check if that's the case
+      // if (target.innerHTML === "&nbsp;" || target.innerHTML === "") {
+      //   target.innerHTML = "";
+      //   const rect = target.getBoundingClientRect();
+      //   // Greater than or equal to 1 pixel, since stuff like <br> actually has 0.016px width!
+      //   if (rect.width * rect.height < 1) target.innerHTML = "&nbsp;";
+      // }
     }
+    prevSyncedStyles = propsList;
     updateHighlight();
   }
 
@@ -218,50 +265,95 @@
     backspaceRemoveLine = false;
   }
 
+  let prevSelection: ClonedSelection | null;
   const off1 = on(document, "selectionchange", (e) => {
     const selection = document.getSelection();
+
+    function getTopEl(node: Node) {
+      if (!stylesEl.contains(node)) return null;
+      const parent = node.parentNode;
+      if (parent !== stylesEl && parent) return getTopEl(parent);
+      return node;
+    }
+    function getTextNode(el: Element | null): Text | null {
+      if (!el) return null;
+      return (
+        (Array(...el.childNodes).find(
+          (child) => child.nodeType === Node.TEXT_NODE,
+        ) as Text) ?? null
+      );
+    }
+
     function adjustSelection(
       predicate: (el: HTMLElement) => boolean,
       whenOffset: number,
       bump: "prev" | "next",
       selectionNode: "anchor" | "focus",
     ) {
-      const el = (
-        selectionNode === "anchor"
-          ? selection?.anchorNode
-          : selection?.focusNode
-      )?.parentElement;
-      const offset =
-        selectionNode === "anchor"
-          ? selection?.anchorOffset
-          : selection?.focusOffset;
-      if (selection && el && predicate(el) && offset === whenOffset) {
-        const newFocus = (
-          bump === "prev" ? el.previousElementSibling : el.nextElementSibling
-        )?.childNodes[0];
-        if (newFocus && newFocus instanceof Text) {
-          const offset = bump === "prev" ? newFocus.length : 0;
-          if (selection.focusNode && selection.anchorNode) {
-            selectionNode === "anchor"
-              ? selection.setBaseAndExtent(
-                  newFocus,
-                  offset,
-                  selection.focusNode,
-                  selection.focusOffset,
-                )
-              : selection.setBaseAndExtent(
-                  selection.anchorNode,
-                  selection.anchorOffset,
-                  newFocus,
-                  offset,
-                );
-          } else
-            selection.setPosition(
-              newFocus,
-              bump === "prev" ? newFocus.length : 0,
-            );
+      let el: Node | null;
+      let offset: number | null;
+      let prevEl: Node | null;
+      let prevOffset: number | null;
+      if (selectionNode === "anchor") {
+        el = selection?.anchorNode ?? null;
+        offset = selection?.anchorOffset ?? null;
+        prevEl = prevSelection?.anchorNode ?? null;
+        prevOffset = prevSelection?.anchorOffset ?? null;
+      } else {
+        el = selection?.focusNode ?? null;
+        offset = selection?.focusOffset ?? null;
+        prevEl = prevSelection?.focusNode ?? null;
+        prevOffset = prevSelection?.focusOffset ?? null;
+      }
+
+      if (!el || !stylesEl.contains(el)) return;
+      const topEl = getTopEl(el) as HTMLElement;
+      if (!(selection && topEl && predicate(topEl) && offset === whenOffset))
+        return;
+      // If the selection is being moved within the style editor, make sure the bump
+      //  would be bumping in the same direction as the movement
+      if (prevSelection && prevEl && stylesEl.contains(prevEl)) {
+        if (el === prevEl && prevOffset) {
+          if (prevOffset < offset && bump === "prev") return;
+          else if (prevOffset > offset && bump === "next") return;
+        } else {
+          const comparison = prevEl?.compareDocumentPosition(el);
+          if (
+            comparison === Node.DOCUMENT_POSITION_FOLLOWING &&
+            bump === "prev"
+          )
+            return;
+          else if (
+            comparison === Node.DOCUMENT_POSITION_PRECEDING &&
+            bump === "next"
+          )
+            return;
         }
       }
+
+      const newFocus = getTextNode(
+        bump === "prev"
+          ? topEl.previousElementSibling
+          : topEl.nextElementSibling,
+      );
+      if (!newFocus) return;
+
+      const newOffset = bump === "prev" ? newFocus.length : 0;
+      if (selection.focusNode && selection.anchorNode) {
+        selectionNode === "anchor"
+          ? selection.setBaseAndExtent(
+              newFocus,
+              newOffset,
+              selection.focusNode,
+              selection.focusOffset,
+            )
+          : selection.setBaseAndExtent(
+              selection.anchorNode,
+              selection.anchorOffset,
+              newFocus,
+              newOffset,
+            );
+      } else selection.setPosition(newFocus, newOffset);
     }
 
     // console.log(
@@ -277,6 +369,7 @@
       adjustSelection((el) => el.classList.contains("colon"), 0, "prev", focus);
       adjustSelection((el) => el.classList.contains("colon"), 1, "next", focus);
     }
+    prevSelection = selection ? new ClonedSelection(selection) : null;
   });
   onDestroy(off1);
 
@@ -314,7 +407,7 @@
   function onKeydown(e: KeyboardEvent) {
     if (e.key === "Backspace" && stylesEl) {
       const line = getSelectionLine();
-      if (!line) return;
+      if (!line || !stylesEl.querySelector("br")) return;
       const text = line
         .map((node) =>
           node.nodeType === Node.TEXT_NODE ? node.textContent : "",
@@ -322,7 +415,8 @@
         .join("");
       if (text.length <= 3 && text.includes(":") && text.includes(";")) {
         line.forEach((node) => {
-          if (stylesEl && stylesEl.contains(node)) stylesEl?.removeChild(node);
+          if (stylesEl && stylesEl !== node && stylesEl.contains(node))
+            stylesEl?.removeChild(node);
         });
         backspaceRemoveLine = true;
       }
@@ -379,5 +473,19 @@
   }
   :global(.styles-display .semic) {
     display: inline-block;
+  }
+  :global(.styles-display b) {
+    position: relative;
+  }
+  :global(.styles-display b.invalid) {
+    opacity: 0.6;
+  }
+  :global(.styles-display a) {
+    position: absolute;
+    transform: translateX(calc(-100% - 8px));
+    font-size: 16px;
+  }
+  :global(.styles-display a:hover) {
+    opacity: 0.6;
   }
 </style>

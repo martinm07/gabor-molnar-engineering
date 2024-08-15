@@ -3,6 +3,7 @@
   import { on } from "svelte/events";
   import { watch } from "runed";
   import { cursorMode, nodesSelection } from "../store";
+  import { prevSibling, nextSibling } from "../helper";
   import { PotentialLocations, type Rect } from "./AddNode.svelte";
   import { type IAttributesEditor } from "../editors/attributes/AttributesEditor.svelte";
 
@@ -37,34 +38,16 @@
       }
       return false;
     };
-    const previousSibling = (el: Node) => {
-      const sibling = el.previousSibling;
-      if (
-        sibling?.nodeType === Node.TEXT_NODE &&
-        sibling.textContent?.trim() === ""
-      )
-        return previousSibling(sibling);
-      return sibling;
-    };
-    const nextSibling = (el: Node) => {
-      const sibling = el.nextSibling;
-      if (
-        sibling?.nodeType === Node.TEXT_NODE &&
-        sibling.textContent?.trim() === ""
-      )
-        return nextSibling(sibling);
-      return sibling;
-    };
 
     while (frontier.length > 0 && remainingEls.length > 0) {
       const item = frontier.splice(0, 1)[0];
       if (!item) continue;
-      for (const siblingFunc of [previousSibling, nextSibling]) {
+      for (const siblingFunc of [prevSibling, nextSibling]) {
         const sibling = siblingFunc(item);
         if (sibling && sibling instanceof Element && itemIncluded(sibling)) {
           frontier.push(sibling);
           // sortedTopLevel.
-          if (siblingFunc === previousSibling) sortedTopLevel.unshift(sibling);
+          if (siblingFunc === prevSibling) sortedTopLevel.unshift(sibling);
           else sortedTopLevel.push(sibling);
         }
       }
@@ -103,7 +86,13 @@
     ) {
       $cursorMode = "move";
       potentialLocations.addPotentialLocs(
-        (loc) => !nodesIslandSelection.some((el) => el.contains(loc)),
+        (loc) =>
+          !nodesIslandSelection.some(
+            (el) =>
+              el.contains(loc) ||
+              prevSibling(el) === loc ||
+              nextSibling(el) === loc,
+          ),
       );
     }
   });

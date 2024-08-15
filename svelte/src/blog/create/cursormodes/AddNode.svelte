@@ -50,12 +50,31 @@
   }
 
   function rectsSame(rect1: Rect, rect2: Rect, MAXDIFF: number = 5) {
-    return (
-      Math.abs(rect1.h - rect2.h) < MAXDIFF &&
-      Math.abs(rect1.w - rect2.w) < MAXDIFF &&
-      Math.abs(rect1.x - rect2.x) < MAXDIFF &&
-      Math.abs(rect1.y - rect2.y) < MAXDIFF
-    );
+    const rect1Dir = rect1.w < rect1.h ? "down" : "right";
+    const rect2Dir = rect2.w < rect2.h ? "down" : "right";
+    if (rect1Dir !== rect2Dir) return false;
+    // Check if two rects are the same on their minor axis (i.e. the one
+    //  they'll get slightly adjusted on by adjustGroup()) and they overlap
+    //  on their major axes.
+    if (rect1Dir === "down") {
+      const sameAxis =
+        Math.abs(rect1.w - rect2.w) < MAXDIFF &&
+        Math.abs(rect1.x - rect2.x) < MAXDIFF;
+      const roughlyWithinSpan =
+        rect1.y < rect2.y
+          ? rect2.y < rect1.y + rect1.h
+          : rect1.y < rect2.y + rect2.h;
+      return sameAxis && roughlyWithinSpan;
+    } else {
+      const sameAxis =
+        Math.abs(rect1.h - rect2.h) < MAXDIFF &&
+        Math.abs(rect1.y - rect2.y) < MAXDIFF;
+      const roughlyWithinSpan =
+        rect1.x < rect2.x
+          ? rect2.x < rect1.x + rect1.w
+          : rect1.x < rect2.x + rect2.w;
+      return sameAxis && roughlyWithinSpan;
+    }
   }
   function adjustGroup(
     group: { rect: Rect; origRect: Rect; el: HTMLElement }[],
@@ -84,23 +103,20 @@
       //  that can be by making the <span>s have an absolutely positioned inline-block <div> child element.
       // Note we don't make the <span> inline-block itself as that can alter page flow.
       if (isInline(el)) {
-        // For some reason setting these styles right away will (seemingly)
-        //  cause issues with perhaps a previous adjustGroup call dominating later ones
-        //  on certain elements, causing them to have the wrong transform.
+        const newEl = document.createElement("div");
+        el.style.boxShadow = "none";
+        el.style.background = "none";
+        newEl.style.height = `${rect.h}px`;
+        newEl.style.width = `${rect.w}px`;
+        el.insertBefore(newEl, null);
         request2AnimationFrames(() => {
-          const newEl = document.createElement("div");
-          el.style.boxShadow = "none";
-          el.style.background = "none";
-          newEl.style.height = `${rect.h}px`;
-          newEl.style.width = `${rect.w}px`;
-          el.insertBefore(newEl, null);
-          request2AnimationFrames(() => {
-            const newRect = createRect(newEl, doc);
-            el.style.transform +=
-              seg.direction === "right"
-                ? ` translateX(${rect.x - newRect.x}px)`
-                : ` translateY(${rect.y - newRect.y}px)`;
-          });
+          const newRect = createRect(newEl, doc);
+          el.style.transform +=
+            seg.direction === "right"
+              ? ` translateX(${rect.x - newRect.x}px)`
+              : ` translateY(${rect.y - newRect.y}px)`;
+          rect.x = seg.direction === "right" ? rect.x - newRect.x : newRect.x;
+          rect.y = seg.direction === "right" ? rect.y - newRect.y : newRect.y;
         });
       }
     });
@@ -312,9 +328,10 @@
 </script>
 
 <script lang="ts">
+  import { onDestroy, getContext } from "svelte";
+  import { on } from "svelte/events";
   import { watch } from "runed";
   import { cursorMode, nodeHoverTarget } from "../store";
-  import { onDestroy, getContext } from "svelte";
   import { type IEditText } from "./EditText.svelte";
   import { request2AnimationFrames } from "/shared/helper";
 
@@ -344,18 +361,26 @@
   }}
   onclick={() => {
     if ($cursorMode === "add" && potentialLocations.activeLocation) {
-      potentialLocations.activeLocation.removeAttribute("style");
-      potentialLocations.activeLocation.removeAttribute("class");
-      potentialLocations.activeLocation.textContent = "here I am!";
-      $nodeHoverTarget = potentialLocations.activeLocation;
+      const active = potentialLocations.activeLocation;
+      active.removeAttribute("style");
+      active.removeAttribute("class");
+      active.innerHTML = "&nbsp;";
+      $nodeHoverTarget = active;
       editText();
+      request2AnimationFrames(() => {
+        const selection = getSelection();
+        selection?.selectAllChildren(active);
+      });
     }
   }}
 />
 
 <style>
+  :global(:root) {
+    --potential-location-width: 1.5px;
+  }
   :global(.potential-location) {
-    box-shadow: 0 0 0 2px var(--rock-400);
+    box-shadow: 0 0 0 var(--potential-location-width) var(--rock-400);
     background: var(--rock-400);
     border-radius: 5px;
   }
@@ -364,19 +389,19 @@
       0 0 0 3px var(--rock-200),
       0 0 0 4px var(--rock-500);
     background: var(--rock-200); */
-    box-shadow: 0 0 0 2px #0060df;
+    box-shadow: 0 0 0 var(--potential-location-width) #0060df;
     background: #0060df;
   }
   :global(.potential-location div) {
     display: inline-block;
     position: absolute;
     transform: inherit;
-    box-shadow: 0 0 0 2px var(--rock-400);
+    box-shadow: 0 0 0 var(--potential-location-width) var(--rock-400);
     background: var(--rock-400);
     border-radius: 5px;
   }
   :global(.potential-location.active div) {
-    box-shadow: 0 0 0 2px #0060df;
+    box-shadow: 0 0 0 var(--potential-location-width) #0060df;
     background: #0060df;
   }
 </style>
