@@ -17,7 +17,7 @@
   } from "./cursormodes/MultipleSelect.svelte";
   import MoveNodes from "./cursormodes/MoveNodes.svelte";
   import { type IAttributesEditor } from "./editors/attributes/AttributesEditor.svelte";
-  import { lastChild } from "./helper";
+  import { getAllTextNodes, lastChild, nextElementSibling } from "./helper";
 
   let document_: string = $state("");
   fetch(starterPath)
@@ -143,29 +143,110 @@
     else return null;
   }
 
-  function getAllTextNodes(node: Node): Node[] {
-    return Array(...node.childNodes)
-      .flatMap((child) => getAllTextNodes(child))
-      .filter((node) => node.nodeType === Node.TEXT_NODE);
-  }
-
   function removeTextContent(node: Node) {
-    const oldText = getAllTextNodes(node).map((node) => {
-      const text = node.textContent;
-      node.textContent = "";
-      queuedMutationIgnores.push({ node, type: "characterData" });
-      return { node, text };
+    const oldText = getAllTextNodes(node).map((node_) => {
+      const node = node_ as Text;
+      const next = nextElementSibling(node);
+      const parent = node.parentNode;
+      if (parent) {
+        ignoreDOMMutation(
+          { node: parent, type: "childList", origin: "removeTextContent" },
+          () => node.remove(),
+        );
+      }
+      return { node, next, parent };
     });
     return () => {
-      oldText.forEach(({ node, text }) => {
-        node.textContent = text;
-        queuedMutationIgnores.push({ node, type: "characterData" });
+      oldText.forEach(({ node, next, parent }) => {
+        if (!parent) return;
+        // For some reason, this insertBefore call is not consistent in triggering
+        //  the MutationObserver; in block elements it does, and in inline elements
+        //  it doesn't. Nothing changes, from 'parent', 'node' or 'next' or the return
+        //  value of insertBefore() but this difference in behaviour still exists (at
+        //  least in FireFox).
+        // This is the reason that ignoreDOMMutation() sets a unique ID to each MutationIgnoreRecord,
+        //  waits an animation frame for the observer to potentially trigger and removes
+        //  this ID if it still exists in the array.
+        // The above DOM mutation removing the text nodes also sometimes does the same thing, though less rarely.
+        // Both of these might be due to both happening in the same frame, causing inconsistent behaviour.
+        ignoreDOMMutation(
+          { node: parent, type: "childList", origin: "Unfo removeTextContent" },
+          () => parent.insertBefore(node, next),
+        );
       });
     };
   }
 
-  const queuedMutationIgnores: { node: Node; type: MutationRecord["type"] }[] =
-    [];
+  // "strict = true" only returns true if the node's text content is an empty string
+  // "strict = false" returns true as long as it's only whitespace
+  function nodeWhitespaceRestricted(node: Node, strict = true) {
+    if (node instanceof HTMLElement) {
+      return (
+        (strict ? node.innerText : node.innerText.trim()) === "" &&
+        !node.classList.contains("potential-location") &&
+        !node.parentElement?.classList.contains("potential-location")
+      );
+    } else if (node instanceof Text) {
+      return (strict ? node.textContent : node.textContent?.trim()) === "";
+    }
+  }
+
+  function addNBSP(el: Node) {
+    if (!nodeWhitespaceRestricted(el)) return;
+    if (el instanceof HTMLElement) {
+      // While we could, instead of all this, just set el.textContet, but we should be
+      //  sure what kind of DOM manipulation this produces; adding a new text node or editing an existing one?
+      const allTextNodes = getAllTextNodes(el);
+      if (allTextNodes.length > 0) {
+        ignoreDOMMutation(
+          { node: allTextNodes[0], type: "characterData", origin: "addNBSP1" },
+          () => (allTextNodes[0].textContent = "\u00A0"),
+        );
+      } else {
+        ignoreDOMMutation(
+          { node: el, type: "childList", origin: "addNBSP2" },
+          () =>
+            el.insertBefore(document.createTextNode("\u00A0"), el.firstChild),
+        );
+      }
+    } else if (el instanceof Text) {
+      ignoreDOMMutation(
+        { node: el, type: "characterData", origin: "addNBSP3" },
+        () => (el.textContent = "\u00A0"),
+      );
+    }
+  }
+
+  type MutationIgnoreRecord = {
+    node: Node;
+    type: MutationRecord["type"];
+    id?: number;
+    origin?: string;
+  };
+  const queuedMutationIgnores: MutationIgnoreRecord[] = [];
+
+  let uuid: number = 0;
+  function ignoreDOMMutation(record: MutationIgnoreRecord, func: Function) {
+    record.id ??= uuid++;
+    queuedMutationIgnores.push(record);
+    func();
+    requestAnimationFrame(() => {
+      const index = queuedMutationIgnores.findIndex(
+        ({ id }) => id === record.id,
+      );
+      if (index !== -1) queuedMutationIgnores.splice(index, 1);
+    });
+  }
+
+  // This observer is to
+  //  - try enforce no "collapsed" elements (that is, elements with 0 height and/or width),
+  //    by making those that WOULD, take a single non-breaking space (&nbsp;) character as textContent
+  //  - check elements with only whitespace as text content if that white space could be removed
+  //    and not have the element collapse (e.g. some CSS sets the height and width already), in which
+  //    case remove that whitespace
+  //  - remove any last island of <br> child elements from elements that have only whitespace as text
+  //    content. These <br>s do nothing (typically) for page flow or otherwise, and are just artefacts
+  //    from the contentEditable process (in which there is no way for the user to delete them manually)
   const { stop } = useMutationObserver(
     () => docEl,
     (mutations) => {
@@ -176,53 +257,46 @@
           ({ node, type }) => node === target && type === mutation.type,
         );
         if (ignoreI !== -1) {
+          // console.log([...queuedMutationIgnores], mutation);
           queuedMutationIgnores.splice(ignoreI, 1);
           return;
         }
+        // console.log("not ignored", mutation);
+
+        if (mutation.type === "childList") {
+          mutation.addedNodes.forEach(addNBSP);
+        }
 
         const el = getParentElement(target);
-        if (!(el instanceof HTMLElement)) continue;
-
         if (
-          el.innerText.trim() !== "" ||
-          el.classList.contains("potential-location") ||
-          el.parentElement?.classList.contains("potential-location")
+          !(el instanceof HTMLElement) ||
+          !nodeWhitespaceRestricted(el, false)
         )
           continue;
 
-        console.log(el, mutation.type);
+        // console.log(el, mutation.type);
+        let removedBRs: boolean = false;
         while (true) {
           const last = lastChild(el);
           if (last instanceof HTMLElement && last.tagName === "BR") {
-            last.remove();
-            queuedMutationIgnores.push({ node: el, type: "childList" });
-          } else break;
+            ignoreDOMMutation(
+              { node: el, type: "childList", origin: "removeBR" },
+              () => last.remove(),
+            );
+            removedBRs = true;
+          } else {
+            if (removedBRs && el.innerText === "") addNBSP(el);
+            break;
+          }
         }
 
         if (el.innerText === "") {
           const rect = el.getBoundingClientRect();
           if (rect.height * rect.width >= 1) continue;
 
-          if (mutation.type === "characterData") {
-            target.textContent = "\u00A0";
-            queuedMutationIgnores.push({ node: target, type: "characterData" });
+          addNBSP(el);
+          if ($cursorMode === "edit")
             getSelection()?.setBaseAndExtent(target, 0, target, 1);
-          } else if (mutation.type === "childList") {
-            mutation.removedNodes.forEach((removed) => {
-              if (removed.nodeType !== Node.TEXT_NODE) return;
-              removed.textContent = "\u00A0";
-              // NOTE: This might reverse the order of the removed?
-              target.insertBefore(
-                removed,
-                mutation.previousSibling?.nextSibling ?? null,
-              );
-              queuedMutationIgnores.push({ node: target, type: "childList" });
-              getSelection()?.setBaseAndExtent(removed, 0, removed, 1);
-            });
-          } else if (mutation.type === "attributes") {
-            el.insertAdjacentText("afterbegin", "\u00A0");
-            queuedMutationIgnores.push({ node: el, type: "childList" });
-          }
         } else {
           // If the element's innerText is just a single nbsp character, that indicates
           //  the user would like this element to be empty, but we don't allow that

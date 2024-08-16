@@ -9,6 +9,7 @@
   import { onDestroy } from "svelte";
   import { on } from "svelte/events";
   import { cursorMode, nodeHoverTarget } from "../store";
+  import { getAllTextNodes } from "../helper";
 
   interface Props {
     doc: HTMLElement;
@@ -16,10 +17,7 @@
   let { doc }: Props = $props();
 
   $effect(() => {
-    if ($cursorMode !== "edit" && editTarget) {
-      editTarget.removeAttribute("contenteditable");
-      editTarget = undefined;
-    }
+    if ($cursorMode !== "edit" && editTarget) unfocus();
   });
 
   let editTarget: HTMLElement | undefined;
@@ -36,6 +34,11 @@
 
     const selection = getSelection();
     if (!selection) return;
+
+    if (editTarget.innerText.trim() === "") {
+      selection.selectAllChildren(editTarget);
+      return;
+    }
 
     let textNode: Node | undefined;
     let offset: number | undefined;
@@ -76,33 +79,24 @@
       e.target.closest(".doc")
     ) {
       $cursorMode = "select";
-      e.target.removeAttribute("contenteditable");
-      editTarget = undefined;
+      unfocus();
     }
   }
-
-  function getAllTextNodes(node: Node): Node[] {
-    return Array(...node.childNodes)
-      .flatMap((child) => getAllTextNodes(child))
-      .filter((node) => node.nodeType === Node.TEXT_NODE);
+  function unfocus() {
+    if (!editTarget) return;
+    editTarget.removeAttribute("contenteditable");
+    // This is probably Firefox-specific behaviour, but it acts strange when an element
+    //  was being contentEdit-ed and is updated to have no text, and thus should collapse
+    //  to e.g. a 0-height div, but it doesn't. The behaviour is fixed if it's set to be
+    //  non-empty text content, and then back. So we set it nonempty here and let the
+    //  MutationObserver in App.svelte do the rest.
+    if (editTarget.innerText === "") {
+      const allTextNodes = getAllTextNodes(editTarget);
+      if (allTextNodes.length > 0) allTextNodes[0].textContent = "\u00A0";
+      else editTarget.insertAdjacentText("afterbegin", "\u00A0");
+    }
+    editTarget = undefined;
   }
-
-  // const off = on(doc, "input", (e) => {
-  //   if (e.target instanceof HTMLElement && e.target.isContentEditable) {
-  //     if (e.target.innerText.trim() === "") e.target.innerText = "";
-  //     if (e.target.innerText === "") {
-  //       const allTextNodes = getAllTextNodes(e.target);
-  //       if (allTextNodes.length > 0) {
-  //         allTextNodes[0].textContent = "\u00A0";
-  //         getSelection()?.selectAllChildren(allTextNodes[0]);
-  //       } else {
-  //         e.target.insertAdjacentText("afterbegin", "\u00A0");
-  //         getSelection()?.selectAllChildren(e.target);
-  //       }
-  //     }
-  //   }
-  // });
-  // onDestroy(off);
 
   // UNUSED (but cool)
   let cursor: HTMLElement;

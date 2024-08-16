@@ -31,6 +31,18 @@ export const lastChild = recurseIgnoreWhitspace(
   (node, nth) => node.childNodes[node.childNodes.length - 1 - (nth ?? 0)],
   (func, node, nth) => func(node, (nth ?? 0) + 1),
 );
+export const nextElementSibling = function (node: Node): Node | null {
+  const next = node.nextSibling;
+  if (!next) return null;
+  if (next?.nodeType !== Node.ELEMENT_NODE) return nextElementSibling(next);
+  return next;
+};
+export function getAllTextNodes(node: Node): Node[] {
+  if (node.nodeType === Node.TEXT_NODE) return [node];
+  return Array(...node.childNodes).flatMap((child) =>
+    child.nodeType === Node.TEXT_NODE ? [child] : getAllTextNodes(child),
+  );
+}
 
 // THE FOLLLOWING 3 ARE CURRENTLY UNUSED
 
