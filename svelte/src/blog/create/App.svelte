@@ -10,14 +10,25 @@
   import EditProps from "./cursormodes/EditProps.svelte";
   import { useMutationObserver } from "runed";
   import { onDestroy, setContext } from "svelte";
-  import { nodeHoverTarget, cursorMode, nodesSelection } from "./store";
-  import AddNode from "./cursormodes/AddNode.svelte";
+  import {
+    nodeHoverTarget,
+    cursorMode,
+    nodesSelection,
+    autocompleteMode,
+  } from "./store";
+  import AddNode, { type IAddNode } from "./cursormodes/AddNode.svelte";
   import MultipleSelect, {
     type IMultipleSelect,
   } from "./cursormodes/MultipleSelect.svelte";
   import MoveNodes from "./cursormodes/MoveNodes.svelte";
   import { type IAttributesEditor } from "./editors/attributes/AttributesEditor.svelte";
-  import { getAllTextNodes, lastChild, nextElementSibling } from "./helper";
+  import {
+    ClonedSelection,
+    getAllTextNodes,
+    lastChild,
+    nextElementSibling,
+  } from "./helper";
+  import Autocomplete from "./editors/Autocomplete.svelte";
 
   let document_: string = $state("");
   fetch(starterPath)
@@ -44,11 +55,16 @@
 
   let nodeSelect: INodeSelect | undefined = $state();
   let multipleSelect: IMultipleSelect | undefined = $state();
+  let addNode: IAddNode | undefined = $state();
 
   setContext("resetHoverTarget", () => ($nodeHoverTarget = undefined));
   setContext("updateHighlight", () => {
     nodeSelect?.updateHighlight();
     multipleSelect?.updateHighlights();
+  });
+  setContext("setSelection", (nodes?: Node[] | Node) => {
+    multipleSelect?.removeSelection();
+    multipleSelect?.toggleToSelection(nodes);
   });
 
   let editText: IEditText | undefined = $state();
@@ -82,38 +98,7 @@
     } else if (e.key === "t" && !inTextField) {
       editText?.startEdit(e);
     } else if (e.key === "a" && !inTextField) {
-      const selection = getSelection();
-      if (
-        selection &&
-        !selection.isCollapsed &&
-        selection.anchorNode === selection.focusNode &&
-        docEl?.contains(selection.anchorNode)
-      ) {
-        // Wrap selection in new node
-        const fragment = document.createDocumentFragment();
-        const range = selection.getRangeAt(0);
-        const node = selection.anchorNode!;
-        const startText = document.createTextNode(
-          node.textContent?.slice(0, range.startOffset) ?? "",
-        );
-        fragment.appendChild(startText);
-        const span = document.createElement("span");
-        span.textContent =
-          node.textContent?.slice(range.startOffset, range.endOffset) ?? "";
-        fragment.appendChild(span);
-        const endText = document.createTextNode(
-          node.textContent?.slice(range.endOffset) ?? "",
-        );
-        fragment.appendChild(endText);
-        node.parentNode?.replaceChild(fragment, node);
-
-        multipleSelect?.removeSelection();
-        $nodeHoverTarget = span;
-        multipleSelect?.toggleToSelection();
-      } else {
-        multipleSelect?.removeSelection();
-        $cursorMode = "add";
-      }
+      addNode?.handleAddOperation();
     } else if (e.key === "u" && !inTextField && selected.length === 1) {
       const node = selected[0];
       const children = Array(...node.childNodes);
@@ -131,7 +116,10 @@
       } else if ($nodeHoverTarget) {
         $nodeHoverTarget.remove();
       }
-    } else if (e.key === "Escape") {
+    } else if (
+      e.key === "Escape" &&
+      !document.querySelector(".autocomplete-display button")
+    ) {
       if ($cursorMode === "select") multipleSelect?.removeSelection();
       $cursorMode = "select";
     }
@@ -315,6 +303,10 @@
     },
   );
   onDestroy(stop);
+
+  let currentSelection: ClonedSelection | null = null;
+  let prevSelection: ClonedSelection | null = null;
+  setContext("getPrevSelection", () => prevSelection);
 </script>
 
 <svelte:window
@@ -326,27 +318,53 @@
     if (e.key === "Shift") shiftPressed = false;
   }}
 />
+<svelte:document
+  onselectionchange={(e) => {
+    prevSelection = currentSelection;
+    const selection = getSelection();
+    currentSelection = selection ? new ClonedSelection(selection) : null;
+  }}
+/>
 
 <EditProps />
 
-<div class="grid grid-cols-[30%_1fr] grid-rows-[48px_1fr] h-screen">
+<div class="grid grid-cols-[30%_1fr] grid-rows-[48px_3fr_1fr] h-screen">
   <div
     style="scrollbar-color: #cdcdcd var(--background);"
-    class="row-span-2 border-r-2 border-rock-300 bg-background p-2 overflow-y-scroll"
+    class="row-span-2 border-r-2 border-rock-300 bg-background p-2 overflow-y-scroll relative"
   >
     <Sidebar bind:attributesEditor />
   </div>
   <div class="border-b-2 border-rock-300 bg-rock-50 bg-opacity-85"></div>
-  <div class="flex col-span-1 justify-center relative z-0 overflow-auto">
+  <div
+    class="flex row-span-2 col-span-1 justify-center relative z-0 overflow-auto"
+  >
     {#if docEl}
       <EditText bind:this={editText} doc={docEl} />
       <NodeSelect {shiftPressed} doc={docEl} bind:this={nodeSelect} />
       <MultipleSelect bind:this={multipleSelect} />
-      <AddNode doc={docEl} />
+      <AddNode doc={docEl} bind:this={addNode} />
       <MoveNodes doc={docEl} />
     {/if}
     <div class="doc w-3/4 max-w-[600px]" bind:this={docEl}>
       {@html document_}
+    </div>
+  </div>
+  <div
+    style="scrollbar-color: #cdcdcd var(--rock-50);"
+    class="bg-rock-50 border-r-2 border-t-2 border-rock-300 overflow-y-scroll"
+  >
+    <div
+      class="h-fit min-h-full flex items-center justify-center"
+      class:hidden={!$autocompleteMode}
+    >
+      <Autocomplete />
+    </div>
+    <div
+      class="h-fit min-h-full flex items-center justify-center"
+      class:hidden={$autocompleteMode}
+    >
+      Keyboard shortcuts here :)
     </div>
   </div>
 </div>

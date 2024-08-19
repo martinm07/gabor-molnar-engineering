@@ -71,7 +71,7 @@
   import { onDestroy, getContext } from "svelte";
   import { on } from "svelte/events";
   import { watch } from "runed";
-  import { cssStyles } from "../../store";
+  import { cssStyles, autocompleteSuggestions } from "../../store";
   import {
     charInStrQuoted,
     getCSSProps,
@@ -83,6 +83,8 @@
   let styles = $state("");
   let stylesEl: HTMLElement;
   const updateHighlight: () => void = getContext("updateHighlight");
+  const getPrevSelection: () => ClonedSelection | null =
+    getContext("getPrevSelection");
 
   interface Props {
     selected: Element[];
@@ -261,13 +263,30 @@
       );
       selection?.setPosition(node, newOffset);
     }
+    handleAutocomplete();
     enterPressed = undefined;
     backspaceRemoveLine = false;
   }
 
-  let prevSelection: ClonedSelection | null;
+  function handleAutocomplete() {
+    const selection = getSelection();
+    if (!selection || !selection.focusNode) return;
+    const node = selection.focusNode;
+    if (
+      (node instanceof HTMLElement && node.tagName === "B") ||
+      node.parentElement?.tagName === "B"
+    ) {
+      $autocompleteSuggestions = allowedPropNames
+        .filter((name) => node.textContent && name.startsWith(node.textContent))
+        .toSorted((a, b) => a.length - b.length);
+    } else {
+      $autocompleteSuggestions = [];
+    }
+  }
+
   const off1 = on(document, "selectionchange", (e) => {
-    const selection = document.getSelection();
+    const selection = getSelection();
+    const prevSelection = getPrevSelection();
 
     function getTopEl(node: Node) {
       if (!stylesEl.contains(node)) return null;
@@ -369,7 +388,6 @@
       adjustSelection((el) => el.classList.contains("colon"), 0, "prev", focus);
       adjustSelection((el) => el.classList.contains("colon"), 1, "next", focus);
     }
-    prevSelection = selection ? new ClonedSelection(selection) : null;
   });
   onDestroy(off1);
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
-  import { nodesSelection } from "../../store";
+  import { autocompleteSuggestions, nodesSelection } from "../../store";
   import {
     calculateTotalOffset,
     findNodeFromOffset,
@@ -88,6 +88,29 @@
       text.length === 3 ? 2 : offset,
     );
     selection?.setPosition(node, newOffset);
+    handleAutocomplete();
+  }
+
+  function handleAutocomplete() {
+    const selection = getSelection();
+    if (!selection || !selection.focusNode) return;
+    const node = selection.focusNode;
+    if (
+      (node instanceof HTMLElement && node.tagName === "SPAN") ||
+      node.parentElement?.tagName === "SPAN"
+    ) {
+      $autocompleteSuggestions = tagAttributes
+        .map(({ tag }) => tag)
+        .filter(
+          (name) =>
+            name.toLowerCase() === name &&
+            node.textContent &&
+            name.startsWith(node.textContent),
+        )
+        .toSorted((a, b) => a.length - b.length);
+    } else {
+      $autocompleteSuggestions = [];
+    }
   }
 
   const off = on(document, "selectionchange", () => {
@@ -146,7 +169,7 @@
   oninput={onInput}
   contenteditable="true"
   class:invalid={!tagNameURL}
-  class="tagname bg-steel-100 p-2 rounded font-mono text-lg font-bold text-rock-700 focus:outline-none"
+  class="tagname-display bg-steel-100 p-2 rounded font-mono text-lg font-bold text-rock-700 focus:outline-none"
 >
   &#60;<span>{tagName}</span>&#62;
 </span>
@@ -160,7 +183,7 @@
 </a>
 
 <style>
-  :global(.tagname.invalid span) {
+  :global(.tagname-display.invalid span) {
     /* @apply underline decoration-wavy decoration-red-700; */
     text-decoration: underline wavy #b91c1c;
   }

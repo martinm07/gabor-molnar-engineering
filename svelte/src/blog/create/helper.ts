@@ -117,41 +117,81 @@ export class ClonedSelection implements Selection {
     this.rangeCount = 0;
   }
 
-  // Implement other methods of the Selection interface
-  // These methods won't modify the actual document selection
-  // but will update the ClonedSelection object
-  collapse(node: Node | null, offset?: number | undefined): void {}
-  extend(node: Node, offset?: number | undefined): void {}
-  setBaseAndExtent(
-    anchorNode: Node,
-    anchorOffset: number,
-    focusNode: Node,
-    focusOffset: number,
-  ): void {}
-  selectAllChildren(node: Node): void {}
-  setPosition(node: Node | null, offset?: number | undefined): void {}
-
-  // These methods return constant values for a cloned selection
-  containsNode(
-    node: Node,
-    allowPartialContainment?: boolean | undefined,
-  ): boolean {
-    return false;
+  collapse() {
+    throw new Error("Not implemented");
   }
-
+  extend() {
+    throw new Error("Not implemented");
+  }
+  setBaseAndExtent() {
+    throw new Error("Not implemented");
+  }
+  selectAllChildren(node: Node): void {
+    throw new Error("Not implemented");
+  }
+  setPosition() {
+    throw new Error("Not implemented");
+  }
+  containsNode(): boolean {
+    throw new Error("Not implemented");
+  }
   deleteFromDocument(): void {
-    // No action for cloned selection
+    throw new Error("Not implemented");
   }
-
   empty(): void {
     this.removeAllRanges();
   }
 
-  collapseToEnd(): void {}
-  collapseToStart(): void {}
-  modify(alter?: string, direction?: string, granularity?: string): void {}
+  collapseToEnd() {
+    throw new Error("Not implemented");
+  }
+  collapseToStart() {
+    throw new Error("Not implemented");
+  }
+  modify() {
+    throw new Error("Not implemented");
+  }
 
   toString(): string {
     return this.ranges.map((range) => range.toString()).join("");
   }
+}
+
+// Checks if a list of elements is a connected island of siblings (or children in the sibling island)
+// Returns a list of elements that aren't contained by any other elements in the array sorted
+//  by the order they appear in the DOM, if they indeed form a connected island, or an empty list otherwise.
+export function elsListConnected(els: Element[]) {
+  if (els.length <= 1) return els;
+  // filter out all elements that are contained by other elements in the array
+  const remainingEls = els.filter(
+    (el) => !els.some((el_) => el_ !== el && el_.contains(el)),
+  );
+  const frontier: Element[] = [remainingEls[0]];
+  const sortedTopLevel: Element[] = [remainingEls[0]];
+  remainingEls.splice(0, 1);
+
+  const itemIncluded = (item: Element) => {
+    const isIncluded = remainingEls.findIndex((el) => el === item);
+    if (isIncluded !== -1) {
+      remainingEls.splice(isIncluded, 1);
+      return true;
+    }
+    return false;
+  };
+
+  while (frontier.length > 0 && remainingEls.length > 0) {
+    const item = frontier.splice(0, 1)[0];
+    if (!item) continue;
+    for (const siblingFunc of [prevSibling, nextSibling]) {
+      const sibling = siblingFunc(item);
+      if (sibling && sibling instanceof Element && itemIncluded(sibling)) {
+        // Add item to the stack
+        frontier.push(sibling);
+        // Also add it the final return value, in DOM appearance order
+        if (siblingFunc === prevSibling) sortedTopLevel.unshift(sibling);
+        else sortedTopLevel.push(sibling);
+      }
+    }
+  }
+  return remainingEls.length === 0 ? sortedTopLevel : [];
 }

@@ -24,6 +24,7 @@
   import { watch } from "runed";
   import tagAttributes from "./tag_attributes.json";
   import FitContentInput from "/shared/components/FitContentInput.svelte";
+  import { autocompleteSuggestions } from "../../store";
 
   const updateHighlight: () => void = getContext("updateHighlight");
 
@@ -200,33 +201,37 @@
     },
   );
 
-  function attrURL(attribute: string) {
-    if (!selected) return null;
-    if (attribute === "style") return null;
+  function allAvailableAttributes() {
+    if (selected.length === 0) return [];
 
     const globalAttrs =
       tagAttributes.find((tag_) => tag_.tag === "GLOBAL")?.attributes ?? [];
 
-    let finalURL: string | null = selected.length !== 0 ? "true" : null;
-    // Only return a URL if every element of 'selected' considers the attribute valid
-    for (const target of selected) {
-      const tag = target.tagName.toLowerCase();
-      const tagAttrs =
-        tagAttributes.find((tag_) => tag_.tag === tag)?.attributes ?? [];
-      const valid = [...tagAttrs, ...globalAttrs].find(
-        (attr) => attr.name === attribute,
+    const getTagAttrs = (el: Element) =>
+      tagAttributes.find((tag) => tag.tag === el.tagName.toLowerCase())
+        ?.attributes ?? [];
+    let sharedTagAttrs = getTagAttrs(selected[0]);
+    for (let i = 1; i < selected.length; i++) {
+      const tagAttrs = getTagAttrs(selected[i]);
+      sharedTagAttrs = sharedTagAttrs.filter((attr) =>
+        tagAttrs.some((attr_) => attr_.name === attr.name),
       );
-      finalURL = finalURL && (valid?.url ?? null);
     }
-    return finalURL;
+
+    return [...sharedTagAttrs, ...globalAttrs].filter(
+      (attr) => attr.name !== "style",
+    );
   }
 
   // Determine validity & add MDN url when attribute names change
   watch(
     () => [...attributes.map((attr) => attr.name), selected],
     () => {
+      const allAvailable = allAvailableAttributes();
       attributes.forEach((attr, i) => {
-        const url = attrURL(attr.name);
+        const url = allAvailable?.find(
+          (attr_) => attr_.name === attr.name,
+        )?.url;
         if (
           !url ||
           attributes.slice(0, i).some((el) => el.name === attr.name)
@@ -238,18 +243,39 @@
           attr.referenceUrl = url;
         }
       });
+      handleAutocomplete(allAvailable);
     },
   );
+
+  function handleAutocomplete(
+    allAvailable: { name: string | null; url: string }[],
+  ) {
+    const selection = getSelection();
+    if (!selection || !selection.focusNode) return;
+    const node = selection.focusNode;
+    if (
+      node instanceof HTMLInputElement &&
+      node.classList.contains("attrname-input")
+    ) {
+      $autocompleteSuggestions = (
+        allAvailable
+          .map(({ name }) => name)
+          .filter((name) => name?.startsWith(node.value)) as string[]
+      ).toSorted((a, b) => a.length - b.length);
+    } else {
+      $autocompleteSuggestions = [];
+    }
+  }
 </script>
 
-<ul class="mt-10">
+<ul class="mt-10 attributes-display">
   {#each attributes as attr, i (attr.id)}
     <li
       class:invalid={attr.name && !attr.valid}
       class="group font-mono text-rock-700 text-sm text-balance text-center pb-2 mb-2 border-b-[1px] border-rock-300 last-of-type:border-0"
     >
       <FitContentInput
-        class="bg-steel-100 font-bold focus:outline-none max-w-[calc(100%_-_8px)] p-1 rounded box-content group-[.invalid]:text-rock-500 group-[.invalid]:underline decoration-wavy decoration-red-700"
+        class="attrname-input bg-steel-100 font-bold focus:outline-none max-w-[calc(100%_-_8px)] p-1 rounded box-content group-[.invalid]:text-rock-500 group-[.invalid]:underline decoration-wavy decoration-red-700"
         bind:value={attr.name}
         placeholder="attribute"
       />

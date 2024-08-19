@@ -325,13 +325,16 @@
       }
     }
   }
+
+  export interface IAddNode {
+    handleAddOperation(): void;
+  }
 </script>
 
 <script lang="ts">
   import { onDestroy, getContext } from "svelte";
-  import { on } from "svelte/events";
   import { watch } from "runed";
-  import { cursorMode, nodeHoverTarget } from "../store";
+  import { cursorMode, nodeHoverTarget, nodesIslandSelection } from "../store";
   import { type IEditText } from "./EditText.svelte";
   import { request2AnimationFrames } from "/shared/helper";
 
@@ -341,6 +344,8 @@
   let { doc }: Props = $props();
 
   const editText: IEditText["startEdit"] = getContext("startEdit");
+  const setSelection: (nodes?: Node[] | Node) => void =
+    getContext("setSelection");
 
   const potentialLocations = new PotentialLocations(doc);
 
@@ -352,6 +357,48 @@
     },
   );
   // onDestroy(potentialLocations.removePotentialLocs);
+
+  export function handleAddOperation() {
+    const selection = getSelection();
+    if (
+      selection &&
+      !selection.isCollapsed &&
+      selection.anchorNode === selection.focusNode &&
+      doc.contains(selection.anchorNode)
+    ) {
+      // Wrap selection in new node
+      const fragment = document.createDocumentFragment();
+      const range = selection.getRangeAt(0);
+      const node = selection.anchorNode!;
+      const startText = document.createTextNode(
+        node.textContent?.slice(0, range.startOffset) ?? "",
+      );
+      fragment.appendChild(startText);
+      const span = document.createElement("span");
+      span.textContent =
+        node.textContent?.slice(range.startOffset, range.endOffset) ?? "";
+      fragment.appendChild(span);
+      const endText = document.createTextNode(
+        node.textContent?.slice(range.endOffset) ?? "",
+      );
+      fragment.appendChild(endText);
+      node.parentNode?.replaceChild(fragment, node);
+
+      $nodeHoverTarget = span;
+      setSelection();
+    } else if ($nodesIslandSelection.length > 0) {
+      const newEl = document.createElement("div");
+      $nodesIslandSelection[0].parentNode?.insertBefore(
+        newEl,
+        $nodesIslandSelection[0],
+      );
+      $nodesIslandSelection.forEach((node) => newEl.appendChild(node));
+      setSelection(newEl);
+    } else {
+      setSelection([]);
+      $cursorMode = "add";
+    }
+  }
 </script>
 
 <svelte:window
