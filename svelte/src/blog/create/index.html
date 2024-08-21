@@ -37,5 +37,37 @@
       CSSUtilities.define("mode", "browser");
     </script>
     <script type="module" src="./main.ts"></script>
+
+    <!-- IFrameResizer -->
+    <script src="https://cdn.jsdelivr.net/npm/@iframe-resizer/parent"></script>
+    <script>
+      setTimeout(() => {
+        const targetEl = document.querySelector(".doc");
+        console.log(targetEl);
+        const config = { childList: true, subtree: true };
+        let iframe_uuid = 0;
+        const callback = (mutations) => {
+          for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+              if (node instanceof HTMLElement && node.nodeName === "IFRAME") {
+                if (node.id === "") node.id = `iframe-${iframe_uuid++}`;
+                console.log("MAKING IFRAME FIT CONTENT", node, node.id);
+                iframeResize(
+                  {
+                    license: "GPLv3",
+                    waitForLoad: true,
+                    checkOrigin: false,
+                    direction: "vertical",
+                  },
+                  node,
+                );
+              }
+            }
+          }
+        };
+        const observer = new MutationObserver(callback);
+        observer.observe(targetEl, config);
+      }, 1000);
+    </script>
   </body>
 </html>

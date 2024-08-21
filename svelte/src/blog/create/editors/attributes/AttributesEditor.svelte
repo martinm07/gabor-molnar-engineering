@@ -169,7 +169,11 @@
             target.removeAttribute(attr.name);
         });
         attributes.forEach((attr) => {
-          if (attr.valid && !attributeMasked(target, attr.name))
+          if (
+            attr.valid &&
+            !attributeMasked(target, attr.name) &&
+            target.getAttribute(attr.name) !== attr.value
+          )
             target.setAttribute(attr.name, attr.value);
         });
       }

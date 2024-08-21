@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>IFrameResizer Test</title>
+  </head>
+  <body>
+    Hello world! <button type="button" id="change-img">Change image</button>
+    <div style="width: 700px; height: 40px; background: #f00"></div>
+    <img src="" alt="Random test image" />
+    <script>
+      const img = document.querySelector("img");
+      const btn = document.querySelector("#change-img");
+      btn.addEventListener("click", () => {
+        img.src = `/${Math.trunc(Math.random() * 10000)}.png`;
+      });
+    </script>
+  </body>
+</html>
