@@ -11,8 +11,9 @@
   import { useMutationObserver } from "runed";
   import { onDestroy, setContext } from "svelte";
   import {
-    nodeHoverTarget,
     cursorMode,
+    sidebarMode,
+    nodeHoverTarget,
     nodesSelection,
     autocompleteMode,
   } from "./store";
@@ -75,7 +76,13 @@
   setContext(
     "startAttributeUsage",
     (name: string, value?: string | null, elements?: Element[]) =>
-      attributesEditor?.startAttributeUsage(name, value, elements),
+      attributesEditor?.startAttributeUsage(name, value, elements) ?? [
+        () => undefined,
+        () => undefined,
+      ],
+  );
+  setContext("changeElementInMasks", (oldEl: Element, newEl: Element) =>
+    attributesEditor?.changeElementInMasks(oldEl, newEl),
   );
 
   let selected = $derived(
@@ -118,11 +125,13 @@
       }
     } else if (
       e.key === "Escape" &&
-      !document.querySelector(".autocomplete-display button")
+      !document.querySelector(".autocomplete-display button") &&
+      !inTextField
     ) {
       if ($cursorMode === "select") multipleSelect?.removeSelection();
       $cursorMode = "select";
-    }
+    } else return;
+    if ($sidebarMode === "component") $sidebarMode = "edit";
   }
 
   function getParentElement(node: Node): Element | null {
@@ -303,7 +312,6 @@
     },
   );
   onDestroy(stop);
-
   let currentSelection: ClonedSelection | null = null;
   let prevSelection: ClonedSelection | null = null;
   setContext("getPrevSelection", () => prevSelection);
@@ -328,7 +336,10 @@
 
 <EditProps />
 
-<div class="grid grid-cols-[30%_1fr] grid-rows-[48px_3fr_1fr] h-screen">
+<div
+  class="grid grid-cols-[30%_1fr] grid-rows-[48px_3fr_1fr] [&.hide-bl]:grid-rows-[48px_3fr_0fr] h-screen"
+  class:hide-bl={$sidebarMode !== "edit"}
+>
   <div
     style="scrollbar-color: #cdcdcd var(--background);"
     class="row-span-2 border-r-2 border-rock-300 bg-background p-2 overflow-y-scroll relative"

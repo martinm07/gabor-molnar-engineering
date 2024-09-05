@@ -41,6 +41,9 @@
     <!-- IFrameResizer -->
     <script src="https://cdn.jsdelivr.net/npm/@iframe-resizer/parent"></script>
     <script>
+      // TODO: This timeout is still susceptible to activating too early,
+      //  before the doc element is created (nevermind that it may also be too late
+      //  to catch the initial load of content into the doc0).
       setTimeout(() => {
         const targetEl = document.querySelector(".doc");
         console.log(targetEl);

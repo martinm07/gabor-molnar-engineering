@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   export interface IEditText {
     startEdit(e?: KeyboardEvent): void;
     finishEdit(): void;

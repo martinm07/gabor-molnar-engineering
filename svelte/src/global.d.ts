@@ -6,6 +6,7 @@ export declare global {
   var blogreadTitle: string;
   var blogreadDesc: string;
   var blogreadBody: string;
+  var blogcreateComponentUID: string[];
 
   type CaretPosition = {
     offsetNode: Node;

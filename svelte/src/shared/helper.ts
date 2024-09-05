@@ -129,3 +129,8 @@ export function darkenColor(color: string, alpha: number) {
   const color_ = color.split(" ").map((str) => Number.parseInt(str));
   return color_.map((c) => alpha * c).join(" ");
 }
+
+// https://stackoverflow.com/a/3561711/11493659
+export function escapeRegex(string: string) {
+  return string.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
+}

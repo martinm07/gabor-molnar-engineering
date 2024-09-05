@@ -44,6 +44,57 @@ export function getAllTextNodes(node: Node): Node[] {
   );
 }
 
+// A port of the jQuery UI scrollParent() method
+// https://stackoverflow.com/a/42543908/11493659
+export function getScrollParent(
+  element: Element,
+  includeHidden: boolean = false,
+) {
+  let style = getComputedStyle(element);
+  const excludeStaticParent = style.position === "absolute";
+  const overflowRegex = includeHidden
+    ? /(auto|scroll|hidden)/
+    : /(auto|scroll)/;
+
+  if (style.position === "fixed") return document.body;
+  for (
+    let parent: Element | null = element;
+    (parent = parent.parentElement);
+
+  ) {
+    style = getComputedStyle(parent);
+    if (excludeStaticParent && style.position === "static") continue;
+    if (overflowRegex.test(style.overflow + style.overflowY + style.overflowX))
+      return parent;
+  }
+
+  return document.body;
+}
+
+export function isElementVisible(
+  el: HTMLElement,
+  opts: { marginTop?: number; marginBottom?: number } = {},
+) {
+  const scrollContainer = getScrollParent(el);
+
+  if (!scrollContainer) return;
+  const scrollRect = scrollContainer.getBoundingClientRect();
+  const minY = scrollRect.y;
+  const maxY = scrollRect.y + scrollRect.height;
+
+  const rect = el.getBoundingClientRect();
+
+  const computed = getComputedStyle(el);
+  const marginTop =
+    opts.marginTop ?? Number.parseFloat(computed.scrollMarginTop);
+  const marginBottom =
+    opts.marginBottom ?? Number.parseFloat(computed.scrollMarginBottom);
+
+  return (
+    rect.y > minY + marginTop && rect.y + rect.height < maxY - marginBottom
+  );
+}
+
 // THE FOLLLOWING 3 ARE CURRENTLY UNUSED
 
 // Traverses up the parent chain until it finds a parent with a next sibling

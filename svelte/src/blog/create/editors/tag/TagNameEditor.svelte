@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, getContext } from "svelte";
   import { autocompleteSuggestions, nodesSelection } from "../../store";
   import {
     calculateTotalOffset,
@@ -12,8 +12,12 @@
 
   interface Props {
     selected: Element[];
+    disabled: boolean;
   }
-  let { selected }: Props = $props();
+  let { selected, disabled }: Props = $props();
+
+  const changeElementInMasks: (oldEl: Element, newEl: Element) => void =
+    getContext("changeElementInMasks");
 
   function allSameName(tags: Element[]): boolean {
     return Boolean(
@@ -41,6 +45,7 @@
 
         // Replace with replacement
         target.parentNode?.replaceChild(replacement, target);
+        changeElementInMasks(target, replacement);
         replacements.push(replacement);
       }
       $nodesSelection = [];
@@ -164,20 +169,25 @@
   onDestroy(off);
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <span
   bind:this={tagEl}
   oninput={onInput}
   contenteditable="true"
   class:invalid={!tagNameURL}
-  class="tagname-display bg-steel-100 p-2 rounded font-mono text-lg font-bold text-rock-700 focus:outline-none"
+  class="tagname-display bg-steel-100 p-2 rounded font-mono text-lg font-bold text-rock-700 focus:outline-none [&.disabled]:opacity-50 [&.disabled]:pointer-events-none"
+  aria-disabled={disabled}
+  class:disabled
+  tabindex={disabled ? -1 : 0}
 >
   &#60;<span>{tagName}</span>&#62;
-</span>
-<a
+</span><a
   href={tagNameURL}
   target="_blank"
-  class:disabled={!tagNameURL}
-  class="text-xl hover:opacity-60 [&.disabled]:opacity-60 text-rock-700"
+  class:disabled={!tagNameURL || disabled}
+  aria-disabled={!tagNameURL || disabled}
+  class="text-xl hover:opacity-60 [&.disabled]:opacity-50 [&.disabled]:pointer-events-none text-rock-700 inline-block ml-1"
+  tabindex={!tagNameURL || disabled ? -1 : 0}
 >
   <ion-icon name="help-circle-outline"></ion-icon>
 </a>

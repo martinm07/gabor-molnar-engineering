@@ -2,13 +2,14 @@
   import { getContext } from "svelte";
   import { watch } from "runed";
   import { autocompleteMode, autocompleteSuggestions } from "../store";
-  import { ClonedSelection } from "../helper";
+  import { ClonedSelection, isElementVisible } from "../helper";
   import { request2AnimationFrames } from "/shared/helper";
 
   const getPrevSelection: () => ClonedSelection | null =
     getContext("getPrevSelection");
 
   let activeI = $state(0);
+  let lastHorizontalX = $state(0);
   let unfocused = $state(true);
   let suggestionEls: HTMLElement[] = $state([]);
   let suggestionGroupXs: number[][] = $state([]);
@@ -16,6 +17,7 @@
     () => [Boolean($autocompleteMode), $autocompleteSuggestions],
     () => {
       activeI = 0;
+      lastHorizontalX = 0;
       unfocused = false;
       requestAnimationFrame(() => {
         const groupedEls: HTMLElement[][] = [];
@@ -55,35 +57,28 @@
       }
       const selectionEl = getNodeElement(selection.focusNode);
       if (isAutcompleteDisplay(selectionEl)) continue;
+
       const i = i_ ?? activeI;
+      let newVal = $autocompleteSuggestions[i];
+      if ($autocompleteMode === "attributes") newVal = newVal.replace("*", "");
+
       if (selectionEl instanceof HTMLInputElement) {
-        selectionEl.value = $autocompleteSuggestions[i];
-        const len = $autocompleteSuggestions[i].length;
+        selectionEl.value = newVal;
+        const len = newVal.length;
         selectionEl.setSelectionRange(len, len);
       } else {
-        selection.focusNode.textContent = $autocompleteSuggestions[i];
-        selection.setPosition(
-          selection.focusNode,
-          $autocompleteSuggestions[i].length,
-        );
+        selection.focusNode.textContent = newVal;
+        selection.setPosition(selection.focusNode, newVal.length);
         if ($autocompleteMode === "css")
           selection.modify("move", "right", "character");
       }
       selectionEl.dispatchEvent(new Event("input", { bubbles: true }));
-      requestAnimationFrame(() => (unfocused = true));
+      // After autocompleting the name of a component, we then need to autcomplete the child index
+      //  which means the autocomplete shouldn't unfocus
+      if ($autocompleteMode !== "component" || newVal.endsWith("]"))
+        requestAnimationFrame(() => (unfocused = true));
       break;
     }
-  }
-
-  function isElementVisible(el: HTMLElement) {
-    const scrollContainer = el.parentElement?.parentElement?.parentElement;
-    if (!scrollContainer) return;
-    const scrollRect = scrollContainer.getBoundingClientRect();
-    const minY = scrollRect.y;
-    const maxY = scrollRect.y + scrollRect.height;
-
-    const rect = el.getBoundingClientRect();
-    return rect.y > minY && rect.y + rect.height < maxY;
   }
 
   function handleHorizontalMove(direction: "ArrowLeft" | "ArrowRight") {
@@ -92,34 +87,40 @@
     if (newI < 0) newI = $autocompleteSuggestions.length - 1;
     else if (newI >= $autocompleteSuggestions.length) newI = 0;
     activeI = newI;
+    const { groupI, innerI } = findGroupIndex(activeI);
+    lastHorizontalX = suggestionGroupXs[groupI][innerI];
     if (!isElementVisible(suggestionEls[activeI]))
       suggestionEls[activeI].scrollIntoView({
         block: dir === 1 ? "end" : "start",
       });
   }
-  function handleVerticalMove(direction: "ArrowUp" | "ArrowDown") {
-    const dir = direction === "ArrowUp" ? -1 : 1;
-    const { groupI: activeGroupI, innerI } = suggestionGroupXs.reduce(
+
+  function findGroupIndex(i: number) {
+    return suggestionGroupXs.reduce(
       (p, c) => {
         if (p.innerI !== -1) return p;
-        if (p.i + c.length > activeI) {
-          return { i: p.i, groupI: p.groupI, innerI: activeI - p.i };
+        if (p.i + c.length > i) {
+          return { i: p.i, groupI: p.groupI, innerI: i - p.i };
         } else {
           return { i: p.i + c.length, groupI: p.groupI + 1, innerI: -1 };
         }
       },
       { i: 0, groupI: 0, innerI: -1 },
     );
-    // const activeGroupI = activeGroupInfo.groupI;
+  }
+
+  function handleVerticalMove(direction: "ArrowUp" | "ArrowDown") {
+    const dir = direction === "ArrowUp" ? -1 : 1;
+    const { groupI: activeGroupI } = findGroupIndex(activeI);
+
     let newGroupI = activeGroupI + dir;
     if (newGroupI < 0) newGroupI = suggestionGroupXs.length - 1;
     else if (newGroupI >= suggestionGroupXs.length) newGroupI = 0;
 
-    const oldX = suggestionGroupXs[activeGroupI][innerI];
     let bestI: number = 0;
     let bestDistance: number = Infinity;
     for (const [i, x] of suggestionGroupXs[newGroupI].entries()) {
-      const distance = Math.abs(oldX - x);
+      const distance = Math.abs(lastHorizontalX - x);
       if (distance < bestDistance) {
         bestDistance = distance;
         bestI = i;
@@ -164,6 +165,8 @@
       $autocompleteMode = "attributes";
     } else if (e.target.closest(".tagname-display")) {
       $autocompleteMode = "tag";
+    } else if (e.target.closest(".data-component-val-input")) {
+      $autocompleteMode = "component";
     } else if (!e.target.closest(".autocomplete-display")) {
       $autocompleteMode = null;
     }

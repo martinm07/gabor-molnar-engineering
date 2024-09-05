@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   export function calculateTotalOffset(
     parentEl?: Element,
     targetNode?: Node | null,
@@ -88,8 +88,9 @@
 
   interface Props {
     selected: Element[];
+    disabled: boolean;
   }
-  let { selected }: Props = $props();
+  let { selected, disabled }: Props = $props();
 
   type StylesList = [k: string, v: string][];
 
@@ -469,6 +470,7 @@
   }
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
   role="application"
   bind:this={stylesEl}
@@ -478,7 +480,10 @@
     prevStyleStr = stylesEl.textContent ?? "";
   }}
   onkeydown={onKeydown}
-  class="styles-display font-mono inline-block text-left text-rock-700 bg-steel-100 p-2 rounded focus:outline-none text-sm"
+  class="styles-display font-mono inline-block text-left text-rock-700 bg-steel-100 p-2 rounded focus:outline-none text-sm [&.disabled]:opacity-50 [&.disabled]:pointer-events-none"
+  aria-disabled={disabled}
+  tabindex={disabled ? -1 : 0}
+  class:disabled
 >
   {@html styles}
 </div>

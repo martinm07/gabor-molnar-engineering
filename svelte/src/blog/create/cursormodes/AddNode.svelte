@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   import { prevSibling, nextSibling, firstChild, lastChild } from "../helper";
 
   export type Rect = { x: number; y: number; w: number; h: number };
@@ -334,7 +334,12 @@
 <script lang="ts">
   import { onDestroy, getContext } from "svelte";
   import { watch } from "runed";
-  import { cursorMode, nodeHoverTarget, nodesIslandSelection } from "../store";
+  import {
+    cursorMode,
+    nodeHoverTarget,
+    nodesIslandSelection,
+    sidebarMode,
+  } from "../store";
   import { type IEditText } from "./EditText.svelte";
   import { request2AnimationFrames } from "/shared/helper";
 
@@ -412,11 +417,16 @@
       active.removeAttribute("style");
       active.removeAttribute("class");
       active.innerHTML = "&nbsp;";
-      $nodeHoverTarget = active;
-      editText();
+      // $nodeHoverTarget = active;
+      setSelection(active);
+      // editText();
+      $sidebarMode = "component";
+      $cursorMode = "select";
       request2AnimationFrames(() => {
-        const selection = getSelection();
-        selection?.selectAllChildren(active);
+        // const selection = getSelection();
+        // selection?.selectAllChildren(active);
+        const btn = document.querySelector(".create-empty-node");
+        if (btn instanceof HTMLElement) btn.focus();
       });
     }
   }}
