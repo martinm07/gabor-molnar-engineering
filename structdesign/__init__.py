@@ -2,7 +2,8 @@ import os
 
 from flask import Flask
 
-from . import blog, helper, home, register
+from . import helper, home, register
+from .blog import blogcreate, bloghomeread, blogsearch
 from .extensions import csrf, db, migrate
 
 
@@ -26,7 +27,9 @@ def create_app(test_config=None):
 
     app.register_blueprint(helper.bp)
     app.register_blueprint(register.bp)
-    app.register_blueprint(blog.bp)
+    app.register_blueprint(bloghomeread.bp)
+    app.register_blueprint(blogsearch.bp)
+    app.register_blueprint(blogcreate.bp)
     app.register_blueprint(home.bp)
     # app.register_blueprint(home.bp)
     # app.register_blueprint(old_auth.bp)

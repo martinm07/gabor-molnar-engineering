@@ -1,12 +1,21 @@
 from __future__ import annotations
 
 import datetime
-from typing import List
+from typing import List, Literal
 
 from sqlalchemy import Column, ForeignKey, String, Table, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .extensions import db
+
+
+class Param(db.Model):
+    __tablename__ = "params"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(128))
+    value: Mapped[str] = mapped_column(Text())
+
 
 ###################################################
 ##                      USER                     ##
@@ -81,7 +90,11 @@ class GuidanceDocument(db.Model):
     tags: Mapped[List["DocumentTag"]] = relationship(
         secondary=document_tag_association_table, back_populates="documents"
     )
-    hearts: Mapped[int]
+    hearts: Mapped[int] = mapped_column(default=0)
+    status: Mapped[Literal["featured", "public", "unlisted", "private"]] = (
+        mapped_column(String(16), default="private")
+    )
+    component_lib_version: Mapped[str] = mapped_column(Text(), nullable=False)
 
 
 class DocumentTag(db.Model):
@@ -117,3 +130,57 @@ class DocumentFeedback(db.Model):
     blog_id: Mapped[int] = mapped_column(ForeignKey("blogs.id"))
     body: Mapped[str] = mapped_column(Text())
     email: Mapped[str] = mapped_column(String(100))
+
+
+component_tag_association_table = Table(
+    "component_tag_association_table",
+    db.Model.metadata,
+    Column("component_id", ForeignKey("savedcomponents.id")),
+    Column("tag_id", ForeignKey("savedcomponenttags.id")),
+)
+
+
+class SavedComponent(db.Model):
+    __tablename__ = "savedcomponents"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(32))
+    description: Mapped[str] = mapped_column(String(512))
+    content: Mapped[str] = mapped_column(Text())
+    parts: Mapped[str] = mapped_column(String(1024))
+
+    tags: Mapped[List["SavedComponentTag"]] = relationship(
+        secondary=component_tag_association_table, back_populates="components"
+    )
+    tags_str: Mapped[str] = mapped_column(String(1024), default="")
+
+    library_id = mapped_column(ForeignKey("savedcomponentlibraries.id"))
+    library: Mapped["SavedComponentLibrary"] = relationship(back_populates="components")
+
+
+class SavedComponentTag(db.Model):
+    __tablename__ = "savedcomponenttags"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(32))
+    components: Mapped[List["SavedComponent"]] = relationship(
+        secondary=component_tag_association_table, back_populates="tags"
+    )
+
+
+class SavedComponentLibrary(db.Model):
+    __tablename__ = "savedcomponentlibraries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    components: Mapped[list["SavedComponent"]] = relationship(back_populates="library")
+    name: Mapped[str] = mapped_column(String(32))
+    latest_version: Mapped[str] = mapped_column(Text(), nullable=False)
+
+
+class SavedComponentDiff(db.Model):
+    __tablename__ = "savedcomponentdiffs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    version: Mapped[str] = mapped_column(Text(), nullable=False)
+    next_version: Mapped[str] = mapped_column(Text(), nullable=True)
+    diff: Mapped[str] = mapped_column(Text())
