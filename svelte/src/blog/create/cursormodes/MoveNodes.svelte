@@ -72,7 +72,7 @@
   const off4 = on(docParent, "drop", (e) => {
     if ($cursorMode !== "move" || !potentialLocations.activeLocation) return;
     e.preventDefault();
-    potentialLocations.activeLocation.after(...$nodesIslandSelection);
+    potentialLocations.activeLocation.before(...$nodesIslandSelection);
     updateHighlight();
   });
   onDestroy(off4);

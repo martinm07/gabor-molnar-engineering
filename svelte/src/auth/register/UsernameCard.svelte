@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   export async function validateName(
     name: string,
   ): Promise<ValidationResponse> {
@@ -72,7 +72,7 @@
   }
 </script>
 
-{#snippet oauth(name, iconname, url)}
+{#snippet oauth(name: string, iconname: string, url: string)}
   <div class="my-1 flex justify-center">
     <a
       href={urlRoot + url}

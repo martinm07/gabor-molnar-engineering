@@ -33,7 +33,7 @@ def populate_blogs(num: int, **kwargs) -> list[GuidanceDocument]:
             component_lib_version=getval("component_lib_version", i, ""),
         )
         if getval("date_created", i):
-            doc.date_created = datetime.date.fromisoformat(kwargs["date_created"][i])
+            doc.date_created = datetime.fromisoformat(kwargs["date_created"][i])
         docs.append(doc)
         db.session.add(doc)
     db.session.commit()

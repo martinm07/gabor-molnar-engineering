@@ -76,17 +76,17 @@ export function createNewComponent(
 
 setTimeout(() => {
   const el = document.querySelector("div:has(+ p)")!;
-  console.log(el);
+  // console.log(el);
   createNewComponent("new-comp", el);
-  console.log(get(savedComponents));
-  console.log(decodeComponentStr(get(savedComponents)[0].content));
+  // console.log(get(savedComponents));
+  // console.log(decodeComponentStr(get(savedComponents)[0].content));
 }, 1000);
 
 export function decodeComponentStr(str: string) {
   const fragment = document.createDocumentFragment();
   let activeLoc: Node | null = null;
   const regex = /(<[\s\S]+?>)|((?<=>)[\s\S]+?(?=<))/g;
-  console.log(str.match(regex));
+  // console.log(str.match(regex));
   str.match(regex)?.forEach((substr) => {
     if (substr === "</>") activeLoc = activeLoc?.parentNode ?? null;
     // The substr is an element
@@ -97,7 +97,7 @@ export function decodeComponentStr(str: string) {
       //            those groups will be spliced into the result (even if it's 'undefined')
       // "Hello world".split(/o( )w/g) // Array(3) [ "Hell", " ", "orld" ]
       const items = substr.slice(1, -1).split(/(?<=^[^"]*(?:"[^"]*"[^"]*)*):/g);
-      console.log(substr, items);
+      // console.log(substr, items);
       const newEl = document.createElement(items[0]);
       const allAttrs: { name: string; value: string }[] = items
         .slice(1)
@@ -139,7 +139,7 @@ function getCompNameAndPart(compName: string): [name: string, part: string] {
 
 export function changeElToComp(el: Element, compName: string) {
   const [name, part] = getCompNameAndPart(compName);
-  console.log(name, part);
+  // console.log(name, part);
   const saved = get(savedComponents).find((item) => item.name === name)!;
   // console.log(saved);
   if (!saved.parts.includes(part))
@@ -158,7 +158,7 @@ export function changeElToComp(el: Element, compName: string) {
       String.raw`})<[^/]+?>`,
   );
   const match = regex.exec(content)?.[0]?.slice(1, -1);
-  console.log(elIndex, match);
+  // console.log(elIndex, match);
   if (!match)
     throw new Error(
       `Could not find the provided part in the provided component name content`,
@@ -189,7 +189,7 @@ export function changeElToComp(el: Element, compName: string) {
   newAttrs.forEach(([name, newVal]) => {
     if (el_.getAttribute(name) !== newVal) el_.setAttribute(name, newVal);
   });
-  console.log(Array(...el_.attributes));
+  // console.log(Array(...el_.attributes));
   Array(...el_.attributes).forEach((attr) => {
     if (!newAttrs.some(([name]) => name === attr.nodeName))
       el_.removeAttribute(attr.nodeName);

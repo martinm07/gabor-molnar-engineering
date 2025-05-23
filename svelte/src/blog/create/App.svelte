@@ -1,6 +1,5 @@
 <script lang="ts">
   import "/shared/tailwindinit.css";
-  import starterPath from "./starter.txt";
   import NodeSelect, {
     type INodeSelect,
   } from "./cursormodes/NodeSelect.svelte";
@@ -29,12 +28,32 @@
     lastChild,
     nextElementSibling,
   } from "./helper";
+  import {
+    patchMutations,
+    reconstructHTMLStr,
+    type DocNodeMap,
+  } from "./docsyncing";
   import Autocomplete from "./editors/Autocomplete.svelte";
+  import { fetch_ } from "/shared/helper";
+  import { decodeComponentStr } from "./components/component";
 
   let document_: string = $state("");
-  fetch(starterPath)
-    .then((resp) => resp.text())
-    .then((data) => (document_ = data));
+
+  let documentID: number;
+  if (globalThis.jinjaParsed) documentID = globalThis.blogcreateDocumentID;
+  else
+    documentID = Number.parseInt(
+      new URLSearchParams(location.search).get("id") ?? "",
+    );
+  let patchSync: boolean | null = null;
+  // ID 114 is starter.txt
+  fetch_(`/documents/get_document_edit?id=${documentID}`)
+    .then((resp) => resp.json())
+    .then((data) => {
+      patchSync = false;
+      document_ = data.body;
+    });
+
   let docEl: HTMLElement | undefined = $state();
   // setContext("docEl", docEl);
 
@@ -134,12 +153,6 @@
     if ($sidebarMode === "component") $sidebarMode = "edit";
   }
 
-  function getParentElement(node: Node): Element | null {
-    if (node instanceof Element) return node;
-    else if (node.parentNode) return getParentElement(node.parentNode);
-    else return null;
-  }
-
   function removeTextContent(node: Node) {
     const oldText = getAllTextNodes(node).map((node_) => {
       const node = node_ as Text;
@@ -167,7 +180,7 @@
         // The above DOM mutation removing the text nodes also sometimes does the same thing, though less rarely.
         // Both of these might be due to both happening in the same frame, causing inconsistent behaviour.
         ignoreDOMMutation(
-          { node: parent, type: "childList", origin: "Unfo removeTextContent" },
+          { node: parent, type: "childList", origin: "Undo removeTextContent" },
           () => parent.insertBefore(node, next),
         );
       });
@@ -235,18 +248,28 @@
     });
   }
 
+  // Also consider closing tags! They will change if the tag name of an element changes.
+  //  However, there is no such mutation as "changing the tag name of an element"- that simply
+  //  involves deleting and adding a new element.
+  let docNodes: DocNodeMap = new Map();
+  let htmlStr: string;
+
   // This observer is to
-  //  - try enforce no "collapsed" elements (that is, elements with 0 height and/or width),
+  //  1- disallow non-element nodes as direct children of docEl
+  //  2- try enforce no "collapsed" elements (that is, elements with 0 height and/or width),
   //    by making those that WOULD, take a single non-breaking space (&nbsp;) character as textContent
-  //  - check elements with only whitespace as text content if that white space could be removed
+  //  3- check elements with only whitespace as text content if that white space could be removed
   //    and not have the element collapse (e.g. some CSS sets the height and width already), in which
   //    case remove that whitespace
-  //  - remove any last island of <br> child elements from elements that have only whitespace as text
+  //  4- remove any last island of <br> child elements from elements that have only whitespace as text
   //    content. These <br>s do nothing (typically) for page flow or otherwise, and are just artefacts
   //    from the contentEditable process (in which there is no way for the user to delete them manually)
+  //  5- sync the document to the database through patches to the HTML string
   const { stop } = useMutationObserver(
     () => docEl,
     (mutations) => {
+      console.log("mutation observer triggered", mutations);
+
       for (const mutation of mutations) {
         const target = mutation.target;
 
@@ -256,23 +279,36 @@
         if (ignoreI !== -1) {
           // console.log([...queuedMutationIgnores], mutation);
           queuedMutationIgnores.splice(ignoreI, 1);
-          return;
+          break;
         }
         // console.log("not ignored", mutation);
 
+        // 1)
+        mutation.addedNodes.forEach((added) => {
+          if (
+            added.nodeType !== Node.ELEMENT_NODE &&
+            added.parentElement === docEl
+          )
+            added.parentElement.removeChild(added);
+        });
+
+        // 2) Handle newly added nodes, making sure they aren't collapsed
         if (mutation.type === "childList") {
           mutation.addedNodes.forEach(addNBSP);
         }
 
-        const el = getParentElement(target);
+        const el =
+          mutation.type === "characterData" ? target.parentElement : target;
+
+        // Handling of 2/3 and 4 are only required if the element only contains whitespace
         if (
           !(el instanceof HTMLElement) ||
           !nodeWhitespaceRestricted(el, false)
         )
           continue;
 
-        // console.log(el, mutation.type);
         let removedBRs: boolean = false;
+        // 4) Remove any list island of BRs
         while (true) {
           const last = lastChild(el);
           if (last instanceof HTMLElement && last.tagName === "BR") {
@@ -282,11 +318,14 @@
             );
             removedBRs = true;
           } else {
+            // 2) If BRs were removed then there's a chance that the element has no collapsed
+            //     which must be handled.
             if (removedBRs && el.innerText === "") addNBSP(el);
             break;
           }
         }
 
+        // 2) Check if the modification of this element has collapsed it, and rectify if so
         if (el.innerText === "") {
           const rect = el.getBoundingClientRect();
           if (rect.height * rect.width >= 1) continue;
@@ -294,7 +333,10 @@
           addNBSP(el);
           if ($cursorMode === "edit")
             getSelection()?.setBaseAndExtent(target, 0, target, 1);
-        } else {
+        }
+        // 3) We know this element has only whitespace- because of the early termination above-
+        //     and so we're checking if the nbsp (or other) could be safely removed.
+        if (el.innerText !== "") {
           // If the element's innerText is just a single nbsp character, that indicates
           //  the user would like this element to be empty, but we don't allow that
           //  unless the element has some non-zero area that could be hovered and selected.
@@ -302,6 +344,37 @@
           const rect = el.getBoundingClientRect();
           if (rect.height * rect.width < 1) undo();
         }
+      }
+
+      if (patchSync === false && docEl) {
+        console.log("Document loaded!");
+
+        [, htmlStr] = reconstructHTMLStr(docEl, false, 0, docNodes);
+        console.log(docNodes);
+        console.log(htmlStr);
+        // docNodes.values().forEach((info) => {
+        //   console.log(
+        //     htmlStr.slice(info.stringPos, info.stringPos + info.stringLen),
+        //   );
+        // });
+
+        // Sync this htmlStr to the database. It is of course functionally equivalent to whatever is
+        //  already stored in the database, but doing this guarantees that specific HTML string matches
+        //  what patches will try and modify.
+        fetch_("/documents/sync_document_full", {
+          method: "post",
+          body: JSON.stringify({
+            id: documentID,
+            body: htmlStr,
+          }),
+        });
+        patchSync = true;
+      } else if (patchSync && docEl) {
+        htmlStr = patchMutations(mutations, docNodes, docEl, documentID, {
+          updateHTMLStr: htmlStr,
+          debug: true,
+          useIgnoreAddedNodeMutations: true,
+        });
       }
     },
     {

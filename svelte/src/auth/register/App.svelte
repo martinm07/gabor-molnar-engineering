@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   import type { ValidationResponse } from "/shared/types";
 
   export function statusCodeNameMsg(code: string): {

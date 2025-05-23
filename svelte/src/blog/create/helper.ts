@@ -126,6 +126,7 @@ export class ClonedSelection implements Selection {
   isCollapsed: boolean;
   rangeCount: number;
   type: string;
+  direction: string;
   private ranges: Range[];
 
   constructor(selection: Selection) {
@@ -136,6 +137,7 @@ export class ClonedSelection implements Selection {
     this.isCollapsed = selection.isCollapsed;
     this.rangeCount = selection.rangeCount;
     this.type = selection.type;
+    this.direction = selection.direction;
     this.ranges = [];
 
     for (let i = 0; i < selection.rangeCount; i++) {
@@ -245,4 +247,37 @@ export function elsListConnected(els: Element[]) {
     }
   }
   return remainingEls.length === 0 ? sortedTopLevel : [];
+}
+
+export function sortNodesInDocumentOrder(nodes: NodeList) {
+  return Array.from(nodes).sort((a, b) => {
+    if (a === b) return 0;
+    const position = a.compareDocumentPosition(b);
+    // DOCUMENT_POSITION_PRECEDING means b comes before a, so a > b
+    if (position & Node.DOCUMENT_POSITION_PRECEDING) return 1;
+    if (position & Node.DOCUMENT_POSITION_FOLLOWING) return -1;
+    return 0;
+  });
+}
+
+export function isInputEvent(e: Event): e is InputEvent {
+  return "inputType" in e;
+}
+
+export function closest(
+  rootNode: Node | null,
+  searchNode: Node | null,
+): boolean {
+  if (rootNode === null || searchNode === null) return false;
+
+  let currentNode: Node | null = rootNode;
+  let found = false;
+  while (currentNode !== null) {
+    if (currentNode === searchNode) {
+      found = true;
+      break;
+    }
+    currentNode = currentNode.parentNode;
+  }
+  return found;
 }

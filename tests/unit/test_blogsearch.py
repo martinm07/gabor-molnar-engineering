@@ -1,4 +1,5 @@
 from flask.testing import FlaskClient
+from pytest_mock import MockerFixture
 
 from structdesign.helper import collection_exists, get_unix_timestamp
 from structdesign.models import (
@@ -24,7 +25,7 @@ def import_docs(docs, client):
     client.collections["documents"].documents.import_(docs_, {"action": "create"})
 
 
-def test_query(client: FlaskClient, typesense_client, mocker):
+def test_query(client: FlaskClient, typesense_client, mocker: MockerFixture):
     def get(**kwargs):
         return client.get("/documents/query", query_string=kwargs).json
 
@@ -34,7 +35,7 @@ def test_query(client: FlaskClient, typesense_client, mocker):
         typesense_client.collections["documents"].delete()
     typesense_client.collections.create(documents_schema)
 
-    mocker.patch("structdesign.blog.typesense_client", typesense_client)
+    mocker.patch("structdesign.blog.blogsearch.typesense_client", typesense_client)
 
     docs = populate_blogs(5)
     import_docs(docs, typesense_client)
@@ -66,7 +67,7 @@ def test_query(client: FlaskClient, typesense_client, mocker):
     assert resp["hits"][1]["document"]["title"] == "apple shoes"
 
 
-def test_advanced_query(client: FlaskClient, typesense_client, mocker):
+def test_advanced_query(client: FlaskClient, typesense_client, mocker: MockerFixture):
     def get(**kwargs):
         return client.get("/documents/advanced_query", query_string=kwargs).json
 
@@ -74,7 +75,7 @@ def test_advanced_query(client: FlaskClient, typesense_client, mocker):
         typesense_client.collections["documents"].delete()
     typesense_client.collections.create(documents_schema)
 
-    mocker.patch("structdesign.blog.typesense_client", typesense_client)
+    mocker.patch("structdesign.blog.blogsearch.typesense_client", typesense_client)
 
     docs = populate_blogs(5)
     populate_tags(2, docs, doc_ids=[[1, 2, 3], [3, 4]])

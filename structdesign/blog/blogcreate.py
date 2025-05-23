@@ -22,6 +22,67 @@ from ..models import (  # noqa: F401
     SavedComponentTag,
 )
 
+"""
+blogcreate.py
+This module provides a Flask Blueprint for managing and editing document components and guidance documents
+within a web application. It includes endpoints for retrieving, updating, and versioning component libraries,
+as well as synchronizing and patching document content. Additionally, it offers utilities for integrating
+iframe-resizer functionality with cross-origin HTML content.
+Blueprint:
+    bp (Blueprint): Flask Blueprint registered under the URL prefix "/documents".
+Functions:
+    onfalsey(val, fallback)
+        Returns val if it is truthy, otherwise returns fallback.
+    items_equal(a, b)
+        Compares two items for equality, supporting strings and iterables.
+    get_component_lib()
+        Retrieves the base SavedComponentLibrary instance from the database.
+    get_version(version: str)
+        Retrieves a SavedComponentDiff instance by version string.
+    create_version(comps: list[SavedComponent])
+        Generates a version hash string for a list of SavedComponent instances.
+    apply_diff(components: list[dict[str, Any]], diff: str)
+        Applies a diff string to a list of component dictionaries and returns the updated list.
+    get_library_components(lib: SavedComponentLibrary)
+        Returns the components of a library, sorted by ID for consistency.
+    savedcomponents_currentversion()
+        GET endpoint: Returns the latest version string of the component library.
+    get_component_library()
+        GET endpoint: Returns the components of the library at a specified version.
+    fill_tag_names(names: str | None)
+        Converts a comma-separated string of tag names into a list of SavedComponentTag instances,
+        creating new tags as needed.
+    update_components()
+        POST endpoint: Updates, adds, or removes components in the library, handling versioning and diffs.
+    get_document_edit()
+        GET endpoint: Retrieves editable fields of a GuidanceDocument by ID.
+    sync_document_full()
+        POST endpoint: Replaces the full body of a GuidanceDocument.
+    sync_document_patch()
+        POST endpoint: Applies a list of patch operations to the body of a GuidanceDocument.
+    iframeresizer()
+        GET endpoint: Fetches an external HTML page, injects iframe-resizer and service worker scripts,
+        and returns the modified HTML.
+    iframeresizer_serviceworker()
+        Serves the JavaScript for the iframe-resizer service worker.
+    iframeresizer_cors()
+        Proxies HTTP requests to external URLs, forwarding the request and streaming the response back.
+    iframeresizer_test()
+        Renders a test page for iframe-resizer integration.
+Dependencies:
+    - Flask
+    - SQLAlchemy
+    - requests
+    - BeautifulSoup
+    - diff_match_patch
+    - fnv128a
+    - Custom models and extensions from the parent package
+Notes:
+    - The module handles versioning of component libraries using hash-based version strings and diffs.
+    - It supports collaborative editing of document content via patch operations.
+    - The iframe-resizer integration allows embedding and resizing of cross-origin iframes with injected scripts.
+"""
+
 bp = Blueprint("blogcreate", __name__, url_prefix="/documents")
 
 
@@ -188,7 +249,7 @@ def get_component_library():
 
         if current is None:
             return (
-                f"Version history exhausted without finding the following component versions: {", ".join([ver for ver in comp_versions if ver is not None])}",
+                f"Version history exhausted without finding the following component versions: {', '.join([ver for ver in comp_versions if ver is not None])}",
                 400,
             )
 
@@ -222,6 +283,41 @@ def fill_tag_names(names: str | None) -> list[SavedComponentTag]:
 @bp.route("/update_components", methods=["OPTIONS", "POST"])
 @cors_enabled()
 def update_components():
+    """
+    Handles updates, additions, and removals of components in the component library.
+
+    This endpoint receives a JSON payload describing which components to update, add, or remove,
+    verifies version consistency, applies the requested changes, generates a diff string for versioning,
+    and updates the component library accordingly.
+
+    Request (POST/OPTIONS):
+        JSON body with the following keys:
+            - version (str): The current version string of the component library (required for updates/removals).
+            - update (dict): Mapping of component names to dictionaries of updated fields.
+                Allowed fields: "name", "description", "content", "parts" (list or str), "tags" (comma-separated str).
+            - add (list): List of dictionaries describing new components to add.
+                Required fields: "name", "content", "parts" (list or str). Optional: "description", "tags".
+            - remove (list): List of component names (str) to remove.
+
+    Returns:
+        - 200 OK with the new latest version string if changes were made.
+        - 400 Bad Request with an error message if input is invalid or version mismatch occurs.
+        - 200 OK with the current latest version string if no changes were made.
+
+    Side Effects:
+        - Updates the database with new, updated, or removed components.
+        - Creates a new SavedComponentDiff entry for version history.
+        - Updates the latest_version field of the component library.
+
+    Example usage:
+        POST /documents/update_components
+        {
+            "version": "abc123,def456",
+            "update": {"ComponentA": {"content": "new content"}},
+            "add": [{"name": "ComponentB", "content": "body", "parts": ["1"]}],
+            "remove": ["ComponentC"]
+        }
+    """
     data: dict[str, Any] = json.loads(request.data.decode("utf-8"))
     acting_version: str = data.get("version", "")
     # Update: dictionary with names as keys and fields with new values. The following fields are allowed:
@@ -263,7 +359,7 @@ def update_components():
                 if not correct
             ]
             return (
-                f"Cannot update or remove components that aren't on their latest version. Attempted ('component' where PROVIDED_VERSION != LATEST_VERSION): {"  ".join(errors)}",
+                f"Cannot update or remove components that aren't on their latest version. Attempted ('component' where PROVIDED_VERSION != LATEST_VERSION): {'  '.join(errors)}",
                 400,
             )
     except IndexError:
@@ -386,9 +482,63 @@ def update_components():
     return lib.latest_version
 
 
+@bp.route("/get_document_edit")
+@cors_enabled(methods=["GET"])
+def get_document_edit():
+    id_ = int(request.args.get("id"))
+    doc = db.session.get(GuidanceDocument, id_)
+    return {
+        "id": doc.id,
+        "title": doc.title,
+        "description": doc.description,
+        "body": doc.body,
+        "accent": doc.accent,
+        "thumbnail": doc.thumbnail,
+        "tags": [tag.name for tag in doc.tags],
+        "status": doc.status,
+    }
+
+
+@bp.route("/sync_document_full", methods=["OPTIONS", "POST"])
+@cors_enabled()
+def sync_document_full():
+    data = json.loads(request.data.decode("utf-8"))
+    id_: int = data.get("id")
+    if id_ is None:
+        return "Missing required 'id' key", 400
+    body: str = data.get("body")
+    if body is None:
+        return "Missing required 'body' key", 400
+
+    document = db.session.get(GuidanceDocument, int(id_))
+    document.body = body
+    db.session.commit()
+    return ""
+
+
 @bp.route("/sync_document_patch", methods=["OPTIONS", "POST"])
 @cors_enabled()
 def sync_document_patch():
+    """
+    Synchronizes a guidance document's content by applying a list of patch operations.
+    This endpoint expects a JSON payload with the following structure:
+        {
+            "id": int,                # The ID of the guidance document to patch (required)
+            "patches": [              # A list of patch objects (required)
+                {
+                    "index": int,     # The starting index in the document body to apply the patch (required)
+                    "length": int,    # The number of characters to replace (optional, defaults to 0)
+                    "value": str      # The string to insert at the specified index (optional, defaults to "")
+                },
+                ...
+            ]
+        }
+    The function applies each patch in reverse order of their indices to avoid index shifting issues.
+    Each patch replaces `length` characters at `index` with `value`.
+    Returns:
+        - The updated document content as a string on success.
+        - A 400 error with a descriptive message if required data is missing or invalid.
+    """
     data = json.loads(request.data.decode("utf-8"))
     id_: int = data.get("id")
     if not id_:
@@ -406,6 +556,7 @@ def sync_document_patch():
     if not document:
         return f"No guidance document of id '{id_}'", 400
     content = document.body
+    old_len = len(content)
 
     # Sync the content of a document by sending a minimal amount of data
     #  for the server to then figure out how to patch in.
@@ -414,8 +565,7 @@ def sync_document_patch():
 
     # patch_str will be set up as a list of change objects, each one with the content to insert, the index
     #  to insert it at, and how many characters to replace
-    patches.reverse()
-    patches.sort(key=lambda x: x.get("index", float("inf")), reverse=True)
+    # patches.sort(key=lambda x: x.get("index", float("inf")), reverse=True)
     print(patches)
     for patch in patches:
         value = patch.get("value", "")
@@ -425,10 +575,80 @@ def sync_document_patch():
             return "Each patch object requires an index", 400
         content = content[:index] + value + content[index + length :]
 
+    print(f"Content length: {old_len} -> {len(content)}")
     document.body = content
     db.session.commit()
 
     return content
+
+
+@bp.route("/reset_114", methods=["GET"])
+def reset_114():
+    document = db.session.get(GuidanceDocument, 114)
+    if document:
+        document.body = """<h1>Introducing a Light, Visual HTML Editor</h1>
+<p>
+  Embracing HTML and CSS directly, rather than overshadow it with our own
+  limited, unintuitive idea of document editing.
+</p>
+<div>
+  <p>
+    <em>Lorem ipsum</em> dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor
+    incididunt ut labore et dolore magna aliqua. Gravida in fermentum et
+    sollicitudin ac orci phasellus. Ultricies integer quis auctor elit sed
+    vulputate mi sit amet. Ultrices sagittis orci a scelerisque purus semper eget
+    duis at. Sociis natoque penatibus et magnis dis parturient. Ac odio tempor
+    orci dapibus ultrices in. Accumsan sit amet nulla facilisi morbi tempus
+    iaculis urna. Commodo nulla facilisi nullam vehicula ipsum a arcu. Quam nulla
+    porttitor massa id neque aliquam vestibulum. Parturient montes nascetur
+    ridiculus mus mauris vitae <strong>ultricies</strong>. Vitae elementum curabitur vitae nunc sed
+    velit dignissim sodales ut. Odio pellentesque diam volutpat commodo sed
+    egestas. Et ligula ullamcorper malesuada proin libero nunc consequat interdum.
+    Pretium fusce id velit ut. Pellentesque habitant morbi tristique senectus. Sit
+    amet luctus venenatis lectus magna fringilla urna porttitor.
+  </p>
+  <p>
+    Massa placerat duis ultricies lacus sed turpis tincidunt id. Nunc faucibus a
+    pellentesque sit amet porttitor. Tellus molestie nunc non blandit massa enim.
+    Mauris rhoncus aenean vel elit scelerisque mauris pellentesque pulvinar
+    pellentesque. Diam volutpat commodo sed egestas egestas fringilla phasellus.
+    Eget sit amet tellus cras. Curabitur vitae nunc sed velit dignissim sodales ut
+    eu. Sed velit dignissim sodales ut eu sem integer vitae. Nunc sed blandit
+    libero volutpat. Cursus sit amet dictum sit amet justo donec enim diam. Magnis
+    dis parturient montes nascetur ridiculus mus. Consequat id porta nibh
+    venenatis cras sed. Risus feugiat in ante metus dictum at tempor. Justo eget
+    magna fermentum iaculis. Quis blandit turpis cursus in hac habitasse.
+  </p>
+</div>
+<p>
+  Faucibus turpis in eu mi bibendum neque. Elementum curabitur vitae nunc sed.
+  Adipiscing tristique risus nec feugiat in fermentum posuere. Nec tincidunt
+  praesent semper feugiat nibh sed. Elit scelerisque mauris pellentesque
+  pulvinar pellentesque habitant morbi tristique senectus. Lorem ipsum dolor sit
+  amet consectetur. Arcu vitae elementum curabitur vitae nunc sed velit
+  dignissim. Elementum integer enim neque volutpat ac tincidunt vitae. Libero
+  justo laoreet sit amet cursus sit amet. In ante metus dictum at tempor.
+  Curabitur vitae nunc sed velit dignissim. Augue interdum velit euismod in.
+  Commodo quis imperdiet massa tincidunt nunc pulvinar. Magnis dis parturient
+  montes nascetur ridiculus. Lectus urna duis convallis convallis tellus id
+  interdum. A condimentum vitae sapien pellentesque habitant morbi tristique
+  senectus. Ultricies integer quis auctor elit sed. Suspendisse faucibus
+  interdum posuere lorem ipsum dolor sit. Et malesuada fames ac turpis egestas
+  maecenas <em>pharetra</em> convallis.
+</p>
+<img src="/intro/home/img1.png">
+<p>
+  Mi sit amet mauris commodo quis imperdiet massa tincidunt nunc. Nisl purus in
+  mollis nunc sed id. In aliquam sem fringilla ut morbi. Tincidunt augue
+  interdum velit euismod. At imperdiet dui accumsan sit amet nulla. Erat velit
+  scelerisque in dictum. Sodales ut eu sem integer vitae justo eget magna
+  fermentum. Luctus venenatis lectus magna fringilla urna. Lacus laoreet non
+  curabitur gravida arcu ac tortor. Lobortis scelerisque fermentum dui faucibus
+  in ornare. Quisque id diam vel quam elementum pulvinar etiam non quam. Vivamus
+  at augue eget arcu dictum varius duis.
+</p>"""
+        db.session.commit()
+    return ""
 
 
 ## http://localhost:5000/documents/iframeresizer?url=https://www.desmos.com/calculator/g7izucn6nn

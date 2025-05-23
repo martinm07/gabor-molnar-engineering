@@ -78,13 +78,25 @@
     splitStringAtChar,
     allowedPropNames,
   } from "./handlecss";
-  import { ClonedSelection, insertAtIndex } from "../../helper";
+  import { ClonedSelection, insertAtIndex, isInputEvent } from "../../helper";
+  import {
+    type CSSEditorState,
+    type StyleStrSelection,
+    UndoManager,
+  } from "./undo.svelte";
 
   let styles = $state("");
   let stylesEl: HTMLElement;
   const updateHighlight: () => void = getContext("updateHighlight");
   const getPrevSelection: () => ClonedSelection | null =
     getContext("getPrevSelection");
+
+  const undoManager = new UndoManager();
+
+  let prevSelection: ClonedSelection | null = $state(null);
+
+  let styleStrSelection: StyleStrSelection | null = null;
+  let prevStyleStrSelection: StyleStrSelection | null = null;
 
   interface Props {
     selected: Element[];
@@ -115,19 +127,42 @@
       }
       if (!commonStyles) return;
       prevSyncedStyles = commonStyles;
-      [styles] = parseStylesStr(
-        commonStyles.map((style) => `${style[0]}:${style[1]};`).join(" "),
-      );
+
+      const styleStr = commonStyles
+        .map((style) => `${style[0]}:${style[1]};`)
+        .join(" ");
+
+      let plainStr: string;
+      [styles, , plainStr] = parseStylesStr(styleStr);
       if (stylesEl?.innerHTML) stylesEl.innerHTML = styles;
+
+      undoManager.changeSelection(targets, {
+        text: plainStr,
+        selection: {
+          isCollapsed: true,
+          focusIndex: 0,
+          anchorIndex: 0,
+          direction: "none",
+          focusLoc: "other",
+        },
+        insertType: "other",
+      });
     },
   );
 
   // Take the intersection of styles to have the same name and value
   function stylesIntersection(s1: StylesList, s2: StylesList): StylesList {
-    return s1.filter((s, i) => s[0] === s2[i]?.[0] && s[1] === s2[i]?.[1]);
+    const final: StylesList = [];
+    for (const kvPair of s1) {
+      if (s2.some(([k, v]) => k === kvPair[0] && v === kvPair[1]))
+        final.push(kvPair);
+    }
+    return final;
   }
 
-  function parseStylesStr(inp?: HTMLElement | string): [string, StylesList] {
+  function parseStylesStr(
+    inp?: HTMLElement | string,
+  ): [string, StylesList, string] {
     let str = typeof inp === "string" ? inp : inp?.textContent ?? "";
 
     const props = splitStringAtChar(str, ";")
@@ -148,21 +183,29 @@
       val,
     ]);
 
-    let htmlStr = reflowed
-      .map((prop, i) => {
-        const url = MDNLinks.find((item) => item.name === prop[0])?.url;
-        const urlMarkup = url
-          ? `<a href=${url} contenteditable="false" target="_blank"><ion-icon name="help-circle-outline"></ion-icon></a>`
-          : "";
-        const validMarkup = allowedPropNames.includes(prop[0])
-          ? ""
-          : ' class="invalid"';
-        return `<b${validMarkup}>${urlMarkup}${prop[0]}</b><div class="colon">:</div><em>${prop[1]}</em>`;
-      })
-      .join('<div class="semic">;</div><br />');
-    htmlStr += '<div class="semic">;</div>';
+    const htmlStrStatements: string[] = [];
+    const plainStrStatements: string[] = [];
+    reflowed.forEach((prop, i) => {
+      const url = MDNLinks.find((item) => item.name === prop[0])?.url;
+      const urlMarkup = url
+        ? `<a href=${url} contenteditable="false" target="_blank"><ion-icon name="help-circle-outline"></ion-icon></a>`
+        : "";
+      const validMarkup = allowedPropNames.includes(prop[0])
+        ? ""
+        : ' class="invalid"';
 
-    return [htmlStr, reflowed];
+      htmlStrStatements[i] =
+        `<b${validMarkup}>${urlMarkup}${prop[0]}</b><div class="colon">:</div><em>${prop[1]}</em>`;
+      plainStrStatements[i] = `${prop[0]}:${prop[1]}`;
+    });
+
+    let htmlStr = htmlStrStatements.join('<div class="semic">;</div><br />');
+    let plainStr = plainStrStatements.join(";");
+
+    htmlStr += '<div class="semic">;</div>';
+    plainStr += ";";
+
+    return [htmlStr, reflowed, plainStr];
   }
 
   let prevSyncedStyles: StylesList;
@@ -214,33 +257,40 @@
     updateHighlight();
   }
 
+  // IMP: Currently doing nothing (because maybe this behaviour wasn't necessary)
   function preventColonsDeletion(styleStr: string, prevStyleStr: string) {
-    const diff = diffChars(prevStyleStr, styleStr);
-    let finalStr = "";
-    for (const change of diff) {
-      if (!change.removed) finalStr += change.value;
-      else {
-        const del = change.value;
-        let toBeAdded = [...del.matchAll(/[;:]/g)]
-          .map((exp) => (!charInStrQuoted(del, exp.index) ? exp[0] : ""))
-          .join("");
-        // :;: <-- margin:0;position:rela
-        // :;:; <-- margin:0;position:relative;disp
-        // ;:; <-- 0px;display:block;
-        // ;:;: <-- 0px;display:block;position:rela
-        toBeAdded = toBeAdded.replace(/(?<!^):;/g, "");
-        // toBeAdded will at most be 3 long
-        if (toBeAdded.startsWith(":;") && finalStr.at(-1) === ";")
-          toBeAdded = toBeAdded.slice(2);
-        finalStr += toBeAdded;
-      }
-    }
-    return finalStr;
+    // const diff = diffChars(prevStyleStr, styleStr);
+    // let finalStr = "";
+    // for (const change of diff) {
+    //   if (!change.removed) finalStr += change.value;
+    //   else {
+    //     const del = change.value;
+    //     let toBeAdded = [...del.matchAll(/[;:]/g)]
+    //       .map((exp) => (!charInStrQuoted(del, exp.index) ? exp[0] : ""))
+    //       .join("");
+    //     // :;: <-- margin:0;position:rela
+    //     // :;:; <-- margin:0;position:relative;disp
+    //     // ;:; <-- 0px;display:block;
+    //     // ;:;: <-- 0px;display:block;position:rela
+    //     toBeAdded = toBeAdded.replace(/(?<!^):;/g, "");
+    //     // toBeAdded will at most be 3 long
+    //     if (toBeAdded.startsWith(":;") && finalStr.at(-1) === ";")
+    //       toBeAdded = toBeAdded.slice(2);
+    //     finalStr += toBeAdded;
+    //   }
+    // }
+    // return finalStr;
+    return styleStr;
   }
 
   let prevStyleStr: string;
-  function onInput(e_: any) {
+
+  let doingEditInput: boolean = false;
+
+  function onInput(e_: Event) {
     if (!stylesEl) return;
+    const event = e_ as InputEvent | Event;
+
     const selection = document.getSelection();
     const offset = calculateTotalOffset(
       stylesEl,
@@ -253,7 +303,8 @@
       prevStyleStr,
     );
     let propsList: StylesList;
-    [stylesEl.innerHTML, propsList] = parseStylesStr(styleStr);
+    let plainStr: string;
+    [stylesEl.innerHTML, propsList, plainStr] = parseStylesStr(styleStr);
     syncStyles(propsList);
 
     if (enterPressed) selection?.setPosition(stylesEl, enterPressed);
@@ -265,6 +316,32 @@
       selection?.setPosition(node, newOffset);
     }
     handleAutocomplete();
+
+    let insertType: "insert" | "delete" | "other";
+    if (isInputEvent(event) && event.inputType.startsWith("insert"))
+      insertType = "insert";
+    else if (isInputEvent(event) && event.inputType.startsWith("delete"))
+      insertType = "delete";
+    else insertType = "other";
+    const newState = {
+      text: plainStr,
+      selection: styleStrSelection,
+      insertType,
+    };
+
+    undoManager.updateInitialStateSelection(styleStrSelection);
+
+    // Only set doingEditInput to true if this input event actually caused the
+    //  editor text content to change- creating a new item on the stack (or at least combining with the topmost item).
+    if (undoManager.isTrueEdit(newState)) {
+      doingEditInput = true;
+    }
+
+    if (!undoManager.isTrueEdit(newState))
+      console.log("input event did not result in changed text content");
+
+    undoManager.addEdit(newState, event);
+
     enterPressed = undefined;
     backspaceRemoveLine = false;
   }
@@ -285,24 +362,62 @@
     }
   }
 
+  function getTopEl(node: Node) {
+    if (!stylesEl.contains(node)) return null;
+    const parent = node.parentNode;
+    if (parent !== stylesEl && parent) return getTopEl(parent);
+    return node;
+  }
+  function getTextNode(el: Element | null): Text | null {
+    if (!el) return null;
+    return (
+      (Array(...el.childNodes).find(
+        (child) => child.nodeType === Node.TEXT_NODE,
+      ) as Text) ?? null
+    );
+  }
+
+  function selectionToState(selection: Selection): StyleStrSelection {
+    const determineLoc = (node: Node | null) => {
+      if (node === null) return "other";
+      const topEl = getTopEl(node) as Element | null;
+      if (topEl === null) return "other";
+      if (topEl.tagName === "B") return "prop";
+      else if (topEl.tagName === "EM") return "val";
+      return "other";
+    };
+    // console.log(determineLoc(selection.focusNode));
+    return {
+      isCollapsed: selection.isCollapsed,
+      focusIndex: calculateTotalOffset(
+        stylesEl,
+        selection.focusNode,
+        selection.focusOffset,
+      ),
+      anchorIndex: calculateTotalOffset(
+        stylesEl,
+        selection.anchorNode,
+        selection.anchorOffset,
+      ),
+      direction: selection.direction as "backward" | "forward" | "none",
+      focusLoc: determineLoc(selection.focusNode) as "prop" | "val" | "other",
+    };
+  }
+
   const off1 = on(document, "selectionchange", (e) => {
     const selection = getSelection();
-    const prevSelection = getPrevSelection();
+    prevStyleStrSelection = styleStrSelection;
+    styleStrSelection = selection !== null ? selectionToState(selection) : null;
 
-    function getTopEl(node: Node) {
-      if (!stylesEl.contains(node)) return null;
-      const parent = node.parentNode;
-      if (parent !== stylesEl && parent) return getTopEl(parent);
-      return node;
-    }
-    function getTextNode(el: Element | null): Text | null {
-      if (!el) return null;
-      return (
-        (Array(...el.childNodes).find(
-          (child) => child.nodeType === Node.TEXT_NODE,
-        ) as Text) ?? null
-      );
-    }
+    prevSelection = getPrevSelection();
+
+    // console.log(
+    //   selection?.anchorNode,
+    //   selection?.anchorOffset,
+    //   selection?.focusNode,
+    //   selection?.focusOffset,
+    //   selection?.direction,
+    // );
 
     function adjustSelection(
       predicate: (el: HTMLElement) => boolean,
@@ -389,6 +504,26 @@
       adjustSelection((el) => el.classList.contains("colon"), 0, "prev", focus);
       adjustSelection((el) => el.classList.contains("colon"), 1, "next", focus);
     }
+
+    // console.log(
+    //   "Selection update! 💙",
+    //   selection?.focusNode,
+    //   selection?.focusOffset,
+    // );
+
+    // Update the selection info of the topmost item of the undo stack to after
+    //  the insertion has happened that the new selection point could be determined
+    //  (selectionchange event fires after input event), including adjustments made above.
+    if (doingEditInput) {
+      if (selection !== null)
+        undoManager.updateLatestStateSelection(selectionToState(selection));
+      // If the previous selection was a range (highlighting text), then we want to visually display that selection
+      //  in the undo history, and that requires updating the previous state to have this highlight as the selection
+      // Interestingly, if we remove this condition then for non-range selections it errors as "out of bounds" by setPosition() in restoreState()
+      if (prevStyleStrSelection !== null && !prevStyleStrSelection.isCollapsed)
+        undoManager.updatePrevStateSelection(prevStyleStrSelection);
+      doingEditInput = false;
+    }
   });
   onDestroy(off1);
 
@@ -459,6 +594,7 @@
       const selection = getSelection();
       const colon = line.find((node) => node.textContent === ":") ?? null;
       selection?.setPosition(colon, 1);
+      handleAutocomplete();
     } else if (e.key === ";" && stylesEl) {
       e.preventDefault();
       const line = getSelectionLine();
@@ -466,7 +602,55 @@
       const selection = getSelection();
       const semic = line.find((node) => node.textContent === ";") ?? null;
       selection?.setPosition(semic, 1);
+      handleAutocomplete();
+    } else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+      const newState = undoManager.undo();
+      if (newState === null) return;
+      restoreState(newState);
+    } else if ((e.ctrlKey || e.metaKey) && e.key === "y") {
+      const newState = undoManager.redo();
+      if (newState === null) return;
+      restoreState(newState);
     }
+  }
+
+  function restoreState(state: CSSEditorState) {
+    console.log("🎈 Restoring state!", state);
+    // console.log(state.selection);
+    let propsList: StylesList;
+    [stylesEl.innerHTML, propsList] = parseStylesStr(state.text);
+    syncStyles(propsList);
+
+    const selection = getSelection();
+    if (!state.selection || !selection) return;
+
+    // console.log("anchor", base, baseOffset);
+    // console.log("focus", focus, focusOffset);
+    setTimeout(() => {
+      if (!state.selection) return;
+      const [base, baseOffset] = findNodeFromOffset(
+        stylesEl,
+        state.selection.anchorIndex,
+      );
+      const [focus, focusOffset] = findNodeFromOffset(
+        stylesEl,
+        state.selection.focusIndex,
+      );
+
+      if (state.selection.isCollapsed) {
+        selection.setPosition(focus, focusOffset);
+        // selection.modify("move", "right", "character");
+      } else {
+        console.log(
+          "Setting selection range",
+          base,
+          baseOffset,
+          focus,
+          focusOffset,
+        );
+        selection.setBaseAndExtent(base, baseOffset, focus, focusOffset);
+      }
+    }, 0);
   }
 </script>
 

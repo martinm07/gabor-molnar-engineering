@@ -365,6 +365,13 @@
 
   export function handleAddOperation() {
     const selection = getSelection();
+
+    // For wrapping text in a new node, it requires the selection be fully contained
+    //  in a single text node. This condition may be arbitrarily missed if there are multiple
+    //  contiguous text nodes in the DOM structure which could have been combined together
+    // That is what .normalize() does.
+    selection?.focusNode?.parentElement?.normalize();
+
     if (
       selection &&
       !selection.isCollapsed &&
@@ -414,11 +421,15 @@
   onclick={() => {
     if ($cursorMode === "add" && potentialLocations.activeLocation) {
       const active = potentialLocations.activeLocation;
-      active.removeAttribute("style");
-      active.removeAttribute("class");
-      active.innerHTML = "&nbsp;";
-      // $nodeHoverTarget = active;
-      setSelection(active);
+
+      // We cannot modify a potential-location to turn it into the actual node, as the document syncer ignores potential-location elements.
+      const newEl = document.createElement(active.tagName.toLowerCase());
+      newEl.innerHTML = "&nbsp;";
+      // We also MUST insert the element BEFORE the potential-location, as the document syncer uses the previousSibling to determine
+      //  how to patch the document HTML string, and it causes an error if the previous sibling is the ignored potential-location element.
+      active.before(newEl);
+
+      setSelection(newEl);
       // editText();
       $sidebarMode = "component";
       $cursorMode = "select";

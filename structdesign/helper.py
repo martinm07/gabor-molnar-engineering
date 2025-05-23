@@ -428,5 +428,6 @@ def collection_exists(client, collection_name: str):
         schema["name"] for schema in client.collections.retrieve()
     ]
 
+
 def get_unix_timestamp(d: datetime.date):
     return int(datetime.datetime(d.year, d.month, d.day).timestamp())

@@ -243,6 +243,10 @@ const generateMediaFilePath = (name: string) => {
 
 export default defineConfig({
   root,
+  // test: {
+  //   globals: true,
+  //   environment: "jsdom",
+  // },
   plugins: [
     svelte({
       // This enables the understanding of Svelte 5 syntax.
