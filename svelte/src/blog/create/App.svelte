@@ -29,10 +29,12 @@
     nextElementSibling,
   } from "./helper";
   import {
-    patchMutations,
-    reconstructHTMLStr,
     type DocNodeMap,
-  } from "./docsyncing";
+    type TempMutationRecord,
+    reconstructHTMLString,
+    processMutations,
+    patchMutations,
+  } from "./docsyncing2";
   import Autocomplete from "./editors/Autocomplete.svelte";
   import { fetch_ } from "/shared/helper";
   import { decodeComponentStr } from "./components/component";
@@ -253,6 +255,7 @@
   //  involves deleting and adding a new element.
   let docNodes: DocNodeMap = new Map();
   let htmlStr: string;
+  let collectedMutations: TempMutationRecord[] = [];
 
   // This observer is to
   //  1- disallow non-element nodes as direct children of docEl
@@ -279,7 +282,7 @@
         if (ignoreI !== -1) {
           // console.log([...queuedMutationIgnores], mutation);
           queuedMutationIgnores.splice(ignoreI, 1);
-          break;
+          continue;
         }
         // console.log("not ignored", mutation);
 
@@ -349,7 +352,15 @@
       if (patchSync === false && docEl) {
         console.log("Document loaded!");
 
-        [, htmlStr] = reconstructHTMLStr(docEl, false, 0, docNodes);
+        // [, htmlStr] = reconstructHTMLStr(docEl, false, 0, docNodes);
+        [htmlStr] = reconstructHTMLString(
+          docEl,
+          {
+            docNodes,
+            docContainer: docEl,
+          },
+          false,
+        );
         console.log(docNodes);
         console.log(htmlStr);
         // docNodes.values().forEach((info) => {
@@ -370,11 +381,12 @@
         });
         patchSync = true;
       } else if (patchSync && docEl) {
-        htmlStr = patchMutations(mutations, docNodes, docEl, documentID, {
-          updateHTMLStr: htmlStr,
-          debug: true,
-          useIgnoreAddedNodeMutations: true,
-        });
+        // htmlStr = patchMutations(mutations, docNodes, docEl, documentID, {
+        //   updateHTMLStr: htmlStr,
+        //   debug: true,
+        //   useIgnoreAddedNodeMutations: false,
+        // });
+        collectedMutations.push(...processMutations(mutations));
       }
     },
     {
@@ -385,6 +397,44 @@
     },
   );
   onDestroy(stop);
+
+  const LOG_PATCH_SYNC = true;
+  const stopPatchInterval = setInterval(() => {
+    if (!docEl || collectedMutations.length === 0) return;
+
+    if (LOG_PATCH_SYNC)
+      console.group(
+        `Patch syncing ${collectedMutations.length} mutations:`,
+        collectedMutations,
+      );
+    htmlStr = patchMutations(
+      collectedMutations,
+      documentID,
+      {
+        docNodes,
+        docContainer: docEl,
+      },
+      LOG_PATCH_SYNC
+        ? {
+            updateHTMLStr: htmlStr,
+            debug: true,
+          }
+        : {},
+    );
+
+    if (LOG_PATCH_SYNC) {
+      const docNodesTemp: DocNodeMap = new Map();
+      docNodes.forEach((val, key) => docNodesTemp.set(key, { ...val }));
+      console.log(docNodesTemp);
+
+      console.log(htmlStr);
+      console.groupEnd();
+    }
+
+    collectedMutations = [];
+  });
+  onDestroy(() => clearInterval(stopPatchInterval));
+
   let currentSelection: ClonedSelection | null = null;
   let prevSelection: ClonedSelection | null = null;
   setContext("getPrevSelection", () => prevSelection);

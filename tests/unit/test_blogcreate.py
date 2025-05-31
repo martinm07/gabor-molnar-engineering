@@ -259,10 +259,10 @@ def test_sync_document_patch(client: FlaskClient):
         ],
     )
     # The result depends on the order of execution of the change objects
-    # I want it executed from highest index first, because I want all indexes to be in reference
-    #  to the original string, not one modified from changes at previous indexes
-    assert docs[3].body == "blopOg1x@mp1econtent"
-    # assert docs[3].body == "blopO42g1mp1econtent"
+    # They should be executed in the order they were recieved
+    assert docs[3].body == "blopO42g1mp1econtent"
+    ## If they should be executed in the order of greatest index to smallest
+    # assert docs[3].body == "blopOg1x@mp1econtent"
 
     get_resp(
         docs[4].id,
@@ -272,4 +272,8 @@ def test_sync_document_patch(client: FlaskClient):
             {"index": 14, "value": "42", "length": 1},
         ],
     )
-    assert docs[4].body == "bpOg1x@mit'secon42ent"
+    assert docs[4].body == "bpOg1x@mit'sec42ntent"
+    ## If we wanted to first order the change objects from greatest index to smallest
+    ##  (because we assume each change object is acting on the original string and want
+    ##   to avoid index shifting) then this would be the result
+    # assert docs[4].body == "bpOg1x@mit'secon42ent"

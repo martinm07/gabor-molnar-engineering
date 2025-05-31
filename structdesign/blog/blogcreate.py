@@ -565,17 +565,22 @@ def sync_document_patch():
 
     # patch_str will be set up as a list of change objects, each one with the content to insert, the index
     #  to insert it at, and how many characters to replace
-    # patches.sort(key=lambda x: x.get("index", float("inf")), reverse=True)
-    print(patches)
+
     for patch in patches:
         value = patch.get("value", "")
         length = patch.get("length", 0)
         index = patch.get("index")
         if type(index) is not int:
             return "Each patch object requires an index", 400
+        patch["old_val"] = content[index : index + length]
         content = content[:index] + value + content[index + length :]
 
-    print(f"Content length: {old_len} -> {len(content)}")
+    for i in range(len(patches)):
+        patch = patches[i]
+        print(
+            f'({i}) Index: {patch["index"]} Length: {patch["length"]} "{patch["old_val"]}" -> "{patch["value"]}"'
+        )
+    print(f"---Content length: {old_len} -> {len(content)}")
     document.body = content
     db.session.commit()
 

@@ -281,3 +281,14 @@ export function closest(
   }
   return found;
 }
+
+/**
+ * Returns recursive list of all child nodes of node, including the node itself
+ */
+export function getAllChildNodes(node: Node): Node[] {
+  if (!node.childNodes) return [node];
+  return [
+    node,
+    ...Array(...node.childNodes).flatMap((node) => getAllChildNodes(node)),
+  ];
+}
