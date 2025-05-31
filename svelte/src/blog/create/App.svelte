@@ -34,7 +34,7 @@
     reconstructHTMLString,
     processMutations,
     patchMutations,
-  } from "./docsyncing2";
+  } from "./docsyncing";
   import Autocomplete from "./editors/Autocomplete.svelte";
   import { fetch_ } from "/shared/helper";
   import { decodeComponentStr } from "./components/component";
