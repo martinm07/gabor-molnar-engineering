@@ -25,32 +25,54 @@
     );
   }
 
+  function changeTagNames() {
+    const replacements: HTMLElement[] = [];
+    for (const target of selected) {
+      const replacement = document.createElement(inputValTag);
+      // Moves all the children to the new element
+      while (target.firstChild) replacement.appendChild(target.firstChild);
+      // Copy attributes
+      for (let i = target.attributes.length - 1; i >= 0; --i) {
+        replacement.attributes.setNamedItem(
+          target.attributes[i].cloneNode() as Attr,
+        );
+      }
+
+      // Replace with replacement
+      target.parentNode?.replaceChild(replacement, target);
+      changeElementInMasks(target, replacement);
+      replacements.push(replacement);
+    }
+    $nodesSelection = [];
+    request2AnimationFrames(() => ($nodesSelection = replacements));
+  }
+
   function parseTagStr(str: string) {
     const strLower = str.toLowerCase();
     const strFiltered = strLower.match(/[a-z1-6]/g)?.join("") ?? "";
 
     tagNameURL = getTagURL(strFiltered);
-    if (tagNameURL && tagName !== strFiltered) {
-      const replacements: HTMLElement[] = [];
-      for (const target of selected) {
-        const replacement = document.createElement(strFiltered);
-        // Moves all the children to the new element
-        while (target.firstChild) replacement.appendChild(target.firstChild);
-        // Copy attributes
-        for (let i = target.attributes.length - 1; i >= 0; --i) {
-          replacement.attributes.setNamedItem(
-            target.attributes[i].cloneNode() as Attr,
-          );
-        }
+    // if (tagNameURL && tagName !== strFiltered) {
+    //   const replacements: HTMLElement[] = [];
+    //   for (const target of selected) {
+    //     const replacement = document.createElement(strFiltered);
+    //     // Moves all the children to the new element
+    //     while (target.firstChild) replacement.appendChild(target.firstChild);
+    //     // Copy attributes
+    //     for (let i = target.attributes.length - 1; i >= 0; --i) {
+    //       replacement.attributes.setNamedItem(
+    //         target.attributes[i].cloneNode() as Attr,
+    //       );
+    //     }
 
-        // Replace with replacement
-        target.parentNode?.replaceChild(replacement, target);
-        changeElementInMasks(target, replacement);
-        replacements.push(replacement);
-      }
-      $nodesSelection = [];
-      request2AnimationFrames(() => ($nodesSelection = replacements));
-    }
+    //     // Replace with replacement
+    //     target.parentNode?.replaceChild(replacement, target);
+    //     changeElementInMasks(target, replacement);
+    //     replacements.push(replacement);
+    //   }
+    //   $nodesSelection = [];
+    //   request2AnimationFrames(() => ($nodesSelection = replacements));
+    // }
 
     return `&#60;<span>${strFiltered}</span>&#62;`;
   }
@@ -59,6 +81,11 @@
   let tagName: string | null = $state(null);
   let tagNameURL: string | null = $state(null);
 
+  let inputVal: string = $state("");
+  let inputValTag: string = $derived(inputVal.slice(1, -1));
+
+  let inputValDifferent: boolean = $derived(inputValTag !== tagName);
+
   watch(
     () => selected,
     () => {
@@ -66,6 +93,7 @@
       tagName = allSameName(selected) ? selected[0].tagName.toLowerCase() : "";
       tagEl.innerHTML = parseTagStr(tagName ?? "");
       tagNameURL = getTagURL(tagName ?? "");
+      inputVal = tagEl.textContent ?? "";
     },
   );
 
@@ -82,15 +110,15 @@
       selection?.focusNode,
       selection?.focusOffset,
     );
-    const text = tagEl.textContent ?? "";
-    const parsed = parseTagStr(text);
+    inputVal = tagEl.textContent ?? "";
+    const parsed = parseTagStr(inputVal);
     tagEl.innerHTML = parsed;
 
     tagNameURL = getTagURL(parsed.slice(11, -12));
 
     const [node, newOffset] = findNodeFromOffset(
       tagEl,
-      text.length === 3 ? 2 : offset,
+      inputVal.length === 3 ? 2 : offset,
     );
     selection?.setPosition(node, newOffset);
     handleAutocomplete();
@@ -167,16 +195,26 @@
     }
   });
   onDestroy(off);
+
+  function onKeydown(e: KeyboardEvent) {
+    if (e.key === "Enter" && tagNameURL && inputValDifferent) {
+      changeTagNames();
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  }
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <span
   bind:this={tagEl}
   oninput={onInput}
+  onkeydown={onKeydown}
   contenteditable="true"
   class:invalid={!tagNameURL}
-  class="tagname-display bg-steel-100 p-2 rounded font-mono text-lg font-bold text-rock-700 focus:outline-none [&.disabled]:opacity-50 [&.disabled]:pointer-events-none"
+  class="tagname-display bg-steel-100 p-2 rounded font-mono text-lg font-bold text-rock-700 focus:outline-none [.disabled]:opacity-50 [.disabled]:pointer-events-none"
   aria-disabled={disabled}
+  role="textbox"
   class:disabled
   tabindex={disabled ? -1 : 0}
 >
@@ -186,11 +224,20 @@
   target="_blank"
   class:disabled={!tagNameURL || disabled}
   aria-disabled={!tagNameURL || disabled}
-  class="text-xl hover:opacity-60 [&.disabled]:opacity-50 [&.disabled]:pointer-events-none text-rock-700 inline-block ml-1"
+  class="text-xl hover:opacity-60 [.disabled]:opacity-50 [.disabled]:pointer-events-none text-rock-700 inline-block ml-1"
   tabindex={!tagNameURL || disabled ? -1 : 0}
+  aria-label="Open MDN link"
 >
   <ion-icon name="help-circle-outline"></ion-icon>
 </a>
+<div class="mt-3">
+  <button
+    class="underline hover:no-underline cursor-pointer [.disabled]:cursor-default [.disabled]:no-underline [.disabled]:opacity-50 text-lg text-rock-600 px-2 py-1 ring-4 ring-rock-600/10 rounded -ml-5"
+    class:disabled={!tagNameURL}
+    class:hidden={!inputValDifferent}
+    onclick={changeTagNames}>Confirm change</button
+  >
+</div>
 
 <style>
   :global(.tagname-display.invalid span) {

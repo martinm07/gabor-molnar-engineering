@@ -28,59 +28,75 @@ This module provides a Flask Blueprint for managing and editing document compone
 within a web application. It includes endpoints for retrieving, updating, and versioning component libraries,
 as well as synchronizing and patching document content. Additionally, it offers utilities for integrating
 iframe-resizer functionality with cross-origin HTML content.
+
 Blueprint:
-    bp (Blueprint): Flask Blueprint registered under the URL prefix "/documents".
-Functions:
-    onfalsey(val, fallback)
-        Returns val if it is truthy, otherwise returns fallback.
-    items_equal(a, b)
-        Compares two items for equality, supporting strings and iterables.
-    get_component_lib()
-        Retrieves the base SavedComponentLibrary instance from the database.
-    get_version(version: str)
-        Retrieves a SavedComponentDiff instance by version string.
-    create_version(comps: list[SavedComponent])
-        Generates a version hash string for a list of SavedComponent instances.
-    apply_diff(components: list[dict[str, Any]], diff: str)
-        Applies a diff string to a list of component dictionaries and returns the updated list.
-    get_library_components(lib: SavedComponentLibrary)
-        Returns the components of a library, sorted by ID for consistency.
-    savedcomponents_currentversion()
-        GET endpoint: Returns the latest version string of the component library.
-    get_component_library()
-        GET endpoint: Returns the components of the library at a specified version.
-    fill_tag_names(names: str | None)
-        Converts a comma-separated string of tag names into a list of SavedComponentTag instances,
-        creating new tags as needed.
-    update_components()
-        POST endpoint: Updates, adds, or removes components in the library, handling versioning and diffs.
-    get_document_edit()
-        GET endpoint: Retrieves editable fields of a GuidanceDocument by ID.
-    sync_document_full()
-        POST endpoint: Replaces the full body of a GuidanceDocument.
-    sync_document_patch()
-        POST endpoint: Applies a list of patch operations to the body of a GuidanceDocument.
-    iframeresizer()
-        GET endpoint: Fetches an external HTML page, injects iframe-resizer and service worker scripts,
-        and returns the modified HTML.
-    iframeresizer_serviceworker()
-        Serves the JavaScript for the iframe-resizer service worker.
-    iframeresizer_cors()
-        Proxies HTTP requests to external URLs, forwarding the request and streaming the response back.
-    iframeresizer_test()
-        Renders a test page for iframe-resizer integration.
+    bp (Blueprint): Flask Blueprint registered under the URL prefix "/documents"
+
+Endpoints:
+    /savedcomponents_currentversion [GET]
+    - Returns the latest version string of the component library
+    - No parameters required
+
+    /get_component_library [GET] 
+    - Retrieves components at a specific version
+    - Parameters: ver (string) - Version hash to retrieve
+    - Returns list of component objects or error message if version not found
+
+    /update_components [POST, OPTIONS]
+    - Handles component updates, additions and removals
+    - Request body (JSON):
+        version: Current version string (required for updates/removals)
+        update: Dict of component names and updated fields
+        add: List of new components to add
+        remove: List of component names to remove
+    - Returns new version string or error message
+
+    /get_document_edit [GET]
+    - Retrieves a document for editing
+    - Parameters: id (integer) - Document ID
+    - Returns document object with all fields
+
+    /sync_document_full [POST, OPTIONS] 
+    - Updates entire document content
+    - Request body (JSON):
+        id: Document ID
+        body: New document content
+
+    /sync_document_patch [POST, OPTIONS]
+    - Applies patches to document content
+    - Request body (JSON):
+        id: Document ID
+        patches: List of patch objects with index, length, value
+    - Returns updated document content
+
+    /reset_114 [GET]
+    - Debug endpoint to reset document ID 114 to default content
+    - No parameters required
+
+    /iframeresizer [GET]
+    - Injects iframe-resizer scripts into external HTML content
+    - Parameters: url (string) - URL to fetch and modify
+
+    /iframeresizer_serviceworker.js [GET]
+    - Serves the service worker script for iframe-resizer
+    - No parameters required
+
+    /iframeresizer_cors [ALL METHODS]
+    - CORS proxy for iframe-resizer requests
+    - Parameters: url (string) - URL to proxy request to
+
+    /iframeresizer_test [GET]
+    - Test page for iframe-resizer functionality
+    - No parameters required
+
 Dependencies:
     - Flask
-    - SQLAlchemy
+    - SQLAlchemy 
     - requests
     - BeautifulSoup
     - diff_match_patch
     - fnv128a
-    - Custom models and extensions from the parent package
-Notes:
-    - The module handles versioning of component libraries using hash-based version strings and diffs.
-    - It supports collaborative editing of document content via patch operations.
-    - The iframe-resizer integration allows embedding and resizing of cross-origin iframes with injected scripts.
+    - Custom models and extensions from parent package
 """
 
 bp = Blueprint("blogcreate", __name__, url_prefix="/documents")

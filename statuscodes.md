@@ -13,3 +13,4 @@
 | `CPM`       | Confirm Password Missing |                               |
 | `PDM`       | Passwords Don't Match    |                               |
 | `LMI`       | Login Mode Invalid       |                               |
+

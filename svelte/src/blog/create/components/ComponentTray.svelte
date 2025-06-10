@@ -209,6 +209,7 @@
         e.preventDefault();
       } else if (e.key === "Escape" && e.target instanceof HTMLInputElement) {
         e.target.blur();
+        e.stopPropagation();
       }
     }}
     class="px-2 py-1 border-2 border-rock-600 rounded font-mono text-rock-700 w-full bg-rock-50 placeholder:italic focus:outline-none ring-rock-200 focus:ring-4"
@@ -244,7 +245,7 @@
         if (e.key === "Enter") selectComponent(i);
       }}
       onclick={() => selectComponent(i)}
-      class="component-search-result flex my-1 p-1 rounded-lg [&.active]:bg-rock-100 hover:bg-rock-100 has-[button:hover]:!bg-background focus:bg-rock-100 cursor-pointer scroll-mt-16 scroll-mb-4"
+      class="component-search-result flex my-1 p-1 rounded-lg [.active]:bg-rock-100 hover:bg-rock-100 has-[button:hover]:!bg-background focus:bg-rock-100 cursor-pointer scroll-mt-16 scroll-mb-4"
     >
       <div class="w-full">
         <div class="font-mono">{@html comp.name}</div>
@@ -259,7 +260,10 @@
         </div>
       </div>
       <div class="flex items-center justify-center">
-        <button class="hover:bg-rock-100 focus:bg-rock-100 p-1 rounded-lg">
+        <button
+          class="hover:bg-rock-100 focus:bg-rock-100 p-1 rounded-lg"
+          aria-label="Edit component"
+        >
           <ion-icon name="build-outline"></ion-icon>
         </button>
       </div>
@@ -274,11 +278,11 @@
     color: inherit;
   }
   :global(
-      .component-search-result.active mark,
-      .component-search-result:focus mark,
-      .component-search-result:hover mark,
-      .component-search-result span mark
-    ) {
+    .component-search-result.active mark,
+    .component-search-result:focus mark,
+    .component-search-result:hover mark,
+    .component-search-result span mark
+  ) {
     background-color: var(--steel-200);
   }
 </style>

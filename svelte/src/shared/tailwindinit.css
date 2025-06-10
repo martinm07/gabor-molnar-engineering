@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
   --text: #0b0b09;
@@ -68,6 +66,76 @@
   --oxygen-800: #2e3830;
   --oxygen-900: #171c18;
   --oxygen-950: #0b0e0c;
+}
+
+@theme {
+  --font-sans: "Source Sans Pro", ui-sans-serif, system-ui, sans;
+  --font-source: "Source Sans Pro", ui-sans-serif, system-ui, sans;
+
+  --color-text: #0b0b09;
+  --color-text-50: #f4f4f1;
+  --color-text-100: #e8e8e3;
+  --color-text-200: #d1d1c7;
+  --color-text-300: #babaab;
+  --color-text-400: #a3a38f;
+  --color-text-500: #8c8c73;
+  --color-text-600: #70705c;
+  --color-text-700: #545445;
+  --color-text-800: #38382e;
+  --color-text-900: #1c1c17;
+  --color-text-950: #0e0e0b;
+
+  --color-background: #f8f8f7;
+  --color-background-50: #f3f3f1;
+  --color-background-100: #e7e7e4;
+  --color-background-200: #d0d0c8;
+  --color-background-300: #b8b8ad;
+  --color-background-400: #a0a092;
+  --color-background-500: #888877;
+  --color-background-600: #6d6d5f;
+  --color-background-700: #525247;
+  --color-background-800: #37372f;
+  --color-background-900: #1b1b18;
+  --color-background-950: #0e0e0c;
+
+  --color-rock: #8e937b;
+  --color-rock-50: #f3f4f1;
+  --color-rock-100: #e7e8e3;
+  --color-rock-200: #cfd1c7;
+  --color-rock-300: #b7baab;
+  --color-rock-400: #9fa38f;
+  --color-rock-500: #878c73;
+  --color-rock-600: #6c705c;
+  --color-rock-700: #515445;
+  --color-rock-800: #36382e;
+  --color-rock-900: #1b1c17;
+  --color-rock-950: #0d0e0b;
+
+  --color-steel: #b8c3b6;
+  --color-steel-50: #f1f4f1;
+  --color-steel-100: #e4e8e3;
+  --color-steel-200: #c8d1c7;
+  --color-steel-300: #adbaab;
+  --color-steel-400: #92a38f;
+  --color-steel-500: #778c73;
+  --color-steel-600: #5f705c;
+  --color-steel-700: #475445;
+  --color-steel-800: #2f382e;
+  --color-steel-900: #181c17;
+  --color-steel-950: #0c0e0b;
+
+  --color-oxygen: #9aac9d;
+  --color-oxygen-50: #f1f4f1;
+  --color-oxygen-100: #e3e8e4;
+  --color-oxygen-200: #c7d1c9;
+  --color-oxygen-300: #abbaad;
+  --color-oxygen-400: #8fa392;
+  --color-oxygen-500: #738c77;
+  --color-oxygen-600: #5c705f;
+  --color-oxygen-700: #455447;
+  --color-oxygen-800: #2e3830;
+  --color-oxygen-900: #171c18;
+  --color-oxygen-950: #0b0e0c;
 }
 
 @font-face {
@@ -188,4 +256,8 @@
   font-weight: 600;
   font-style: italic;
   font-display: swap;
+}
+
+button {
+  cursor: pointer;
 }

@@ -65,7 +65,7 @@
   {#each pages as page_}
     <button
       class:active={page_ === page}
-      class="mx-1 bg-background px-2 border-2 border-background-100 rounded [&.active]:bg-steel-200 ring-rock-200 [&.active]:ring-4 transition-all hover:bg-steel-200 [&.active]:cursor-default"
+      class="mx-1 bg-background px-2 border-2 border-background-100 rounded [.active]:bg-steel-200 ring-rock-200 [.active]:ring-4 transition-all hover:bg-steel-200 [.active]:cursor-default"
       onclick={() => (page = page_)}
     >
       {page_}

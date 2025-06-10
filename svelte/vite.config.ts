@@ -5,7 +5,7 @@ import { createHash } from "crypto";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
-import sveltePreprocess from "svelte-preprocess";
+import tailwindcss from "@tailwindcss/vite";
 import type {
   ManualChunksOption,
   NullValue,
@@ -248,12 +248,8 @@ export default defineConfig({
   //   environment: "jsdom",
   // },
   plugins: [
+    tailwindcss(),
     svelte({
-      // This enables the understanding of Svelte 5 syntax.
-      // The "prettier" and "prettier-plugin-svelte" dependencies
-      //  need to be explicitly included in package.json for the
-      //  formatting of Svelte 5 syntax.
-      preprocess: sveltePreprocess(),
       compilerOptions: {
         runes: true,
       },

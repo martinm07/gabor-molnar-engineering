@@ -83,3 +83,11 @@ export default {
   },
   plugins: [],
 };
+
+// export default {
+//   content: ["./src/**/*.{js,ts,svelte}"],
+//   theme: {
+//     extend: {},
+//   },
+//   plugins: [],
+// };

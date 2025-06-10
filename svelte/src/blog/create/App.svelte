@@ -70,8 +70,17 @@
     .then((resp) => resp.text())
     .then((data) => {
       const styleSheet = document.createElement("style");
-      styleSheet.textContent = data;
-      // Has to be prepended so that other stylesheets can override these defaults
+
+      // In the new version of Tailwind (V4), all styles have been moved into CSS @layer s, and that
+      //  causes these styles, when unlayered, to take precedence over tailwind styles (even when the
+      //  style tag is further back in the DOM). The `theme` layer is defined by Tailwind to have the
+      //  lowest precedence, the order being theme, base, components, utilities.
+      styleSheet.textContent = `
+      @layer theme {
+        ${data}
+      }
+      `;
+      // styleSheet.textContent = data;
       document.head.prepend(styleSheet);
     });
 
@@ -115,6 +124,7 @@
   );
 
   function onKeydown(e: KeyboardEvent) {
+    // console.log("Global keydown event");
     const inTextField = Boolean(
       document.activeElement?.closest(
         "[contenteditable='true'],[contenteditable='plaintext-only'],input,textarea",
@@ -149,11 +159,26 @@
       !document.querySelector(".autocomplete-display button") &&
       !inTextField
     ) {
+      if ($sidebarMode === "component")
+        $nodesSelection.forEach((el) => el.remove());
+
       if ($cursorMode === "select") multipleSelect?.removeSelection();
       $cursorMode = "select";
+    } else if (
+      e.key === "Escape" &&
+      !document.querySelector(".autocomplete-display button") &&
+      inTextField &&
+      e.target instanceof HTMLElement
+    ) {
+      e.target.blur();
     } else return;
     if ($sidebarMode === "component") $sidebarMode = "edit";
   }
+
+  // const stopLogInterval = setInterval(() => {
+  //   console.log("Focused element:", document.activeElement);
+  // }, 1000);
+  // onDestroy(() => clearInterval(stopLogInterval));
 
   function removeTextContent(node: Node) {
     const oldText = getAllTextNodes(node).map((node_) => {
@@ -271,7 +296,7 @@
   const { stop } = useMutationObserver(
     () => docEl,
     (mutations) => {
-      console.log("mutation observer triggered", mutations);
+      // console.log("mutation observer triggered", mutations);
 
       for (const mutation of mutations) {
         const target = mutation.target;
@@ -361,13 +386,8 @@
           },
           false,
         );
-        console.log(docNodes);
-        console.log(htmlStr);
-        // docNodes.values().forEach((info) => {
-        //   console.log(
-        //     htmlStr.slice(info.stringPos, info.stringPos + info.stringLen),
-        //   );
-        // });
+        // console.log(docNodes);
+        // console.log(htmlStr);
 
         // Sync this htmlStr to the database. It is of course functionally equivalent to whatever is
         //  already stored in the database, but doing this guarantees that specific HTML string matches
@@ -381,11 +401,6 @@
         });
         patchSync = true;
       } else if (patchSync && docEl) {
-        // htmlStr = patchMutations(mutations, docNodes, docEl, documentID, {
-        //   updateHTMLStr: htmlStr,
-        //   debug: true,
-        //   useIgnoreAddedNodeMutations: false,
-        // });
         collectedMutations.push(...processMutations(mutations));
       }
     },
@@ -398,9 +413,14 @@
   );
   onDestroy(stop);
 
-  const LOG_PATCH_SYNC = true;
+  const LOG_PATCH_SYNC = false;
+  const DO_PATCH_SYNC = false;
   const stopPatchInterval = setInterval(() => {
     if (!docEl || collectedMutations.length === 0) return;
+    if (!DO_PATCH_SYNC) {
+      collectedMutations = [];
+      return;
+    }
 
     if (LOG_PATCH_SYNC)
       console.group(
@@ -460,7 +480,7 @@
 <EditProps />
 
 <div
-  class="grid grid-cols-[30%_1fr] grid-rows-[48px_3fr_1fr] [&.hide-bl]:grid-rows-[48px_3fr_0fr] h-screen"
+  class="grid grid-cols-[30%_1fr] grid-rows-[48px_3fr_1fr] [.hide-bl]:grid-rows-[48px_3fr_0fr] h-screen overflow-y-hidden"
   class:hide-bl={$sidebarMode !== "edit"}
 >
   <div

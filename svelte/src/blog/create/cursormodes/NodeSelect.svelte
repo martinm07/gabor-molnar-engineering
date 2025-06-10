@@ -93,6 +93,6 @@
 <svelte:window onwheel={onWheel} />
 <div
   class:hidden={!$nodeHoverTarget || !displaySelection}
-  class="absolute ring-8 rounded ring-rock-500 ring-opacity-50 pointer-events-none z-10"
+  class="absolute ring-8 rounded ring-rock-500/50 pointer-events-none z-10"
   bind:this={highlight}
 ></div>

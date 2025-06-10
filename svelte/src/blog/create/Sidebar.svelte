@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { getContext } from "svelte";
   import ComponentTray from "./components/ComponentTray.svelte";
   import AttributesEditor, {
     type IAttributesEditor,
@@ -6,6 +7,10 @@
   import CssEditor from "./editors/css/CSSEditor.svelte";
   import TagNameEditor from "./editors/tag/TagNameEditor.svelte";
   import { nodeHoverTarget, nodesSelection, sidebarMode } from "./store";
+  import { watch } from "runed";
+  import { request2AnimationFrames } from "/shared/helper";
+
+  const updateHighlight: () => void = getContext("updateHighlight");
 
   interface Props {
     attributesEditor?: IAttributesEditor;
@@ -23,6 +28,15 @@
   );
   let disabled = $derived(
     selected.some((el) => el.getAttribute("data-component")),
+  );
+
+  watch(
+    () => selected,
+    () => {
+      // It seems that we have to wait for the DOM to update with the new "highlight" elements
+      //  befoee trying to update the highlight, hence the animation frame callback.
+      requestAnimationFrame(updateHighlight);
+    },
   );
 
   let createEmptyBtnFocused = $state(false);

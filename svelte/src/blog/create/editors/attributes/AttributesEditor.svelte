@@ -24,7 +24,7 @@
   import { getContext } from "svelte";
   import { watch, FiniteStateMachine } from "runed";
   import tagAttributes from "./tag_attributes.json";
-  import FitContentInput from "/shared/components/FitContentInput.svelte";
+  import FitContentWrapTextarea from "/shared/components/FitContentWrapTextarea.svelte";
   import {
     autocompleteSuggestions,
     nodesSelection,
@@ -58,8 +58,25 @@
     value?: string | null;
     affectedEls: [Element, string | null | undefined][];
   }
+  // TODO: This could be garbage collected
   const maskedAttributes: MaskAttribute[] = [];
 
+  /**
+   * Starts tracking the usage of a specific attribute on a set of elements.
+   *
+   * This function masks the specified attribute on the provided elements (or the currently selected elements if none are provided),
+   * setting it to the given value. It returns two functions:
+   *
+   * 1. `endAttributeUsage`: Restores the original attribute values on the affected elements and removes the mask.
+   * 2. `updateUsedAttribute`: Updates the masked attribute value on all affected elements.
+   *
+   * @param name - The name of the attribute to mask and track.
+   * @param value - The value to set for the attribute. If omitted, the attribute is removed.
+   * @param elements - Optional array of elements to apply the attribute mask to. Defaults to the current selection.
+   * @returns A tuple containing:
+   *   - `endAttributeUsage`: A function to end the attribute usage and restore original values.
+   *   - `updateUsedAttribute`: A function to update the masked attribute value on all affected elements.
+   */
   export function startAttributeUsage(
     name: string,
     value?: string | null,
@@ -113,6 +130,8 @@
   function getAttributes(el: Element): Attribute[] {
     const attrs = Array(...el.attributes);
     const maskedAttrVals: Map<string, string | null | undefined> = new Map();
+    // Filter masks to ones that affect the provided element and then populate the
+    //  map with attribute names as keys and user-facing attribute values as values.
     maskedAttributes
       .filter((mask) => mask.affectedEls.some(([el_]) => el === el_))
       .forEach((mask) =>
@@ -145,6 +164,60 @@
       .map((attr) => toAttribute(attr.nodeName, attr.nodeValue!));
     return [...finalMasked, ...finalNormal];
   }
+
+  // NOTE: The order of these 3 watch statements is important. If the validity watch triggers
+  //        on a `selected` change and cause attribute object updates which are picked up the
+  //        DOM sync watch, syncing the current attributes, BEFORE the `selected` watch triggers
+  //        to find the appropriate attribute intersection, we may inadvertently "clone" attributes
+  //        over to newly selected elements.
+
+  // Refresh 'attributes' state when the selection changes
+  watch(
+    () => selected,
+    () => {
+      dataComponent.send("reset");
+      // TODO: What we're doing with attribute masking and the 'draggable' attribute could also be done
+      //        with contenteditable, instead of this check here
+      prevAttributes = attributesIntersection(selected).filter(
+        (el) => el.name !== "style" && el.name !== "contenteditable",
+      );
+      attributes = [...prevAttributes];
+    },
+  );
+
+  // Determine validity & add MDN url when attribute names change
+  // NOTE: Be careful, even updates that don't actually change the watch value
+  //        (e.g. splicing an entry then reinserting it in the same place) will
+  //        trigger the callback, giving potential for infinite loops
+  watch(
+    () => [attributes.map((attr) => attr.name), selected],
+    () => {
+      const allAvailable = allAvailableAttributes();
+      attributes.forEach((attr, i) => {
+        const url = returnValidURL(attr.name, allAvailable);
+        if (
+          !url ||
+          attributes.slice(0, i).some((el) => el.name === attr.name)
+        ) {
+          attr.valid = false;
+          attr.referenceUrl = "";
+        } else {
+          attr.valid = true;
+          attr.referenceUrl = url;
+        }
+      });
+
+      const dataComponentI = attributes.findIndex(
+        (attr) => attr.name === "data-component",
+      );
+      if (dataComponentI > 0) {
+        const dataComponent = attributes.splice(dataComponentI, 1)[0];
+        attributes.unshift(dataComponent);
+      }
+
+      handleAutocomplete(allAvailable);
+    },
+  );
 
   // Sync updates to the 'attributes' state to the DOM and user-facing values for attribute masks
   watch(
@@ -217,20 +290,6 @@
       );
   }
 
-  // Refresh 'attributes' state when the selection changes
-  watch(
-    () => selected,
-    () => {
-      dataComponent.send("reset");
-      // TODO: What we're doing with attribute masking and the 'draggable' attribute could also be done
-      //        with contenteditable, instead of this check here
-      prevAttributes = attributesIntersection(selected).filter(
-        (el) => el.name !== "style" && el.name !== "contenteditable",
-      );
-      attributes = [...prevAttributes];
-    },
-  );
-
   function allAvailableAttributes() {
     if (selected.length === 0) return [];
 
@@ -264,40 +323,6 @@
     return null;
   }
 
-  // Determine validity & add MDN url when attribute names change
-  // NOTE: Be careful, even updates that don't actually change the watch value
-  //        (e.g. splicing an entry then reinserting it in the same place) will
-  //        trigger the callback, giving potential for infinite loops
-  watch(
-    () => [attributes.map((attr) => attr.name), selected],
-    () => {
-      const allAvailable = allAvailableAttributes();
-      attributes.forEach((attr, i) => {
-        const url = returnValidURL(attr.name, allAvailable);
-        if (
-          !url ||
-          attributes.slice(0, i).some((el) => el.name === attr.name)
-        ) {
-          attr.valid = false;
-          attr.referenceUrl = "";
-        } else {
-          attr.valid = true;
-          attr.referenceUrl = url;
-        }
-      });
-
-      const dataComponentI = attributes.findIndex(
-        (attr) => attr.name === "data-component",
-      );
-      if (dataComponentI > 0) {
-        const dataComponent = attributes.splice(dataComponentI, 1)[0];
-        attributes.unshift(dataComponent);
-      }
-
-      handleAutocomplete(allAvailable);
-    },
-  );
-
   function handleAutocomplete(
     allAvailable: { name: string | null; url: string }[],
   ) {
@@ -305,7 +330,7 @@
     if (!selection || !selection.focusNode) return;
     const node = selection.focusNode;
     if (
-      node instanceof HTMLInputElement &&
+      node instanceof HTMLTextAreaElement &&
       node.classList.contains("attrname-input")
     ) {
       $autocompleteSuggestions = (
@@ -318,7 +343,7 @@
     }
   }
   function handleComponentAutocomplete(target: EventTarget | null) {
-    if (!(target instanceof HTMLInputElement)) return;
+    if (!(target instanceof HTMLTextAreaElement)) return;
     const value = target.value;
     const names = $savedComponents.filter(({ name }) =>
       name.startsWith(value.replace(/-\[?(\d+,)*\d*\]?$/g, "")),
@@ -368,14 +393,14 @@
       class:disabled={disabled && attr.name !== "data-component"}
       class="group font-mono text-rock-700 text-sm text-balance text-center pb-2 mb-2 border-b-[1px] border-rock-300 last-of-type:border-0"
     >
-      <FitContentInput
-        class="attrname-input bg-steel-100 font-bold focus:outline-none max-w-[calc(100%_-_8px)] p-1 rounded box-content group-[.invalid]:text-rock-500 group-[.invalid]:underline decoration-wavy decoration-red-700 disabled:opacity-50"
+      <FitContentWrapTextarea
+        class="attrname-input resize-none text-wrap bg-steel-100 font-bold focus:outline-none max-w-[calc(100%_-_8px)] p-1 rounded box-content group-[.invalid]:text-rock-500 group-[.invalid]:underline decoration-wavy decoration-red-700 disabled:opacity-50"
         bind:value={attr.name}
         placeholder="attribute"
         {disabled}
       />
-      <FitContentInput
-        class="bg-steel-100 focus:outline-none max-w-[calc(100%_-_8px)] p-1 rounded box-content disabled:opacity-50 [&.unsynced]:underline decoration-dotted decoration-2 decoration-blue-400 [&.invalid]:text-rock-500 {attr.name ===
+      <FitContentWrapTextarea
+        class="resize-none text-wrap bg-steel-100 focus:outline-none max-w-[calc(100%_-_8px)] p-1 rounded box-content disabled:opacity-50 [.unsynced]:underline decoration-dotted decoration-2 decoration-blue-400 [.invalid]:text-rock-500 {attr.name ===
           'data-component' && dataComponent.current.includes('diff')
           ? 'unsynced'
           : ''} {attr.name === 'data-component' &&
@@ -392,16 +417,17 @@
           handleComponentAutocomplete(e.target)}
       />
       <div
-        class="inline-flex translate-y-[6px] [&.disabled]:opacity-50 [&.disabled]:pointer-events-none"
+        class="inline-flex [.disabled]:opacity-50 [.disabled]:pointer-events-none"
         class:disabled
       >
         <a
-          class="text-xl inline-flex items-center justify-center hover:opacity-60 [&.disabled]:pointer-events-none [&.disabled]:opacity-45"
+          class="text-xl inline-flex items-center justify-center hover:opacity-60 [.disabled]:pointer-events-none [.disabled]:opacity-45"
           class:disabled={!attr.valid}
           href={attr.referenceUrl}
           target="_blank"
           aria-disabled={!attr.valid || disabled}
           tabindex={!attr.valid || disabled ? -1 : 0}
+          aria-label="Open MDN docs"
         >
           <ion-icon name="help-circle-outline"></ion-icon>
         </a>
@@ -411,6 +437,7 @@
           onclick={() => attributes.splice(i, 1)}
           aria-disabled={disabled}
           tabindex={disabled ? -1 : 0}
+          aria-label="Remove attribute"
           ><ion-icon name="close-circle-outline"></ion-icon></button
         >
       </div>
@@ -482,7 +509,7 @@
   {/each}
 </ul>
 <div
-  class="h-[1px] w-full bg-rock-300 text-center [&.disabled]:pointer-events-none [&.disabled]:opacity-50"
+  class="h-[1px] w-full bg-rock-300 text-center [.disabled]:pointer-events-none [.disabled]:opacity-50"
   class:disabled
 >
   <button

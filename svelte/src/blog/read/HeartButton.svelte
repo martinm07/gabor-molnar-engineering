@@ -59,7 +59,7 @@
 
 <div
   class:hearted
-  class="inline-block relative m-4 w-[173px] [&.hearted]:w-[54px] transition-[width]"
+  class="inline-block relative m-4 w-[173px] [.hearted]:w-[54px] transition-[width]"
 >
   <button
     onclick={() => {

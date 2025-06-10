@@ -43,7 +43,7 @@
 
 <div
   class:bookmarked
-  class="inline-block relative m-4 w-[177px] [&.bookmarked]:w-[219px] transition-[width]"
+  class="inline-block relative m-4 w-[177px] [.bookmarked]:w-[219px] transition-[width]"
 >
   <button
     onclick={() => {

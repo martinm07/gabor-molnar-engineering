@@ -78,7 +78,7 @@ setTimeout(() => {
   const el = document.querySelector("div:has(+ p)")!;
   // console.log(el);
   createNewComponent("new-comp", el);
-  // console.log(get(savedComponents));
+  console.log(get(savedComponents));
   // console.log(decodeComponentStr(get(savedComponents)[0].content));
 }, 1000);
 
@@ -152,13 +152,18 @@ export function changeElToComp(el: Element, compName: string) {
   const elIndex = saved.parts.findIndex((item) => item === part);
   // This regex matches the first e.g. <tagName:attr1="value"> that has at
   //  least an elIndex number of </> behind it in the string
+  // const regex = new RegExp(
+  //   String.raw`(?<=(?:[^]*<\/>[^]*){` +
+  //     String(elIndex) +
+  //     String.raw`})<[^/]+?>`,
+  // );
+
   const regex = new RegExp(
-    String.raw`(?<=(?:[^]*<\/>[^]*){` +
-      String(elIndex) +
-      String.raw`})<[^/]+?>`,
+    String.raw`(?<=(?:<[^/][^]*){` + String(elIndex) + String.raw`})<[^/]*?>`,
   );
+
   const match = regex.exec(content)?.[0]?.slice(1, -1);
-  // console.log(elIndex, match);
+  console.log(elIndex, match);
   if (!match)
     throw new Error(
       `Could not find the provided part in the provided component name content`,
@@ -180,7 +185,7 @@ export function changeElToComp(el: Element, compName: string) {
   }
 
   const newAttrs: [string, string][] = match
-    .split(":")
+    .split(/(?<=^[^"]*(?:"[^"]*"[^"]*)*):/g)
     .slice(1)
     .map((str) => {
       const parts = str.split("=");

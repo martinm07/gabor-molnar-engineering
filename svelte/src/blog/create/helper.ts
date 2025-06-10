@@ -292,3 +292,9 @@ export function getAllChildNodes(node: Node): Node[] {
     ...Array(...node.childNodes).flatMap((node) => getAllChildNodes(node)),
   ];
 }
+
+export function insertAfter(existingNode: Node, newNode: Node) {
+  const parent = existingNode.parentNode;
+  if (!parent) throw new Error("Provided existingNode didn't have parent node");
+  existingNode.parentNode.insertBefore(newNode, existingNode.nextSibling);
+}

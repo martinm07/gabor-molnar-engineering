@@ -7,10 +7,12 @@
 </script>
 
 <script lang="ts">
+  import type { Attachment } from "svelte/attachments";
   import { watch } from "runed";
   import { nodeHoverTarget, nodesSelection } from "../store";
 
   let highlights: HTMLElement[] = $state([]);
+  // $inspect(highlights);
 
   type Rect = { x: number; y: number; w: number; h: number };
   function expandRect(base: Rect, applied: Rect): Rect {
@@ -91,12 +93,21 @@
   export function removeSelection() {
     $nodesSelection = [];
   }
+
+  const spliceOnDestroy = (index: number): Attachment => {
+    return (_el) => {
+      return () => {
+        highlights.splice(index, 1);
+      };
+    };
+  };
 </script>
 
 {#each $nodesSelection as _, i}
   <div
     class:hidden={$nodesSelection.length === 0}
-    class="absolute ring-4 rounded ring-rock-700 ring-opacity-50 pointer-events-none z-10"
+    class="absolute ring-4 rounded ring-rock-700/50 pointer-events-none z-10"
     bind:this={highlights[i]}
+    {@attach spliceOnDestroy(i)}
   ></div>
 {/each}

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { getContext } from "svelte";
-  import { watch } from "runed";
+  import { activeElement, watch } from "runed";
   import { autocompleteMode, autocompleteSuggestions } from "../store";
   import { ClonedSelection, isElementVisible } from "../helper";
   import { request2AnimationFrames } from "/shared/helper";
@@ -62,7 +62,10 @@
       let newVal = $autocompleteSuggestions[i];
       if ($autocompleteMode === "attributes") newVal = newVal.replace("*", "");
 
-      if (selectionEl instanceof HTMLInputElement) {
+      if (
+        selectionEl instanceof HTMLInputElement ||
+        selectionEl instanceof HTMLTextAreaElement
+      ) {
         selectionEl.value = newVal;
         const len = newVal.length;
         selectionEl.setSelectionRange(len, len);
@@ -144,7 +147,11 @@
   onkeydown={(e) => {
     if (e.key === "Escape") {
       unfocused = true;
-    } else if (!unfocused && $autocompleteSuggestions.length > 0) {
+    } else if (
+      !unfocused &&
+      $autocompleteMode &&
+      $autocompleteSuggestions.length > 0
+    ) {
       if (e.key === "Tab") {
         acceptSuggestion();
         e.preventDefault();
@@ -159,21 +166,29 @@
   }}
   onfocusin={(e) => {
     if (!(e.target instanceof HTMLElement)) return;
+    // We set $autocompleteSuggestions when focusing in on one of the editors
+    //  because we don't want suggestions to start until there is some typing,
+    //  however we don't set it to an empty list otherwise so that focusing in
+    //  on .autocomplete-display (like when clicking to accept a suggestion) doesn't
+    //  prematurely erase the suggestions.
     if (e.target.closest(".styles-display")) {
       $autocompleteMode = "css";
-    } else if (e.target.closest(".attributes-display li input:first-child")) {
+      $autocompleteSuggestions = [];
+    } else if (
+      e.target.closest(".attributes-display li textarea:first-child")
+    ) {
       $autocompleteMode = "attributes";
+      $autocompleteSuggestions = [];
     } else if (e.target.closest(".tagname-display")) {
       $autocompleteMode = "tag";
+      $autocompleteSuggestions = [];
     } else if (e.target.closest(".data-component-val-input")) {
       $autocompleteMode = "component";
+      $autocompleteSuggestions = [];
     } else if (!e.target.closest(".autocomplete-display")) {
       $autocompleteMode = null;
     }
-    if ($autocompleteMode) {
-      unfocused = false;
-      $autocompleteSuggestions = [];
-    }
+
     focusedIn = true;
   }}
   onfocusout={() => {
@@ -194,10 +209,8 @@
       e.target.closest(".attributes-display li input:first-child") ||
       e.target.closest(".tagname-display")
     ) {
-      // $autocompleteMode = "css";
       unfocused = true;
     }
-    // console.log("selection changed!");
   }}
 />
 
@@ -209,7 +222,7 @@
         type="button"
         class:active={activeI === i}
         onclick={() => acceptSuggestion(i)}
-        class="inline-block p-1 px-2 rounded bg-steel-100 hover:bg-steel-200 text-steel-600 m-1 text-sm font-mono [&.active]:bg-steel-200"
+        class="inline-block p-1 px-2 rounded bg-steel-100 hover:bg-steel-200 text-steel-600 m-1 text-sm font-mono [.active]:bg-steel-200"
         >{suggestion}</button
       >
     {/each}

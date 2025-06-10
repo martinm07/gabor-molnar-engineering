@@ -49,7 +49,7 @@
     <button
       onclick={() => questionDialog.close()}
       class="text-2xl absolute top-2 left-2 text-rock-600"
-      ><ion-icon name="close"></ion-icon></button
+      aria-label="Close popup"><ion-icon name="close"></ion-icon></button
     >
     <div class="grid place-content-center">
       <p class="text-rock-700 max-w-96 text-balance">

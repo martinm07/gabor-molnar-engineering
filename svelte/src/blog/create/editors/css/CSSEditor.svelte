@@ -78,7 +78,12 @@
     splitStringAtChar,
     allowedPropNames,
   } from "./handlecss";
-  import { ClonedSelection, insertAtIndex, isInputEvent } from "../../helper";
+  import {
+    ClonedSelection,
+    insertAfter,
+    insertAtIndex,
+    isInputEvent,
+  } from "../../helper";
   import {
     type CSSEditorState,
     type StyleStrSelection,
@@ -163,7 +168,7 @@
   function parseStylesStr(
     inp?: HTMLElement | string,
   ): [string, StylesList, string] {
-    let str = typeof inp === "string" ? inp : inp?.textContent ?? "";
+    let str = typeof inp === "string" ? inp : (inp?.textContent ?? "");
 
     const props = splitStringAtChar(str, ";")
       .map((propStr) => {
@@ -309,10 +314,7 @@
 
     if (enterPressed) selection?.setPosition(stylesEl, enterPressed);
     else {
-      const [node, newOffset] = findNodeFromOffset(
-        stylesEl,
-        offset + Number(backspaceRemoveLine),
-      );
+      const [node, newOffset] = findNodeFromOffset(stylesEl, offset);
       selection?.setPosition(node, newOffset);
     }
     handleAutocomplete();
@@ -343,7 +345,6 @@
     undoManager.addEdit(newState, event);
 
     enterPressed = undefined;
-    backspaceRemoveLine = false;
   }
 
   function handleAutocomplete() {
@@ -542,22 +543,22 @@
       selection.focusNode === stylesEl
         ? stylesEl.childNodes[selection.focusOffset]
         : selection.focusNode;
-    const nodes = recursiveGetNodes(stylesEl);
+    const nodes = recursiveGetNodes(stylesEl).slice(1);
     let line: Node[] = [];
     let foundLine: boolean = false;
     for (const node of nodes) {
+      if (focusNode === node) foundLine = true;
       if (node instanceof HTMLElement && node.tagName === "BR") {
         if (!foundLine) line = [];
         else break;
       }
       line.push(node);
-      if (focusNode === node) foundLine = true;
     }
+    console.log("Selection line:", line);
     return line;
   }
 
   let enterPressed: number | undefined;
-  let backspaceRemoveLine: boolean = false;
   function onKeydown(e: KeyboardEvent) {
     if (e.key === "Backspace" && stylesEl) {
       const line = getSelectionLine();
@@ -572,13 +573,21 @@
           if (stylesEl && stylesEl !== node && stylesEl.contains(node))
             stylesEl?.removeChild(node);
         });
-        backspaceRemoveLine = true;
+        // Preventing the backspace from actually happening so that after the custom
+        //  backspace behaviour this doesn't also happen, causing unexpected deletion of
+        //  preceding semicolon and all sorts of funky restructuring of values becoming parameters etc.
+        e.preventDefault();
+        if (e.target)
+          e.target.dispatchEvent(new Event("input", { bubbles: true }));
       }
     } else if (e.key === "Enter" && stylesEl) {
       const line = getSelectionLine();
       if (!line) return;
-      const finalNode = line.at(-1);
-      if (finalNode?.textContent) finalNode.textContent += ":;";
+      const finalNode = line.at(-1)!;
+
+      // if (finalNode?.textContent) finalNode.textContent += ":;";
+      insertAfter(finalNode, document.createTextNode(":;"));
+
       let offset = 0;
       for (const child of stylesEl.children) {
         if (child.contains(finalNode ?? null)) break;
@@ -626,7 +635,7 @@
 
     // console.log("anchor", base, baseOffset);
     // console.log("focus", focus, focusOffset);
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       if (!state.selection) return;
       const [base, baseOffset] = findNodeFromOffset(
         stylesEl,
@@ -650,7 +659,8 @@
         );
         selection.setBaseAndExtent(base, baseOffset, focus, focusOffset);
       }
-    }, 0);
+      handleAutocomplete();
+    });
   }
 </script>
 
@@ -664,7 +674,7 @@
     prevStyleStr = stylesEl.textContent ?? "";
   }}
   onkeydown={onKeydown}
-  class="styles-display font-mono inline-block text-left text-rock-700 bg-steel-100 p-2 rounded focus:outline-none text-sm [&.disabled]:opacity-50 [&.disabled]:pointer-events-none"
+  class="styles-display font-mono inline-block text-left text-rock-700 bg-steel-100 p-2 rounded focus:outline-none text-sm [.disabled]:opacity-50 [.disabled]:pointer-events-none"
   aria-disabled={disabled}
   tabindex={disabled ? -1 : 0}
   class:disabled
