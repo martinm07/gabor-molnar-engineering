@@ -15,11 +15,13 @@ build/
 
 SECRET.txt
 .env
+.prodenv
 mobileNATpool-assignment-example.txt
 ngrok.exe
 .ngrok.exe.old
 developing-email/
 .obsidian/
+.kamal/secrets
 
 # Logs
 logs
