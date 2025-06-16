@@ -1,0 +1,13 @@
+# Refer to the MySQL memory calculator: https://releem.com/tools/mysql-memory-calculator
+
+[mysqld]
+performance_schema = OFF
+symbolic-links = 0
+skip-external-locking
+
+# Global buffers
+innodb_buffer_pool_size = 150M
+
+# Per-connection settings
+max_connections = 50
+tmp_table_size = 4M
