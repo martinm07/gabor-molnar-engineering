@@ -41,13 +41,8 @@ builder:
   # Pass in additional build args needed for your Dockerfile.
   # args:
   #   RUBY_VERSION: <%= ENV["RBENV_VERSION"] || ENV["rvm_ruby_string"] || "#{RUBY_ENGINE}-#{RUBY_ENGINE_VERSION}" %>
+
 # Inject ENV variables into containers (secrets come from .kamal/secrets).
-#
-# env:
-#   clear:
-#     DB_HOST: 192.168.0.2
-#   secret:
-#     - RAILS_MASTER_KEY
 env:
   clear:
     FLASK_ENV: production
@@ -79,7 +74,7 @@ aliases:
 # hitting 404 on in-flight requests. Combines all files from new and old
 # version inside the asset_path.
 #
-# asset_path: /app/public/assets
+asset_path: /structdesign/static
 
 # Configure rolling deploys by setting a wait time between batches of restarts.
 #
@@ -95,7 +90,7 @@ accessories:
     host: 134.199.188.153
     # The second part ":3306" is necessary to bind the container port 3306
     #  to the host machine port 3306
-    port: "3306:3306"
+    port: "[::1]:3306:3306"
     env:
       clear:
         MYSQL_ROOT_HOST: "%"
@@ -109,13 +104,13 @@ accessories:
   typesense:
     image: typesense/typesense:28.0
     host: 134.199.188.153
-    port: "8108:8108"
+    port: "[::1]:8108:8108"
     env:
       clear:
         TYPESENSE_DATA_DIR: /data
         TYPESENSE_ENABLE_CORS: "true"
       secret:
-        - TYPESENSE_API_KEY
+        - TYPESENSE_API_KEY:FLASK_TYPESENSE_API_KEY
     volumes:
       - ./typesense-data:/data # mount host folder for persistence
 #   redis:
