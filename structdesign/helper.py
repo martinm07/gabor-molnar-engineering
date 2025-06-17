@@ -408,7 +408,7 @@ def send_email_info(email_filename, address, **kwargs):
     port = 465
     context = ssl.create_default_context()
 
-    sender_email = "info@structural-design.eu"
+    sender_email = os.getenv("INFO_EMAIL")
 
     message = MIMEMultipart("alternative")
     message["Subject"] = title
@@ -417,8 +417,10 @@ def send_email_info(email_filename, address, **kwargs):
     message.attach(MIMEText(text, "plain"))
     message.attach(MIMEText(html, "html"))
 
-    with smtplib.SMTP_SSL("koala.serveriai.lt", port, context=context) as server:
-        server.login(sender_email, "PaledzygavimaiGrafologijos")
+    with smtplib.SMTP_SSL(
+        os.getenv("INFO_EMAIL_HOST"), port, context=context
+    ) as server:
+        server.login(sender_email, os.getenv("INFO_EMAIL_PASSWORD"))
         server.sendmail(sender_email, address, message.as_string())
     return
 

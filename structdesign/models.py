@@ -17,6 +17,15 @@ class Param(db.Model):
     value: Mapped[str] = mapped_column(Text())
 
 
+class NewsletterEmail(db.Model):
+    __tablename__ = "newsletteremails"
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(200))
+
+    def __repr__(self) -> str:
+        return f"<NewsletterEmail {self.email}>"
+
+
 ###################################################
 ##                      USER                     ##
 ###################################################

@@ -1,16 +1,19 @@
-from datetime import datetime
 import secrets
-from sqlalchemy.sql import func
+from datetime import datetime
+
 from passlib.hash import argon2
+from sqlalchemy.sql import func
 
 from .extensions import db
 
 
-class User(db.Model):
-    __tablename__ = 'users'
+class DUser(db.Model):
+    __tablename__ = "_DEPR_users"
     id = db.Column(db.Integer, primary_key=True)
     # IMP: the `secret` of a user should NEVER be sent to the frontend
-    secret_id = db.Column(db.Integer, db.ForeignKey('usersecrets.id'), nullable=False, unique=True)
+    secret_id = db.Column(
+        db.Integer, db.ForeignKey("_DEPR_usersecrets.id"), nullable=False, unique=True
+    )
 
     username = db.Column(db.String(50), nullable=False, unique=True)
     avatar_image = db.Column(db.String(256))
@@ -21,8 +24,8 @@ class User(db.Model):
     password_hash = db.Column(db.String(256), nullable=True)
     is_2fa = db.Column(db.Boolean, default=True)
 
-    backup_factors = db.relationship("UserBackupFactor", back_populates="user")
-    comments = db.relationship("Comment", back_populates="user")
+    backup_factors = db.relationship("DUserBackupFactor", back_populates="user")
+    comments = db.relationship("DComment", back_populates="user")
     # phone number, 2FA method, recover data (phone number OR email), recover method
     hasher = argon2.using(time_cost=10, memory_cost=50_000)
 
@@ -30,7 +33,7 @@ class User(db.Model):
         if email and phone_number:
             raise AttributeError("A User can't have both an email and phone number.")
 
-        secret = UserSecret()
+        secret = DUserSecret()
         db.session.add(secret)
         db.session.commit()
 
@@ -40,36 +43,41 @@ class User(db.Model):
         self.phone_number = phone_number
 
     def __repr__(self) -> str:
-        return f'<User {self.username}>'
+        return f"<User {self.username}>"
 
     def set_password(self, password):
         self.password_hash = self.hasher.hash(password)
+
     def check_password(self, password):
         return self.hasher.verify(password, self.password_hash)
 
-class UserSecret(db.Model):
-    __tablename__ = 'usersecrets'
+
+class DUserSecret(db.Model):
+    __tablename__ = "_DEPR_usersecrets"
     id = db.Column(db.Integer, primary_key=True)
     secret = db.Column(db.String(200))
 
     def __init__(self):
         self.secret = secrets.token_hex()
-    def __repr__(self) -> str:
-        return f'<UserSecret {self.secret}>'
 
-class UserBackupFactor(db.Model):
-    __tablename__ = 'userrecoveries'
+    def __repr__(self) -> str:
+        return f"<UserSecret {self.secret}>"
+
+
+class DUserBackupFactor(db.Model):
+    __tablename__ = "_DEPR_userrecoveries"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    user_id = db.Column(db.Integer, db.ForeignKey("_DEPR_users.id"))
     method = db.Column(db.String(16))
     data = db.Column(db.String(128))
-    user = db.relationship("User", back_populates="backup_factors")
+    user = db.relationship("DUser", back_populates="backup_factors")
 
     def __repr__(self) -> str:
-        return f'<UserBackupFactor {self.data}>'
+        return f"<UserBackupFactor {self.data}>"
 
-class RequestStamp(db.Model):
-    __tablename__ = "requeststamps"
+
+class DRequestStamp(db.Model):
+    __tablename__ = "_DEPR_requeststamps"
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime(timezone=True), server_default=func.now())
     ipaddress = db.Column(db.String(15))
@@ -78,24 +86,26 @@ class RequestStamp(db.Model):
     cookie_id = db.Column(db.String(256))
     request = db.Column(db.String(32))
 
-class NewsletterEmail(db.Model):
-    __tablename__ = 'newsletteremails'
+
+class DNewsletterEmail(db.Model):
+    __tablename__ = "_DEPR_newsletteremails"
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(200))
 
     def __repr__(self) -> str:
-        return f'<NewsletterEmail {self.email}>'
+        return f"<NewsletterEmail {self.email}>"
 
-class Comment(db.Model):
-    __tablename__ = 'comments'
+
+class DComment(db.Model):
+    __tablename__ = "_DEPR_comments"
     id = db.Column(db.Integer, primary_key=True)
 
     time_created = db.Column(db.DateTime)
     is_edited = db.Column(db.Boolean)
     content = db.Column(db.UnicodeText)
 
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    user = db.relationship("User", back_populates="comments")
+    user_id = db.Column(db.Integer, db.ForeignKey("_DEPR_users.id"))
+    user = db.relationship("DUser", back_populates="comments")
 
     # to load the comments of a guidance document, it needs to have a list of all the comments on it.
     # each comment also has a list of all comments on *it* (i.e. replies).
@@ -106,12 +116,17 @@ class Comment(db.Model):
     # comments
     # parent_comment_id, parent_comment                 # Mutually Exclusive
     # parrent_document_id, parrent_document             # Mutually Exclusive
-    parent_comment_id = db.Column(db.Integer, db.ForeignKey("comments.id"), nullable=True)
+    parent_comment_id = db.Column(
+        db.Integer, db.ForeignKey("_DEPR_comments.id"), nullable=True
+    )
     #                                    `remote_side` makes it so the "other" side of the relationship is actually here, making a Many to One
-    comments = db.relationship("Comment", backref=db.backref("parent_comment", remote_side=[id]))
-    parent_document_id = db.Column(db.Integer, db.ForeignKey("documents.id"), nullable=True)
-    parent_document = db.relationship("GuidanceDocument", back_populates="comments")
-
+    comments = db.relationship(
+        "DComment", backref=db.backref("parent_comment", remote_side=[id])
+    )
+    parent_document_id = db.Column(
+        db.Integer, db.ForeignKey("_DEPR_documents.id"), nullable=True
+    )
+    parent_document = db.relationship("DGuidanceDocument", back_populates="comments")
 
     def __init__(self, content) -> None:
         self.content = content
@@ -120,35 +135,45 @@ class Comment(db.Model):
 
     def __repr__(self) -> str:
         content_char_amount = 15
-        return f'<Comment {self.time_created.strftime("%d/%m/%Y %H:%M")} - "'+\
-               f'{self.content[:content_char_amount]}{"..." if len(self.content)-1 > content_char_amount else ""}">'
-        
+        return (
+            f'<Comment {self.time_created.strftime("%d/%m/%Y %H:%M")} - "'
+            + f'{self.content[:content_char_amount]}{"..." if len(self.content) - 1 > content_char_amount else ""}">'
+        )
+
+
 # documents and tags have a Many to Many relationship- a document can have many tags and a tag can be on many documents
-document_tag = db.Table("document_tag",
-    db.Column("document_id", db.Integer, db.ForeignKey("documents.id"), primary_key=True),
-    db.Column("tag_id", db.Integer, db.ForeignKey("tags.id"), primary_key=True)
+document_tag = db.Table(
+    "document_tag",
+    db.Column(
+        "document_id", db.Integer, db.ForeignKey("_DEPR_documents.id"), primary_key=True
+    ),
+    db.Column("tag_id", db.Integer, db.ForeignKey("_DEPR_tags.id"), primary_key=True),
 )
 
-class GuidanceDocument(db.Model):
-    __tablename__ = 'documents'
+
+class DGuidanceDocument(db.Model):
+    __tablename__ = "_DEPR_documents"
     id = db.Column(db.Integer, primary_key=True)
     time_created = db.Column(db.DateTime)
     title = db.Column(db.String(128))
     thumbnail = db.Column(db.String(256))
     content = db.Column(db.UnicodeText)
 
-    comments = db.relationship("Comment", back_populates="parent_document")
-    tags = db.relationship("Tag", secondary=document_tag, back_populates="documents")
+    comments = db.relationship("DComment", back_populates="parent_document")
+    tags = db.relationship("DTag", secondary=document_tag, back_populates="documents")
 
     def __init__(self, content) -> None:
         self.time_created = datetime.now().astimezone()
         self.content = content
 
-class Tag(db.Model):
-    __tablename__ = 'tags'
+
+class DTag(db.Model):
+    __tablename__ = "_DEPR_tags"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(32))
     color = db.Column(db.String(16), default="#fff")
     description = db.Column(db.String(1024))
 
-    documents = db.relationship("GuidanceDocument", secondary=document_tag, back_populates="tags")
+    documents = db.relationship(
+        "DGuidanceDocument", secondary=document_tag, back_populates="tags"
+    )

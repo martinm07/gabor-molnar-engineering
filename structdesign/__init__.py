@@ -31,8 +31,14 @@ def create_app(test_config=None):
     app.register_blueprint(blogsearch.bp)
     app.register_blueprint(blogcreate.bp)
     app.register_blueprint(home.bp)
-    # app.register_blueprint(home.bp)
-    # app.register_blueprint(old_auth.bp)
+
+    ## For looking at the old (and frankly better) registration page
+    ##  in a Svelte development server under _DEPR_svelte, uncomment this
+    ##  line.
     # app.register_blueprint(auth.bp)
+
+    ## This could be used to see the old old registration page under _DEPR_svelte
+    ##  however I don't think that'll function properly without some other work being done.
+    # app.register_blueprint(old_auth.bp)
 
     return app

@@ -12,9 +12,9 @@ from twilio.base.exceptions import TwilioException
 from twilio.rest import Client
 from validate_email import validate_email
 
+from ._DEPR_models import DRequestStamp, DUser, DUserBackupFactor, DUserSecret
 from .extensions import db
 from .helper import cors_enabled, country_code_to_prefix, host_is_local, send_email_info
-from .models import RequestStamp, User, UserBackupFactor, UserSecret
 
 bp = Blueprint("auth", __name__)
 
@@ -52,7 +52,9 @@ def register():
 def is_name_taken():
     username: str = json.loads(request.data.decode("utf-8"))
     try:
-        user = db.session.execute(db.select(User).filter_by(username=username)).one()[0]
+        user = db.session.execute(db.select(DUser).filter_by(username=username)).one()[
+            0
+        ]
         if user.id == session.get("register_userid"):
             raise NoResultFound
     except NoResultFound:
@@ -71,7 +73,7 @@ def set_name():
         return 400
 
     userid = session.get("register_userid")
-    user = User(username) if not userid else db.session.get(User, userid)
+    user = DUser(username) if not userid else db.session.get(DUser, userid)
     db.session.add(user) if not userid else setattr(user, "username", username)
     db.session.commit()
     session["register_userid"] = user.id
@@ -116,7 +118,7 @@ def is_valid_email():
 def is_email_taken():
     email: str = json.loads(request.data.decode("utf-8"))
     try:
-        user = db.session.execute(db.select(User).filter_by(email=email)).one()[0]
+        user = db.session.execute(db.select(DUser).filter_by(email=email)).one()[0]
         if user.id == session.get("register_userid"):
             raise NoResultFound
     except NoResultFound:
@@ -130,7 +132,7 @@ def is_phone_taken():
     phone_number: str = json.loads(request.data.decode("utf-8"))
     try:
         user = db.session.execute(
-            db.select(User).filter_by(phone_number=phone_number)
+            db.select(DUser).filter_by(phone_number=phone_number)
         ).one()[0]
         if user.id == session.get("register_userid"):
             raise NoResultFound
@@ -147,7 +149,7 @@ def set_info():
     data: dict = json.loads(request.data.decode("utf-8"))
     type_, info = data["type"], data["data"]
 
-    user = db.session.get(User, session["register_userid"])
+    user = db.session.get(DUser, session["register_userid"])
     # Do nothing if we're not making any changes to the info
     if (type_ == "email" and user.email == info) or (
         type_ == "phone" and user.phone_number == info
@@ -192,7 +194,7 @@ def generate_cookie_hash():
     if not session.get("cookie_hash"):
         ipaddress = get_ipaddress()
         same_addresses = db.session.execute(
-            db.select(RequestStamp).filter_by(ipaddress=ipaddress)
+            db.select(DRequestStamp).filter_by(ipaddress=ipaddress)
         ).all()
         latest_request = same_addresses[-1][0] if same_addresses != [] else None
         if (same_addresses != []) and (
@@ -218,7 +220,7 @@ def stamp_request(name):
     else:
         address_lifespan = 86400
 
-    new_stamp = RequestStamp(
+    new_stamp = DRequestStamp(
         ipaddress=ipaddress,
         address_pool=address_pool,
         address_lifespan=address_lifespan,
@@ -230,8 +232,8 @@ def stamp_request(name):
 
 
 def compute_token():
-    user = db.session.get(User, session["register_userid"])
-    usersecret = db.session.get(UserSecret, user.secret_id)
+    user = db.session.get(DUser, session["register_userid"])
+    usersecret = db.session.get(DUserSecret, user.secret_id)
     curtime = str(
         int(
             (time.time() - session.get("register_tokentimeoffset", 0))
@@ -255,7 +257,7 @@ def token_penalty(attempt_num):
 
 def can_sendtoken_info():
     requests = db.session.execute(
-        db.select(RequestStamp).filter_by(
+        db.select(DRequestStamp).filter_by(
             cookie_id=session["cookie_hash"], request="send_token"
         )
     ).all()
@@ -272,13 +274,13 @@ def can_sendtoken_info():
 
 
 def send_token_email(token):
-    user = db.session.get(User, session["register_userid"])
+    user = db.session.get(DUser, session["register_userid"])
     send_email_info("register-confirm", user.email, token=token)
     print(f"Sent the token to email address {user.email}: {token}")
 
 
 def send_token_sms(token):
-    user = db.session.get(User, session["register_userid"])
+    user = db.session.get(DUser, session["register_userid"])
     print(f"Sent the token to phone number {user.phone_number}: {token}")
 
 
@@ -292,7 +294,7 @@ def send_token():
     )  # Might raise error if there's no data
     first_send_only = data["firstSendOnly"]
 
-    user = db.session.get(User, session["register_userid"])
+    user = db.session.get(DUser, session["register_userid"])
     info = user.email or user.phone_number
 
     can_send, attempts, last_attempt = (
@@ -376,7 +378,7 @@ def validate_info():
     token = data["token"]
     if not validate_token_regulated(token):
         return {"message": "Incorrect token"}, 400
-    user = db.session.get(User, session["register_userid"])
+    user = db.session.get(DUser, session["register_userid"])
     user.is_verified = True
     db.session.commit()
     return {}
@@ -387,7 +389,7 @@ def validate_info():
 def set_password():
     data: dict = json.loads(request.data.decode("utf-8"))
     new_password = data["password"]
-    user = db.session.get(User, session["register_userid"])
+    user = db.session.get(DUser, session["register_userid"])
     user.set_password(new_password)
     db.session.commit()
     return {}
@@ -397,7 +399,7 @@ def set_password():
 @cors_enabled(methods=["POST"])
 def set_is2fa():
     data: bool = json.loads(request.data.decode("utf-8"))
-    user = db.session.get(User, session["register_userid"])
+    user = db.session.get(DUser, session["register_userid"])
     user.is_2fa = data
     db.session.commit()
     return {}
@@ -424,7 +426,7 @@ def fast_is_valid_email():
 def recovery_option_isinuse():
     data: dict = json.loads(request.data.decode("utf-8"))
     info, type_ = data["info"], data["type"]
-    user = db.session.get(User, session["register_userid"])
+    user = db.session.get(DUser, session["register_userid"])
     info = checkout_phone_number(info).phone_number if type_ == "phone" else info
     possession = user.email or user.phone_number
     return jsonify(
@@ -436,7 +438,7 @@ def recovery_option_isinuse():
 @bp.route("/api/register/get_country_code", methods=["GET"])
 @cors_enabled(methods=["GET"])
 def get_country_code():
-    user = db.session.get(User, session.get("register_userid"))
+    user = db.session.get(DUser, session.get("register_userid"))
     if user and user.phone_number:
         return jsonify(checkout_phone_number(user.phone_number).calling_country_code)
     elif user:
@@ -454,7 +456,7 @@ def get_country_code():
 
 
 def new_recovery_option_checks(data, type_):
-    user = db.session.get(User, session["register_userid"])
+    user = db.session.get(DUser, session["register_userid"])
     if type_ == "email":
         if not is_email_valid(data, fast=True):
             return {"message": "Invalid email address."}, 400
@@ -486,8 +488,8 @@ def add_recovery_option():
     if info_type == "phone":
         info = g.phone.phone_number
 
-    user = db.session.get(User, session["register_userid"])
-    backupfactor = UserBackupFactor(method=info_type, data=info, user=user)
+    user = db.session.get(DUser, session["register_userid"])
+    backupfactor = DUserBackupFactor(method=info_type, data=info, user=user)
     db.session.add(backupfactor)
     db.session.commit()
     return {"id": backupfactor.id}
@@ -498,8 +500,8 @@ def add_recovery_option():
 def remove_recovery_option():
     data: dict = json.loads(request.data.decode("utf-8"))
     factorid = data["id"]
-    user = db.session.get(User, session["register_userid"])
-    factor = db.session.get(UserBackupFactor, factorid)
+    user = db.session.get(DUser, session["register_userid"])
+    factor = db.session.get(DUserBackupFactor, factorid)
     if factor not in user.backup_factors:
         return {"message": "Backup factor not one of the current user's."}, 400
     db.session.delete(factor)
@@ -512,8 +514,8 @@ def remove_recovery_option():
 def edit_recovery_option():
     data: dict = json.loads(request.data.decode("utf-8"))
     factorid, new_data = data["id"], data["value"]
-    user = db.session.get(User, session["register_userid"])
-    factor = db.session.get(UserBackupFactor, factorid)
+    user = db.session.get(DUser, session["register_userid"])
+    factor = db.session.get(DUserBackupFactor, factorid)
 
     if factor not in user.backup_factors:
         return {"message": "Backup factor not one of the current user's."}, 400
@@ -543,7 +545,7 @@ def get_reg_state():
             "recovery": args[6],
         }
 
-    user = db.session.get(User, session.get("register_userid", -1))
+    user = db.session.get(DUser, session.get("register_userid", -1))
     if not user:
         return make_dict(None, None, None, None, None, None, None)
     name = user.username
