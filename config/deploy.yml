@@ -21,7 +21,9 @@ proxy:
   ssl: true
   # Until this can be set to a proper domain name (e.g. structural-design.eu) after configuring DNS records
   #  on the domain name provider, ssl can't be enabled. That is because Let's Encrypt only works with a proper domain
-  host: structural-design.eu
+  hosts:
+    - structural-design.eu
+    - www.structural-design.eu
   # Proxy connects to your container on port 80 by default.
   app_port: 5000
 
