@@ -1,6 +1,6 @@
 import re
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, jsonify, render_template, request, send_file
 
 from .extensions import db
 from .models import NewsletterEmail
@@ -61,3 +61,8 @@ def signup_newsletter():
     return jsonify(
         news_success=news_success, news_error_msgs={"email": news_email_error}
     )
+
+
+@bp.route("/favicon.ico")
+def favicon():
+    return send_file("static/shared/favicon.ico")
