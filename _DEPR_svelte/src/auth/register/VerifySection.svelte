@@ -28,6 +28,8 @@
       timeout -= 1;
       if (timeout <= 0) {
         clearInterval(timeoutInterval);
+        // This is to guarantee that the server is ready for a resend,
+        //  though in general the endpoint should only sleep for a very short time
         postData({ url: "wait_until_resend_ready", getRequest: true }).then(
           () => {
             resendDisabled = false;
@@ -196,8 +198,9 @@
 </h2>
 <p class="text" in:fly={flyIn(1)} out:fly={flyOut(1)}>
   Verify that you'd be able to log in with that information. Enter the code that
-  we'll send below, reading from the destination you provided. Codes expire in 5
-  minutes and can only be entered on the browser tab that sends them.
+  we'll send below, reading from the destination you provided. Codes expire in 2
+  hours and can only be verified by the internet browser and device that sends
+  them.
 </p>
 
 <form
@@ -376,7 +379,8 @@
     position: relative;
     cursor: pointer;
     z-index: 0;
-    transition: width 0.2s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transition:
+      width 0.2s cubic-bezier(0.22, 0.61, 0.36, 1),
       margin-left 0.2s cubic-bezier(0.22, 0.61, 0.36, 1),
       transform 0.2s cubic-bezier(0.22, 0.61, 0.36, 1);
   }
@@ -472,22 +476,29 @@
     border: 1px solid #000;
     padding: 7px 15px;
     border-radius: 3px;
-    box-shadow: inset 5px 5px 6px -5px #b1b1b1, 2px 2px 3px #9a9a9a;
+    box-shadow:
+      inset 5px 5px 6px -5px #b1b1b1,
+      2px 2px 3px #9a9a9a;
     font-size: 100%;
     letter-spacing: 1px;
     color: #454545;
-    transition: transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transition:
+      transform 0.3s cubic-bezier(0.22, 0.61, 0.36, 1),
       box-shadow 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
   }
   .finish:hover {
     transform: translate(-3px, -3px);
-    box-shadow: inset -5px -5px 6px -5px #b1b1b1, 4px 4px 3px #9a9a9a;
+    box-shadow:
+      inset -5px -5px 6px -5px #b1b1b1,
+      4px 4px 3px #9a9a9a;
     cursor: pointer;
   }
   .finish:hover:active {
     background-color: rgb(211, 211, 211);
     transform: translate(0px, 0px);
-    box-shadow: inset 0px 0px 6px -5px #b1b1b1, 2px 2px 3px #9a9a9a;
+    box-shadow:
+      inset 0px 0px 6px -5px #b1b1b1,
+      2px 2px 3px #9a9a9a;
   }
   .finish:disabled {
     box-shadow: 0 0 !important;

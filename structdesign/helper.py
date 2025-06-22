@@ -2,8 +2,8 @@ import datetime
 import functools
 import os
 import smtplib
-import socket
 import ssl
+import warnings
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from urllib.parse import urlparse
@@ -82,18 +82,24 @@ def host_is_local(host):
     hostname = o.hostname
     port = o.port
     if port is None:
-        port = 22  # no port specified, lets just use the ssh port
-    hostname = socket.getfqdn(hostname)
-    if hostname in ("localhost", "0.0.0.0"):
+        if o.scheme == "https":
+            port = 443
+        else:
+            port = 80  # fallback to HTTP port
+
+    # hostname = socket.getfqdn(hostname)
+    print(o, hostname)
+    if (hostname in ("localhost", "0.0.0.0")) or hostname.startswith("127."):
         return True
-    localhost = socket.gethostname()
-    localaddrs = socket.getaddrinfo(localhost, port)
-    targetaddrs = socket.getaddrinfo(hostname, port)
-    for family, socktype, proto, canonname, sockaddr in localaddrs:
-        for rfamily, rsocktype, rproto, rcanonname, rsockaddr in targetaddrs:
-            if rsockaddr[0] == sockaddr[0]:
-                return True
     return False
+    # localhost = socket.gethostname()
+    # localaddrs = socket.getaddrinfo(localhost, port)
+    # targetaddrs = socket.getaddrinfo(hostname, port)
+    # for family, socktype, proto, canonname, sockaddr in localaddrs:
+    #     for rfamily, rsocktype, rproto, rcanonname, rsockaddr in targetaddrs:
+    #         if rsockaddr[0] == sockaddr[0]:
+    #             return True
+    # return False
 
 
 def country_code_to_prefix(countrycode):
@@ -405,24 +411,46 @@ def send_email_info(email_filename, address, **kwargs):
     ]
     title, text, html = strip_strings(title, text, html)
 
-    port = 465
-    context = ssl.create_default_context()
+    EMAIL_SMTP_SERVER = os.getenv("EMAIL_SMTP_SERVER")
+    EMAIL_PORT = os.getenv("EMAIL_PORT")
 
-    sender_email = os.getenv("INFO_EMAIL")
+    INFO_EMAIL = os.getenv("INFO_EMAIL")
+    INFO_EMAIL_LOGIN_USER = os.getenv("INFO_EMAIL_LOGIN_USER")
+    INFO_EMAIL_LOGIN_PASSWORD = os.getenv("INFO_EMAIL_LOGIN_PASSWORD")
+
+    if (
+        EMAIL_SMTP_SERVER is None
+        or INFO_EMAIL is None
+        or INFO_EMAIL_LOGIN_USER is None
+        or INFO_EMAIL_LOGIN_PASSWORD is None
+    ):
+        raise EnvironmentError(
+            "One or more required environment variables for email sending are missing (all of EMAIL_SMTP_SERVER, INFO_EMAIL, INFO_EMAIL_LOGIN_USER and INFO_EMAIL_LOGIN_PASSWORD are required)."
+        )
+    if EMAIL_PORT is None:
+        warnings.warn("No EMAIL_PORT variable in env provided - defaulting to 465.")
+        EMAIL_PORT = 465
+
+    context = ssl.create_default_context()
 
     message = MIMEMultipart("alternative")
     message["Subject"] = title
-    message["From"] = sender_email
+    message["From"] = INFO_EMAIL
     message["To"] = address
     message.attach(MIMEText(text, "plain"))
     message.attach(MIMEText(html, "html"))
 
-    with smtplib.SMTP_SSL(
-        os.getenv("INFO_EMAIL_HOST"), port, context=context
-    ) as server:
-        server.login(sender_email, os.getenv("INFO_EMAIL_PASSWORD"))
-        server.sendmail(sender_email, address, message.as_string())
-    return
+    smtp = smtplib.SMTP(EMAIL_SMTP_SERVER, port=EMAIL_PORT)
+
+    smtp.starttls(context=context)
+    smtp.login(INFO_EMAIL_LOGIN_USER, INFO_EMAIL_LOGIN_PASSWORD)
+    smtp.sendmail(INFO_EMAIL, address, message.as_string())
+    smtp.quit()
+
+    # with smtplib.SMTP_SSL(EMAIL_SMTP_SERVER, EMAIL_PORT, context=context) as server:
+    #     server.login(INFO_EMAIL_LOGIN_USER, INFO_EMAIL_LOGIN_PASSWORD)
+    #     server.sendmail(INFO_EMAIL, address, message.as_string())
+    # return
 
 
 def collection_exists(client, collection_name: str):

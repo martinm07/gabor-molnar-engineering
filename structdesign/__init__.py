@@ -2,7 +2,7 @@ import os
 
 from flask import Flask
 
-from . import helper, home, register
+from . import auth, helper, home, register
 from .blog import blogcreate, bloghomeread, blogsearch
 from .extensions import csrf, db, migrate
 
@@ -35,7 +35,7 @@ def create_app(test_config=None):
     ## For looking at the old (and frankly better) registration page
     ##  in a Svelte development server under _DEPR_svelte, uncomment this
     ##  line.
-    # app.register_blueprint(auth.bp)
+    app.register_blueprint(auth.bp)
 
     ## This could be used to see the old old registration page under _DEPR_svelte
     ##  however I don't think that'll function properly without some other work being done.
