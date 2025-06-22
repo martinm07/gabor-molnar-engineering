@@ -1,12 +1,38 @@
+############################################################
+###                  OLD REGISTRATION PAGE
+###   (client code under _DEPR_svelte/src/auth/register)
+### --------------------------------------------------------
+###  This was the biggest attempt I've done at creating
+###  user authentication (specifically registration), and
+###  I learnt a lot from it.
+###  The attempt after this (creating structdesign/register.py)
+###  - was my first time using TailwindCSS, Svelte 5, SQLAlchemy 2,
+###  - used better error handling (using statuscodes.md), and
+###  - used proper URL handling with the History API.
+###  However, it also implements a more conventional registration
+###  pattern (only asking for email, username and password),
+###  awkwardly split up between three pages, and doesn't re-implement
+###  - client feedback during validation,
+###  - phone number input and validation (including Twilio integration),
+###  - email/phone number token verification
+###    (including a lot of consideration for rate-limiting resends),
+###  - choice of login method (token, 2FA, password only),
+###  - ability to add backup options.
+###  Thus, this legacy code remains here to one day be re-implemented
+###  using modern practices. Or have parts of it implemented elsewhere.
+############################################################
+
 import hashlib
 import json
+import math
 import os
 import time
 import warnings
 from datetime import datetime
 
 import requests
-from flask import Blueprint, g, jsonify, render_template, request, session
+from flask import Blueprint, current_app, g, jsonify, render_template, request, session
+from sqlalchemy import select
 from sqlalchemy.exc import NoResultFound
 from twilio.base.exceptions import TwilioException
 from twilio.rest import Client
@@ -14,7 +40,7 @@ from validate_email import validate_email
 
 from ._DEPR_models import DRequestStamp, DUser, DUserBackupFactor, DUserSecret
 from .extensions import db
-from .helper import cors_enabled, country_code_to_prefix, host_is_local, send_email_info
+from .helper import cors_enabled, country_code_to_prefix, send_email_info
 
 bp = Blueprint("auth", __name__)
 
@@ -52,9 +78,7 @@ def register():
 def is_name_taken():
     username: str = json.loads(request.data.decode("utf-8"))
     try:
-        user = db.session.execute(db.select(DUser).filter_by(username=username)).one()[
-            0
-        ]
+        user = db.session.execute(select(DUser).filter_by(username=username)).one()[0]
         if user.id == session.get("register_userid"):
             raise NoResultFound
     except NoResultFound:
@@ -77,6 +101,7 @@ def set_name():
     db.session.add(user) if not userid else setattr(user, "username", username)
     db.session.commit()
     session["register_userid"] = user.id
+    session["cookie_hash"] = true_rand()
     return {}
 
 
@@ -118,7 +143,7 @@ def is_valid_email():
 def is_email_taken():
     email: str = json.loads(request.data.decode("utf-8"))
     try:
-        user = db.session.execute(db.select(DUser).filter_by(email=email)).one()[0]
+        user = db.session.execute(select(DUser).filter_by(email=email)).one()[0]
         if user.id == session.get("register_userid"):
             raise NoResultFound
     except NoResultFound:
@@ -132,7 +157,7 @@ def is_phone_taken():
     phone_number: str = json.loads(request.data.decode("utf-8"))
     try:
         user = db.session.execute(
-            db.select(DUser).filter_by(phone_number=phone_number)
+            select(DUser).filter_by(phone_number=phone_number)
         ).one()[0]
         if user.id == session.get("register_userid"):
             raise NoResultFound
@@ -155,6 +180,10 @@ def set_info():
         type_ == "phone" and user.phone_number == info
     ):
         return {}
+    else:
+        # If we're using new info, we'll want to try send a token automatically when
+        #  the verify page next opens
+        session.pop("first_token_sent")
 
     old_info = user.email or user.phone_number
     user.email = None
@@ -183,48 +212,83 @@ def true_rand():
 
 
 def get_ipaddress():
-    if host_is_local(request.url_root):
+    # print("REQUEST URL ROOT: ", request.url_root)
+    if current_app.config["ENV"] == "development":
+        # if host_is_local(request.url_root):
         return "51.171.46.235"
     else:
-        return request.environ.get("HTTP_X_FORWARDED_FOR", request.remote_addr)
+        return request.remote_addr or ""
 
 
-@bp.before_app_request
-def generate_cookie_hash():
-    if not session.get("cookie_hash"):
-        ipaddress = get_ipaddress()
-        same_addresses = db.session.execute(
-            db.select(DRequestStamp).filter_by(ipaddress=ipaddress)
-        ).all()
-        latest_request = same_addresses[-1][0] if same_addresses != [] else None
-        if (same_addresses != []) and (
-            (datetime.now() - latest_request.timestamp).seconds
-            <= latest_request.address_lifespan
-        ):
-            session["cookie_hash"] = latest_request.cookie_id
-        else:
-            session["cookie_hash"] = true_rand()
+### The `cookie_hash` session key and table field will no longer try to identify
+###  actual users (or rather devices) based on IP address allocation (which has
+###  problems, because IP addresses are very dynamic and their allocations to devices change,
+###  it is impossible to know for sure when that occurs - although also reading other device
+###  info like user agent strings and other fingerprinting JS can do would help - particularly
+###  with Network Address Translation where the router's pool of addresses is used to serve a
+###  far larger number of people on the LAN identified with 192.168.0.0 range private addresses).
+### Instead, `cookie_hash` can be strategically refreshed only when it would be costly to do so
+###  (if rate limiting were to try to be bypassed). For example, at the very start of registration,
+###  when the user chooses a username. Then they have to choose a unique email or phone number, and only
+###  then could they use the reset resend count. Or only after a SUCCESSFUL login has occured
+###  (though hmm, users don't require any cookie info to use login to send tokens, instead we may track
+###  resend counts by attaching them DIRECTLY to whatever email/phone number the token is being sent to)
+# @bp.before_app_request
+# def generate_cookie_hash():
+#     if not session.get("cookie_hash"):
+#         ipaddress = get_ipaddress()
+#         same_addresses = db.session.execute(
+#             select(DRequestStamp).filter_by(ipaddress=ipaddress)
+#         ).all()
+#         latest_request = same_addresses[-1][0] if same_addresses != [] else None
+#         if (same_addresses != []) and (
+#             (datetime.now() - latest_request.timestamp).seconds
+#             <= latest_request.address_lifespan
+#         ):
+#             session["cookie_hash"] = latest_request.cookie_id
+#         else:
+#             session["cookie_hash"] = true_rand()
 
 
+# TODO: Stop relying on IP addresses to identify users - it has unavoidable problems.
+#        Instead, associate records on the database with a user based primarily on register_userid
+#        (for cookie time-travelers, circumventing this requires going back to before they input a name,
+#          which essentially means that it doesn't help at all).
+#        While we have this logic here for ip lookups though, we can still use it as a backup for
+#         extreme statistics taking place on the same IP address (and even same IP address block).
+#        For example, 100 users being created on the same IP address sounds like malicious activity
+#         and should be blocked (perhaps with an explicit error message in case the IP gets left in the
+#         hands of a legitmate user - something like "Whoops! You've been IP blocked. If you're surprised
+#         by this then unfortuantely you've been assigned an abused address or are otherwise hacked yourself.")
 def stamp_request(name):
     ipaddress = get_ipaddress()
 
     URL = "https://rdap.db.ripe.net/ip/" + ipaddress
-    resp = requests.get(url=URL)
-    data = resp.json()
-    operator_name = data["name"]
-    address_pool = data["startAddress"] + " - " + data["endAddress"]
+    resp = requests.get(url=URL, allow_redirects=True)
 
-    if ("dynamic" in operator_name.lower()) and ("nat" in operator_name.lower()):
-        address_lifespan = 3600
-    else:
-        address_lifespan = 86400
+    address_pool = None
+    if resp.ok:
+        data = resp.json()
+        # operator_name = data["name"]
+        if (
+            type(data) is dict
+            and not data.get("errorCode")
+            and data.get("startAddress")
+            and data.get("endAddress")
+        ):
+            address_pool = data["startAddress"] + " - " + data["endAddress"]
+
+    # if ("dynamic" in operator_name.lower()) and ("nat" in operator_name.lower()):
+    #     address_lifespan = 3600
+    # else:
+    #     address_lifespan = 86400
+    address_lifespan = 60 * 60 * 24
 
     new_stamp = DRequestStamp(
         ipaddress=ipaddress,
         address_pool=address_pool,
         address_lifespan=address_lifespan,
-        cookie_id=session["cookie_hash"],
+        cookie_id=session.get("cookie_hash"),
         request=name,
     )
     db.session.add(new_stamp)
@@ -242,7 +306,7 @@ def compute_token():
     )
     info = user.email or user.phone_number
     ipaddress = get_ipaddress()
-    cookie_id = session["cookie_hash"]
+    cookie_id = session.get("cookie_hash", "")
     token = str(
         int(sha256(usersecret.secret + curtime + info + ipaddress + cookie_id), 16)
     )[-6:]
@@ -250,27 +314,52 @@ def compute_token():
     return token
 
 
+# We can afford to be a bit more generous with retries...
+# After all, it is reasonable for a legitimate user to realise that they mistyped something,
+#  so need to go back and perform a retry. Then they may realise that they do not currently have
+#  access to their email/phone and so need to come back later. The legitimate reasons for retries
+#  can add up.
+RETRY_TIMEOUTS = {0: 0, 1: 0, 2: 10, 3: 30, 4: 30, 5: 45, 6: 60, 7: 90, 8: 120, 9: 300}
+RETRY_TIMEOUT_COOLOFF = sum(RETRY_TIMEOUTS.values()) + 600
+
+
 def token_penalty(attempt_num):
-    retry_timeouts = {0: 0, 1: 30, 2: 40, 3: 60, 4: 90, 5: 120}
-    return retry_timeouts.get(attempt_num, 600)
+    # retry_timeouts = {0: 0, 1: 30, 2: 40, 3: 60, 4: 90, 5: 120}
+    return RETRY_TIMEOUTS.get(attempt_num, 600)
 
 
 def can_sendtoken_info():
-    requests = db.session.execute(
-        db.select(DRequestStamp).filter_by(
-            cookie_id=session["cookie_hash"], request="send_token"
+    """
+    Returns 3-length tuple of
+    (can_send: boolean, num_attempts: int, time_elapsed_since_last_attempt: float)
+    """
+    requests = db.session.scalars(
+        select(DRequestStamp).filter_by(
+            cookie_id=session.get("cookie_hash"), request="send_token"
         )
     ).all()
-    # TODO: Ignore requests before completed login/registration cycles OR that have been there more than 24 hours ago
-    timeout = token_penalty(len(requests))
-    if requests != []:
-        delta = datetime.now() - requests[-1][0].timestamp
+    SECONDS_IN_DAY = 60 * 60 * 24
+
+    current_time = datetime.now()
+    num_recent_attempts = 0
+    secs_since_last_attempt = math.inf
+    for request_ in requests:
+        delta = current_time - request_.timestamp
+        time_elapsed_since = delta.days * SECONDS_IN_DAY + delta.seconds
+        if time_elapsed_since <= RETRY_TIMEOUT_COOLOFF:
+            num_recent_attempts += 1
+            if time_elapsed_since < secs_since_last_attempt:
+                secs_since_last_attempt = time_elapsed_since
+
+    timeout = token_penalty(num_recent_attempts)
+    if num_recent_attempts > 0:
         return (
-            (delta.days * 86400 + delta.seconds) >= timeout,
-            len(requests),
-            delta.days * 86400 + delta.seconds,
+            (secs_since_last_attempt) >= timeout,
+            num_recent_attempts,
+            secs_since_last_attempt,
         )
-    return True, len(requests), 365 * 86400
+    else:
+        return True, 0, 365 * SECONDS_IN_DAY
 
 
 def send_token_email(token):
@@ -280,6 +369,7 @@ def send_token_email(token):
 
 
 def send_token_sms(token):
+    # TODO: Use Twilio to send the SMS message (probably using client.messages.create() - see https://www.twilio.com/docs/messaging/quickstart)
     user = db.session.get(DUser, session["register_userid"])
     print(f"Sent the token to phone number {user.phone_number}: {token}")
 
@@ -337,6 +427,8 @@ def send_token():
     return return_data, (400 if return_data["msgType"] == "error" else 200)
 
 
+# TODO: This endpoint might be exploitable for severely slowing down the server
+#       Might be a good idea to replace this with some endpoint the client can ping for if resend is ready instead
 @bp.route("/api/register/wait_until_resend_ready", methods=["GET"])
 @cors_enabled(methods=["GET"])
 def wait_until_resend_ready():

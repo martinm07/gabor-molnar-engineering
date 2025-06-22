@@ -62,6 +62,8 @@ def is_email_valid(email: str):
     if not email or email == "":
         return {"result": False, "code": "EMM"}
     docheck = json.loads(os.environ.get("FLASK_VALIDATE_EMAIL_CHECK_DNS_SMTP", "true"))
+    # FIXME: Some email addresses make this take a very long time (~7s)
+    #        even on the production server.
     if (
         validate_email(email_address=email, check_dns=docheck, check_smtp=docheck)
         is False
@@ -94,6 +96,8 @@ def add_email_password():
     email: str = data.get("email")
     password: str = data.get("password")
 
+    # BUG: This seems to be timing out indefinitely for valid emails on production
+    #       (at least currently on 22/06)
     email_result = is_email_valid(email)
     password_result = is_password_valid(password)
 
@@ -104,7 +108,7 @@ def add_email_password():
 
     return {
         "result": False,
-        "code": f'{email_result.get("code", "")}{password_result.get("code", "")}',
+        "code": f"{email_result.get('code', '')}{password_result.get('code', '')}",
     }
 
 

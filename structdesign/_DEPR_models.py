@@ -2,6 +2,8 @@ import secrets
 from datetime import datetime
 
 from passlib.hash import argon2
+from sqlalchemy import String
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
 
 from .extensions import db
@@ -78,13 +80,20 @@ class DUserBackupFactor(db.Model):
 
 class DRequestStamp(db.Model):
     __tablename__ = "_DEPR_requeststamps"
-    id = db.Column(db.Integer, primary_key=True)
-    timestamp = db.Column(db.DateTime(timezone=True), server_default=func.now())
-    ipaddress = db.Column(db.String(15))
-    address_pool = db.Column(db.String(33))
-    address_lifespan = db.Column(db.Integer)
-    cookie_id = db.Column(db.String(256))
-    request = db.Column(db.String(32))
+    # id = db.Column(db.Integer, primary_key=True)
+    # timestamp = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    # ipaddress = db.Column(db.String(15))
+    # address_pool = db.Column(db.String(33), nullable=True)
+    # address_lifespan = db.Column(db.Integer)
+    # cookie_id = db.Column(db.String(256))
+    # request = db.Column(db.String(32))
+    id: Mapped[int] = mapped_column(primary_key=True)
+    timestamp: Mapped[datetime] = mapped_column(server_default=func.now())
+    ipaddress: Mapped[str] = mapped_column(String(15))
+    address_pool: Mapped[str] = mapped_column(String(33), nullable=True)
+    address_lifespan: Mapped[int]
+    cookie_id: Mapped[str] = mapped_column(String(256))
+    request: Mapped[str] = mapped_column(String(32))
 
 
 class DNewsletterEmail(db.Model):
