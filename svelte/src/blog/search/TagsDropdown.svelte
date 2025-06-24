@@ -66,6 +66,7 @@
                 tagDropdown.updateHeight(() => (tag.selected = false));
               }}
               type="button"
+              aria-label="Deselect"
               class="inline-flex items-center hover:bg-rock-300 hover:text-rock-700 rounded p-1 absolute right-1 top-0 h-[calc(100%_-_6px)] z-0 my-[3px]"
               ><ion-icon
                 style="--ionicon-stroke-width: 48px;"
@@ -96,7 +97,7 @@
             }}
             type="button"
             style="--accent: rgb({tag.color}); --accent-light: rgb({colorLight}); --accent-med: rgb({colorMed}); --accent-dark: rgb({colorDark});"
-            class="item px-3 py-1 border-2 rounded border-[--accent] text-[--accent] font-bold bg-[--accent-light] m-1 focus:outline-none transition-shadow hover:bg-[--accent-med]"
+            class="item px-3 py-1 border-2 rounded border-(--accent) text-(--accent) font-bold bg-(--accent-light) m-1 focus:outline-none transition-shadow hover:bg-(--accent-med)"
             >{tag.value}</button
           >
         {/each}

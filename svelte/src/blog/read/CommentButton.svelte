@@ -39,7 +39,7 @@
 <dialog
   bind:this={questionDialog}
   onclick={() => questionDialog.close()}
-  class="bg-background"
+  class="bg-background m-auto"
 >
   <div
     class="w-full h-full p-4 pt-8 rounded border-2 border-rock-500"

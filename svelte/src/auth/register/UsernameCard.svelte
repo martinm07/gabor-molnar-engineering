@@ -121,6 +121,7 @@
       {#snippet submitBtn()}
         <button
           type="submit"
+          aria-label="Submit"
           class="snap-press border-2 border-rock-800 bg-rock-400 p-3 rounded relative flex items-center justify-end shadow-[inset_-7px_-7px] shadow-steel-200 group transition-[margin-right] hover:-mr-4 hover:bg-rock-500 hover:shadow-rock-500 active:mr-0 active:bg-rock-600 active:shadow-rock-600 h-14 mt-3 ml-auto sm:ml-2 sm:mt-0"
         >
           <div

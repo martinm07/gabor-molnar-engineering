@@ -56,13 +56,13 @@
 {#if $state_.page !== "congrats"}
   <form method="POST" novalidate>
     {#if $state_.page === "name"}
-      <Card card={UsernameCard} />
+      <Card Card={UsernameCard} />
     {:else if $state_.page === "emailpass"}
-      <Card card={EmailPasswordCard} />
+      <Card Card={EmailPasswordCard} />
     {:else if $state_.page === "passconfirm"}
-      <Card card={ConfirmPasswordCard} />
+      <Card Card={ConfirmPasswordCard} />
     {/if}
   </form>
 {:else if $state_.page === "congrats"}
-  <Card card={CongratsCard} />
+  <Card Card={CongratsCard} />
 {/if}

@@ -115,6 +115,7 @@
   />
   <button
     type="submit"
+    aria-label="Submit query"
     class="size-10 rounded border-2 border-rock-400 ml-1.5 flex items-center justify-center bg-background text-rock-500 hover:bg-rock-200 hover:text-rock-600"
     ><ion-icon
       name="search-outline"

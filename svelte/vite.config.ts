@@ -59,7 +59,7 @@ function isMediaFile(name: string) {
   if (/txt|md|pdf|asc|docx?|rtf|msg|wpd|wps/i.test(ext)) return "txt";
 
   if (/vfb|pfa|fnt|vlw|jfproj|woff2?|sfd|pfb|otf|bdf|glif|fot|ttf|odttf|fon|chr|pmt|ttc/i.test(ext)) return "font";
-  if (/amfm|bmfc|mf|pf2|pfm|compositefont|gxf|etx|abf|fnt|pcf|dfont|sfp|gf|mxf|ufo|tte|/i.test(ext)) return "font";
+  if (/amfm|bmfc|mf|pf2|pfm|compositefont|gxf|etx|abf|fnt|pcf|dfont|sfp|gf|mxf|ufo|tte/i.test(ext)) return "font";
   if (/vnf|bf|xfn|pfr|tfm|gdr|afm|xft|eot|txf|acfm|pk|suit|ffil|nftr|t65|euf|mcf|cha|ytf/i.test(ext)) return "font";
   if (/lwfn|f3f|fea|pft|sft/i.test(ext)) return "font";
 

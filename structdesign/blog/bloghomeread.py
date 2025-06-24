@@ -4,13 +4,8 @@ from itertools import islice
 from typing import Iterable
 
 import click
-from flask import (
-    Blueprint,
-    jsonify,
-    render_template,
-    request,
-)
-from sqlalchemy import select
+from flask import Blueprint, abort, jsonify, render_template, request
+from sqlalchemy import and_, func, select
 
 from ..extensions import db
 from ..helper import cors_enabled
@@ -128,6 +123,32 @@ def get_blogs_tag():
 ### READ
 
 
+@bp.route("/<string:name>")
+def read(name: str):
+    name_transformed = name.replace("-", "").replace(" ", "").lower()
+    stmt = select(GuidanceDocument).where(
+        and_(
+            func.LOWER(
+                func.REPLACE(func.REPLACE(GuidanceDocument.title, "-", ""), " ", "")
+            )
+            == name_transformed,
+            GuidanceDocument.status == "public",
+        )
+    )
+
+    doc = db.session.scalars(stmt).first()
+    if doc is None:
+        abort(404)
+
+    return render_template(
+        "/blog/read.html",
+        id=doc.id,
+        title=doc.title,
+        description=doc.description,
+        body=doc.body,
+    )
+
+
 @bp.route("/get")
 @cors_enabled(methods=["GET"])
 def get():
@@ -213,6 +234,9 @@ def addblogs(num):
         titlelen = random.randint(15, 35)
         desclen = random.randint(100, 150)
         color = random.choice(colors)
+        ## For weighting the choice, there is `random.choices` (https://stackoverflow.com/a/39976962/11493659)
+        # random.choices(population=[["public"], ["private"], ["unlisted"], ["featured"]], weights=[0.7, 0.1, 0.1, 0.1], k=1)[0]
+        status = random.choice(["public", "private", "unlisted", "featured"])
 
         doc = GuidanceDocument(
             title=lorem[start : start + titlelen],
@@ -220,6 +244,8 @@ def addblogs(num):
             body=lorem,
             accent=color,
             thumbnail=thumbnail,
+            component_lib_version="",
+            status=status,
         )
         db.session.add(doc)
     db.session.commit()

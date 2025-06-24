@@ -138,7 +138,7 @@
   watch(
     () => [sortBy, sortOrder],
     (_, p) => {
-      if (p.some((el) => !el)) return;
+      if (p && p.some((el) => !el)) return;
       const query_ = new URLSearchParams(lastSubmittedQuery);
       query_.set("sort", sortBy);
       query_.set("desc", JSON.stringify(sortOrder !== "asc"));

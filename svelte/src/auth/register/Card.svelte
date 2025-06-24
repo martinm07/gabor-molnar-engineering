@@ -5,9 +5,9 @@
   import { request2AnimationFrames } from "/shared/helper";
 
   interface Props {
-    card: Component<{ transitionpage: (page: string) => void }>;
+    Card: Component<{ transitionpage: (page: string) => void }>;
   }
-  let { card }: Props = $props();
+  let { Card }: Props = $props();
 
   const TRANSITION_DURATION = 500;
   let cardEl: HTMLElement;
@@ -59,6 +59,7 @@
     <h1 class="shrink text-center font-serif text-dark text-4xl">
       Registration
     </h1>
-    <svelte:component this={card} transitionpage={onTransition} />
+    <!-- <svelte:component this={card} transitionpage={onTransition} /> -->
+    <Card transitionpage={onTransition} />
   </div>
 </div>

@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   export async function validateEmail(
     email: string,
   ): Promise<ValidationResponse> {
@@ -139,6 +139,7 @@
       <div class="flex justify-center mt-8 h-14">
         <button
           type="submit"
+          aria-label="Submit"
           class="snap-press border-2 border-rock-800 bg-rock-400 ml-2 px-6 py-3 rounded relative flex items-center justify-end shadow-[inset_-7px_-7px] shadow-steel-200 group transition-[margin-right] hover:-mr-4 hover:bg-rock-500 hover:shadow-rock-500 active:mr-0 active:bg-rock-600 active:shadow-rock-600"
         >
           <div

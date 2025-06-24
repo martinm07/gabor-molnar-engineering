@@ -115,7 +115,7 @@
         onfocusin={() => (activeTag = i)}
         type="button"
         style="--accent: rgb({tag.color}); --accent-light: rgb({colorLight}); --accent-med: rgb({colorMed}); --accent-dark: rgb({colorDark});"
-        class="px-3 py-1 border-2 rounded border-[--accent] text-[--accent] font-bold bg-[--accent-light] mx-2 focus:outline-none transition-shadow hover:bg-[--accent-med]"
+        class="px-3 py-1 border-2 rounded border-(--accent) text-(--accent) font-bold bg-(--accent-light) mx-2 focus:outline-none transition-shadow hover:bg-(--accent-med)"
         class:active={i === activeTag}>{tag.name}</button
       >
     {/each}
@@ -127,7 +127,7 @@
   style="--accent-light: rgb({tags[activeTag]
     ? fadeColor(tags[activeTag].color, 0.1)
     : '255 255 255'});"
-  class="bg-[--accent-light] py-8 border-b-2 border-rock-200"
+  class="bg-(--accent-light) py-8 border-b-2 border-rock-200"
 >
   <BlogsList cards={tagBlogs} bind:this={blogsListComp} />
 </div>

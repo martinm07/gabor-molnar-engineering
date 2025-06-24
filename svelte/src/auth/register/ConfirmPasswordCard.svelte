@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   import { fetch_, snapStylesOnActive } from "/shared/helper";
   import type { ValidationResponse } from "/shared/types";
 

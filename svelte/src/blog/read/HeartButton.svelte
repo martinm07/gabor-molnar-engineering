@@ -39,12 +39,12 @@
     infoEl.style.display = "block";
     requestAnimationFrame(() => {
       infoEl.style.opacity = "1";
-      infoEl.style.transform = "translate(50%, -100%)";
+      infoEl.style.transform = "translate(0%, -6px)";
     });
   }
   function showInfoHide() {
     infoEl.style.opacity = "0";
-    infoEl.style.transform = "translate(50%, calc(6px - 100%))";
+    infoEl.style.transform = "translate(0%, -0px)";
     setTimeout(() => {
       if (infoEl.style.opacity !== "1") infoEl.style.display = "none";
     }, 150);
@@ -95,7 +95,7 @@
     onmouseenter={showInfoShow}
     onmouseleave={showInfoHide}
     bind:this={infoEl}
-    class="hidden absolute -top-3 -right-0 translate-x-1/2 w-48 bg-rock-800 rounded text-rock-50 font-normal p-2 text-sm transition-[opacity,transform] opacity-0 translate-y-[calc(6px_-_100%)]"
+    class="hidden absolute -top-3 -right-0 translate-x-1/2 w-48 bg-rock-800 rounded text-rock-50 font-normal p-2 text-sm transition-[opacity,transform] opacity-0 -translate-y-full"
   >
     All this does is privately notify us that you liked this document, and wish
     to see more on this subject/area.

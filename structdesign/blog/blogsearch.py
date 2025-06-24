@@ -1,7 +1,7 @@
 import json
 from datetime import date
 
-from flask import Blueprint, request
+from flask import Blueprint, render_template, request
 from sqlalchemy import select
 
 from ..extensions import db, typesense_client
@@ -15,6 +15,11 @@ def onfalsey(val, fallback):
     return val if val else fallback
 
 
+@bp.route("/search")
+def search():
+    return render_template("blog/search.html")
+
+
 @bp.route("/query")
 @cors_enabled(methods=["GET"])
 def query():
@@ -22,11 +27,11 @@ def query():
     sort_by = request.args.get("sort", "relevance")
     sort_descending = request.args.get("desc", True)
 
-    sort_str = f"{sort_by if sort_by != "relevance" else '_text_match'}:{'DESC' if sort_descending else 'ASC'}"
+    sort_str = f"{sort_by if sort_by != 'relevance' else '_text_match'}:{'DESC' if sort_descending else 'ASC'}"
     search_parameters = {
         "q": query,
         "query_by": ",".join(["title", "description", "body", "tags"]),
-        "sort_by": f"{sort_str}{',_text_match:DESC' if sort_by != "relevance" else ''}",
+        "sort_by": f"{sort_str}{',_text_match:DESC' if sort_by != 'relevance' else ''}",
     }
 
     return typesense_client.collections["documents"].documents.search(search_parameters)
@@ -57,11 +62,11 @@ def advanced_query():
             f"date_created:<={get_unix_timestamp(date.fromisoformat(to_date))}"
         )
 
-    sort_str = f"{sort_by if sort_by != "relevance" else '_text_match'}:{'desc' if sort_descending else 'asc'}"
+    sort_str = f"{sort_by if sort_by != 'relevance' else '_text_match'}:{'desc' if sort_descending else 'asc'}"
     search_parameters = {
         "q": query,
         "query_by": ",".join(["title", "description", "body", "tags"]),
-        "sort_by": f"{sort_str}{',_text_match:desc' if sort_by != "relevance" else ''}",
+        "sort_by": f"{sort_str}{',_text_match:desc' if sort_by != 'relevance' else ''}",
         "filter_by": " && ".join(filter_args),
         "facet_by": "tags",
         "page": page,

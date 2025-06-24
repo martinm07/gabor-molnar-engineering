@@ -16,8 +16,7 @@
         if (!Number.parseInt("{{ 1 }}"))
           throw new Error("Jinja wasn't parsed.");
         globalThis.jinjaParsed = true;
-        globalThis.urlRoot =
-          "{{ url_for(request.endpoint).split('/')[0] + '/' }}";
+        globalThis.urlRoot = "/";
 
         globalThis.csrfToken = "{{ csrf_token() }}";
 

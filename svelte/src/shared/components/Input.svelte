@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   export interface IInput {
     setValidState: (newValidState: ValidationResponse, doTada: boolean) => void;
     getValue: () => string;
@@ -27,12 +27,12 @@
   import type { ValidationResponse } from "/shared/types";
   import { tada } from "/shared/helper";
   import "./input.css";
-  import type { HTMLInputAttributes } from "svelte/elements";
+  import type { ClassValue, HTMLInputAttributes } from "svelte/elements";
 
   interface Props extends HTMLInputAttributes {
     inpId: string;
     statusCodeNameMsg: (code: string) => { input: string | null; msg: string };
-    class?: string | null;
+    class?: ClassValue | null;
     outerclass?: string;
     wrapperclass?: string;
     statusclass?: string;
@@ -106,10 +106,10 @@
     >
   {/if}
   <div class="base-text-input-outer {outerClass}">
-    {#snippet statusMsg(classes, msg)}
+    {#snippet statusMsg(classes: string, msg: string)}
       <label
         class="base-text-input-status {classes} {statusClass}"
-        use:setToSpanWidth={msg}
+        use:setToSpanWidth
         for={inpId}
         in:tada|global={{ duration: 400, disable: tadaDisabled }}
       >

@@ -58,6 +58,7 @@
   <button
     onclick={() => (page -= 1)}
     disabled={page <= 1}
+    aria-label="Previous page"
     class="p-2 bg-background inline-flex items-center justify-center rounded mr-4 hover:bg-steel-200 active:bg-steel-300 active:text-steel-700 border-2 border-background-100 ring-rock-200 focus:ring-4 disabled:bg-background disabled:text-steel-600 disabled:opacity-40"
   >
     <ion-icon name="chevron-back"></ion-icon>
@@ -74,6 +75,7 @@
   <button
     onclick={() => (page += 1)}
     disabled={page >= numPages}
+    aria-label="Next page"
     class="p-2 bg-background inline-flex items-center justify-center rounded ml-4 hover:bg-steel-200 active:bg-steel-300 active:text-steel-700 border-2 border-background-100 ring-rock-200 focus:ring-4 disabled:bg-background disabled:text-steel-600 disabled:opacity-40"
   >
     <ion-icon name="chevron-forward"></ion-icon>

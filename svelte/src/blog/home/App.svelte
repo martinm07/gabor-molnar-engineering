@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   export function addCards(cards: Card[], num: number) {
     console.log(`Fetching ${num} more cards...`);
     const p = cards.length / num;

@@ -1,4 +1,4 @@
-<script context="module" lang="ts">
+<script module lang="ts">
   export interface IForm {
     getValue: (name: string) => string;
     setValue: (name: string, value: any) => void;

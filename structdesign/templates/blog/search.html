@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/cog1-svgrepo-com.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Guidance Documents | Gabor Molnar Engineering</title>
+    <script type="module" crossorigin src="/static/blog/js/search-Bp0-I6uR.js"></script>
+    <link rel="modulepreload" crossorigin href="/static/shared/js/svelte-DDwyUFiE.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/props-cCc_9pgQ.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/SearchCard-BaRlOSmC.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/transitions-BVc5EuFC.js">
+    <link rel="stylesheet" crossorigin href="/static/blog/css/SearchCard-D63Gv-T2.css">
+    <link rel="stylesheet" crossorigin href="/static/shared/css/tailwindinit-Dz4nv_Bu.css">
+    <link rel="stylesheet" crossorigin href="/static/blog/css/search-tn0RQdqM.css">
+  </head>
+  <body>
+    <div id="app" style="position: relative"></div>
+    <input id="flask-server" type="hidden" value="http://127.0.0.1:5000" />
+    <script>
+      globalThis.jinjaParsed = false;
+      globalThis.urlRoot = document.getElementById("flask-server").value;
+      try {
+        if (!Number.parseInt("{{ 1 }}"))
+          throw new Error("Jinja wasn't parsed.");
+        globalThis.jinjaParsed = true;
+        globalThis.urlRoot =
+          "{{ url_for(request.endpoint).split('/')[0] + '/' }}";
+
+        globalThis.csrfToken = "{{ csrf_token() }}";
+      } catch {}
+    </script>
+    <script
+      type="module"
+      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.esm.js"
+    ></script>
+    <script
+      nomodule
+      src="https://unpkg.com/ionicons@7.1.0/dist/ionicons/ionicons.js"
+    ></script>
+  </body>
+</html>
