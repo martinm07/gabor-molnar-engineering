@@ -10,8 +10,8 @@
   In general, changing the tag name is a rather destructive action (it can remove attributes, change styles and so on), thus it shouldn't live update, but have some confirmation button.~~
 - ~~Tag name editor/attribute editor: When the tag name is updated (involving the creation and deletion of an element), the attribute masks are lost.~~
 - ~~Attribute editor: Selection of multiple elements may cause some attributes to clone onto elements where they are not supposed to be~~
-- CSS Editor: CSSUtilities.js doesn't recognize rules in CSS @layer at-rules.
-  Now that in Tailwind V4 all the styles are in layers, and the user-agent styles are also in layer just to remain lower precedence, this is a big deal. It essentially means that the whole `handlecss.ts` file doesn't so anything, because there's no interesting styles it can find to show as initial element styles.
+- ~~CSS Editor: CSSUtilities.js doesn't recognize rules in CSS @layer at-rules.
+  Now that in Tailwind V4 all the styles are in layers, and the user-agent styles are also in layer just to remain lower precedence, this is a big deal. It essentially means that the whole `handlecss.ts` file doesn't so anything, because there's no interesting styles it can find to show as initial element styles.~~
 - Document patch syncing: Doesn't ignore `potential-location` elements when they are inserted for adding/moving nodes, causing a lot of unnecessary network traffic
 - Document patch syncing: Doesn't utilize attribute masks to not sync "`draggable`" or "`contentEditable`" when they are used for editor functionality
 - Document patch syncing: Interprets `textContent` of nodes in `characterData` mutations as HTML, instead of escaping the strings. The same may also be an issue with `attribute` mutations.

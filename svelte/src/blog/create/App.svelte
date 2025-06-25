@@ -5,7 +5,6 @@
   } from "./cursormodes/NodeSelect.svelte";
   import EditText, { type IEditText } from "./cursormodes/EditText.svelte";
   import Sidebar from "./Sidebar.svelte";
-  import firefoxStylesPath from "./editors/css/firefoxDefaultCSS.txt";
   import EditProps from "./cursormodes/EditProps.svelte";
   import { useMutationObserver } from "runed";
   import { onDestroy, setContext } from "svelte";
@@ -60,29 +59,6 @@
   // setContext("docEl", docEl);
 
   let shiftPressed = $state(false);
-
-  // fetch_(
-  //   "https://hg.mozilla.org/mozilla-central/raw-file/tip/layout/style/res/html.css",
-  // )
-  //   .then((resp) => resp.text())
-  //   .then((data) => console.log(data));
-  fetch(firefoxStylesPath)
-    .then((resp) => resp.text())
-    .then((data) => {
-      const styleSheet = document.createElement("style");
-
-      // In the new version of Tailwind (V4), all styles have been moved into CSS @layer s, and that
-      //  causes these styles, when unlayered, to take precedence over tailwind styles (even when the
-      //  style tag is further back in the DOM). The `theme` layer is defined by Tailwind to have the
-      //  lowest precedence, the order being theme, base, components, utilities.
-      styleSheet.textContent = `
-      @layer theme {
-        ${data}
-      }
-      `;
-      // styleSheet.textContent = data;
-      document.head.prepend(styleSheet);
-    });
 
   let nodeSelect: INodeSelect | undefined = $state();
   let multipleSelect: IMultipleSelect | undefined = $state();

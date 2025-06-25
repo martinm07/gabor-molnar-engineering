@@ -603,9 +603,9 @@ def sync_document_patch():
     return content
 
 
-@bp.route("/reset_114", methods=["GET"])
+@bp.route("/reset_1", methods=["GET"])
 def reset_114():
-    document = db.session.get(GuidanceDocument, 114)
+    document = db.session.get(GuidanceDocument, 1)
     if document:
         document.body = """<h1>Introducing a Light, Visual HTML Editor</h1>
 <p>
