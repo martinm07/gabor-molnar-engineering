@@ -335,6 +335,7 @@ function getInlineStylesForElement(element: Element): CSSRuleAnalysis | null {
       inherited: false,
       source: "inline",
       originalPropertyName: propertyName,
+      specificity: [1, 0, 0, 0],
     });
   }
 
@@ -378,7 +379,10 @@ function calculateSpecificity(selector: string): SpecificityVal {
  * @param spec2 - The second specificity value to compare.
  * @returns `true` if `spec1` is greater, `false` if `spec2` is greater, or `null` if they are equal.
  */
-function specificityGreater(spec1: SpecificityVal, spec2: SpecificityVal) {
+export function specificityGreater(
+  spec1: SpecificityVal,
+  spec2: SpecificityVal,
+) {
   return spec1.reduce(
     (p, c, i) => {
       if (p === null) {

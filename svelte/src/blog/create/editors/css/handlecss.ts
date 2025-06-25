@@ -2,6 +2,7 @@ import { createParser, render, ast, type AstRule } from "css-selector-parser";
 import {
   getAllCSSRules,
   resolveCascadeForElement,
+  specificityGreater,
   type CSSRuleAnalysis,
   type SpecificityVal,
 } from "./CSSUtilities";
@@ -20,20 +21,6 @@ fetch(firefoxStylesPath)
       { sheet: UAStyles, href: "resource://user-agent-styles.css" },
     ]);
   });
-
-function specificityGreater(spec1: SpecificityVal, spec2: SpecificityVal) {
-  return spec1.reduce(
-    (p, c, i) => {
-      if (p === null) {
-        if (c > spec2[i]) return true;
-        else if (c < spec2[i]) return false;
-        // The specificities are equal
-        return null;
-      } else return p;
-    },
-    null as null | boolean,
-  );
-}
 
 type PropObj = { value: string; status: string; specificity: SpecificityVal };
 type PropsList = [string, PropObj][];
@@ -70,8 +57,8 @@ function appliesByPseudoClass(el: Element, selectorStr: string) {
 }
 console.log(parseSelector("*, a:hover"), alwaysApplies("*, a:hover"));
 
-const styleInline = (prop: PropObj) =>
-  specificityGreater(prop.specificity, [0, Infinity, 0, 0]);
+const isInlineStyle = (ruleSpecificity: SpecificityVal) =>
+  specificityGreater(ruleSpecificity, [0, Infinity, 0, 0]);
 // console.log(specificityGreater([0, 1, 0, 0], [0, Infinity, 0, 0]));
 
 export function getCSSProps(el: Element) {
@@ -83,7 +70,9 @@ export function getCSSProps(el: Element) {
 
   rules = rules.filter(
     (rule) =>
-      !alwaysApplies(rule.selector) && !appliesByPseudoClass(el, rule.selector),
+      isInlineStyle(rule.specificity) ||
+      (!alwaysApplies(rule.selector) &&
+        !appliesByPseudoClass(el, rule.selector)),
   );
 
   // Get flat list of all properties (we are no longer considering the selector after step 1)
@@ -111,7 +100,7 @@ export function getCSSProps(el: Element) {
 
   propsList = propsList.filter(
     (prop) =>
-      styleInline(prop[1]) ||
+      isInlineStyle(prop[1].specificity) ||
       (prop[0] !== "unicode-bidi" && prop[0] !== "direction"),
   );
 
@@ -120,7 +109,9 @@ export function getCSSProps(el: Element) {
 
   const cssWideVals = ["initial", "inherit", "unset", "revert", "revert-layer"];
   propsList = propsList.filter(
-    (prop) => styleInline(prop[1]) || !cssWideVals.includes(prop[1].value),
+    (prop) =>
+      isInlineStyle(prop[1].specificity) ||
+      !cssWideVals.includes(prop[1].value),
   );
 
   const props: [k: string, v: string][] = propsList.map((prop) => [
