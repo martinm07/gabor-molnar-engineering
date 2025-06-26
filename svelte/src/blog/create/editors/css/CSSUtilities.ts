@@ -149,7 +149,10 @@ export async function getAllCSSRules(
         const properties: CSSPropertyInfo[] = []; // This will now store original declared properties
 
         // Extract the declaration block from cssText (e.g., "{ border-radius: 8px; ... }")
-        const declarationBlockTextMatch = cssRule.cssText.match(/{([^}]+)}/);
+        const declarationText = cssRule.cssText.slice(
+          cssRule.selectorText.length,
+        );
+        const declarationBlockTextMatch = declarationText.match(/{([^]*)}/);
 
         if (declarationBlockTextMatch && declarationBlockTextMatch[1]) {
           const declarationBlockText = declarationBlockTextMatch[1]; // Get content inside curly braces
@@ -320,23 +323,45 @@ function getInlineStylesForElement(element: Element): CSSRuleAnalysis | null {
   }
 
   const properties: CSSPropertyInfo[] = [];
+  const declarationBlockText = element.getAttribute("style") ?? "";
 
-  // Iterate through all inline style properties
-  for (let i = 0; i < htmlElement.style.length; i++) {
-    const propertyName = htmlElement.style[i];
-    const value = htmlElement.style.getPropertyValue(propertyName);
-    const priority = htmlElement.style.getPropertyPriority(propertyName);
-
-    properties.push({
-      name: propertyName,
-      value: value,
-      important: priority === "important",
-      active: false,
-      inherited: false,
-      source: "inline",
-      originalPropertyName: propertyName,
-      specificity: [1, 0, 0, 0],
+  // NOTE: We don't use element.style for actually reading from it what properties were set
+  //        (instead we use the literal text found from getAttribute) because .style does some
+  //        processing to the styles, like converting #000 to rgb(0, 0, 0) or splitting shorthands
+  //        into longhands.
+  try {
+    // Use css-tree to parse the declaration list
+    // The context 'declarationList' is crucial here for parsing just properties and values
+    const ast = csstree.parse(declarationBlockText, {
+      context: "declarationList",
     });
+
+    // Walk the AST to find individual declarations
+    csstree.walk(ast, {
+      visit: "Declaration", // We are interested in 'Declaration' nodes
+      enter: (node: csstree.Declaration) => {
+        const originalName = node.property; // Property name as declared
+        const value = csstree.generate(node.value); // Convert AST value to string
+        const important = node.important === true; // Check if important flag is set
+
+        properties.push({
+          name: originalName, // Store the original declared property name
+          value,
+          important,
+          active: false,
+          inherited: false,
+          source: "inline",
+          specificity: [1, 0, 0, 0],
+          originalPropertyName: originalName, // Initially same as name
+        });
+      },
+    });
+  } catch (e) {
+    console.warn(
+      `Error parsing CSSRule.cssText for inline styles of element`,
+      element,
+      e,
+    );
   }
 
   // Create a synthetic rule for inline styles
