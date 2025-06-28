@@ -1,4 +1,6 @@
+import { maskedAttributes } from "./store";
 import { fetch_ } from "/shared/helper";
+import he from "he";
 
 export type DocNodeEntry =
   | {
@@ -61,6 +63,9 @@ export interface TempMutationRecord {
 // }
 
 function getNodeSourceRepresentation(node: Node): string {
+  const textContent = he.encode(node.textContent ?? "", {
+    useNamedReferences: true,
+  });
   switch (node.nodeType) {
     // TODO: I want to explicitly deny ELEMENT_NODE case, because we never actually use this string representation-
     //        we build it up manually in the reconstructHTMLString function, and only use this function for
@@ -68,9 +73,9 @@ function getNodeSourceRepresentation(node: Node): string {
     case Node.ELEMENT_NODE:
       return (node as Element).outerHTML;
     case Node.TEXT_NODE:
-      return node.textContent ?? "";
+      return textContent;
     case Node.COMMENT_NODE:
-      return `<!--${node.textContent}-->`;
+      return `<!--${textContent}-->`;
     case Node.DOCUMENT_TYPE_NODE:
       return new XMLSerializer().serializeToString(node);
     case Node.PROCESSING_INSTRUCTION_NODE:
@@ -90,21 +95,38 @@ function getNodeSourceRepresentation(node: Node): string {
 
 function getElementString(
   el: Element,
-  fullString?: string,
 ): [startingTag: string, closingTag: string | null] {
-  const nodeStr = fullString ?? el.outerHTML;
+  // Serialize the HTML opening tag into a string, taking into account attribute masks
 
-  const closingTagStr = `</${el.tagName.toLowerCase()}>`;
-  // Check if this is a void element (e.g. '<img />')
-  if (!nodeStr.endsWith(closingTagStr)) {
-    return [nodeStr, null];
-  } else {
-    const startingTagStr = nodeStr.slice(
-      0,
-      nodeStr.length - el.innerHTML.length - closingTagStr.length,
-    );
-    return [startingTagStr, closingTagStr];
-  }
+  const attrs = Array.from(el.attributes)
+    .map((attr) => {
+      // Find if there's a mask for this attribute for this element
+      const attrMask = maskedAttributes.find(
+        ({ name, affectedEls }) =>
+          name === attr.name && affectedEls.some(([el_]) => el_ === el),
+      );
+      // Use the user-facing value of the attribute mask if there is a mask, and otherwise use the real attribute value
+      const value = attrMask
+        ? attrMask.affectedEls.find(([el_]) => el_ === el)?.[1]
+        : attr.value;
+      // This condition may be triggered when the user facing value of the attribute is it not being present on the element.
+      if (value === null || value === undefined) return;
+
+      return (
+        attr.name +
+        '="' +
+        he.encode(value, {
+          useNamedReferences: true,
+        }) +
+        '"'
+      );
+    })
+    .filter((strOrUndefined) => typeof strOrUndefined === "string")
+    .join(" ");
+  const startingTagStr = `<${el.tagName.toLowerCase()} ${attrs}>`;
+
+  if (isVoidEl(el)) return [startingTagStr, null];
+  else return [startingTagStr, `</${el.tagName.toLowerCase()}>`];
 }
 
 function getNodeParents(node: Node, topEl: Node): Element[] {
@@ -338,6 +360,16 @@ function handleNodeAdd(
           node,
         );
       return [[], calculateStartIndex(nodeInfo)];
+    }
+
+    if (isPotentialLocation(node)) {
+      if (p.debug)
+        console.log(
+          "%c    Ignoring node because it is a potential location element:",
+          "font-style: italic;",
+          node,
+        );
+      return findStartIndex(node);
     }
   }
 
@@ -661,6 +693,11 @@ export function processMutations(
   return final;
 }
 
+const isPotentialLocation = (node?: Node | null) =>
+  node instanceof HTMLElement &&
+  (node.classList.contains("potential-location") ||
+    node.parentElement?.classList.contains("potential-location"));
+
 let prevFetch: Promise<Response> | null = null;
 export function patchMutations(
   mutations: TempMutationRecord[],
@@ -693,6 +730,17 @@ export function patchMutations(
 
   const patches: DocPatch[] = [];
   for (const mutation of mutations) {
+    // Ignore anything and everything to do with 'potential-location's
+    // Potential-locations created by the editor are either a div element
+    //  with the relevant class or a span element with the relevant class
+    //  and a single direct child which is a div (without the class).
+    if (
+      isPotentialLocation(mutation.target) ||
+      isPotentialLocation(mutation.addedNode) ||
+      isPotentialLocation(mutation.removedNode)
+    )
+      continue;
+
     const newPatches = handleMutationRecordPatch(mutation, {
       ...p,
       debug: opts.debug,

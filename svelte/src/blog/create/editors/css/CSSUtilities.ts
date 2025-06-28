@@ -688,6 +688,12 @@ export function resolveCascadeForElement(
   for (const propName in propertiesToConsider) {
     const declarations = propertiesToConsider[propName];
 
+    // REVERSE order for when the same property is declared multiple times WITHIN a rule,
+    //  the one that applies becomes the LAST one declared. Becase the sort puts the winning
+    //  declaration as the FIRST one in the list, we need to reverse the order to have the correct
+    //  final tie-break (i.e. when the sorting function leaves the order between two items unchanged).
+    declarations.reverse();
+
     // Sort declarations based on the W3C Cascade Algorithm
     declarations.sort((a, b) => {
       // 1. Origin and Importance precedence (handled by getCascadeScore)

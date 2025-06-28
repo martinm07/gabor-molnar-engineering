@@ -29,13 +29,18 @@
     autocompleteSuggestions,
     nodesSelection,
     savedComponents,
+    maskedAttributes,
+    type MaskAttribute,
   } from "../../store";
   import {
     changeElToComp,
     componentNameValid,
   } from "../../components/component";
+  import type { TempMutationRecord } from "../../docsyncing";
 
   const updateHighlight: () => void = getContext("updateHighlight");
+  const syncFakeMutation: (mutation: TempMutationRecord) => void =
+    getContext("syncFakeMutation");
 
   interface Props {
     selected: Element[];
@@ -53,13 +58,7 @@
     else el.removeAttribute(name);
   }
 
-  interface MaskAttribute {
-    name: string;
-    value?: string | null;
-    affectedEls: [Element, string | null | undefined][];
-  }
-  // TODO: This could be garbage collected
-  const maskedAttributes: MaskAttribute[] = [];
+  // TODO: maskedAttributes could be garbage collected
 
   /**
    * Starts tracking the usage of a specific attribute on a set of elements.
@@ -99,20 +98,24 @@
     };
     maskedAttributes.push(obj);
     (elements ?? selected).forEach((el) => setAttribute(el, name, value));
-    return [
-      () => {
-        const i = maskedAttributes.findIndex((el) => obj === el);
-        if (i === -1) return;
-        maskedAttributes[i].affectedEls.forEach(([el, userVal]) =>
-          setAttribute(el, maskedAttributes[i].name, userVal),
-        );
-        maskedAttributes.splice(i, 1);
-      },
-      (value?: string | null) => {
-        obj.value = value;
-        obj.affectedEls.forEach(([el]) => setAttribute(el, obj.name, value));
-      },
-    ];
+
+    const endAttributeUsage = () => {
+      const i = maskedAttributes.findIndex((el) => obj === el);
+      if (i === -1) return;
+      maskedAttributes[i].affectedEls.forEach(([el, userVal]) =>
+        setAttribute(el, maskedAttributes[i].name, userVal),
+      );
+      maskedAttributes.splice(i, 1);
+    };
+
+    const updateUsedAttribute = (value?: string | null) => {
+      obj.value = value;
+      obj.affectedEls.forEach(([el]) => {
+        setAttribute(el, obj.name, value);
+      });
+    };
+
+    return [endAttributeUsage, updateUsedAttribute];
   }
   export function changeElementInMasks(oldEl: Element, newEl: Element) {
     for (const mask of maskedAttributes) {
@@ -245,7 +248,18 @@
           masks.forEach((mask) => {
             mask.affectedEls
               .filter(([el]) => selected.includes(el))
-              .forEach((elval) => (elval[1] = remove ? null : attribute.value));
+              .forEach((elval) => {
+                elval[1] = remove ? null : attribute.value;
+                syncFakeMutation({
+                  type: "attributes",
+                  target: elval[0],
+                  attributeName: attribute.name,
+                  addedNode: null,
+                  removedNode: null,
+                  previousSibling: elval[0].previousSibling,
+                  oldValue: null,
+                });
+              });
           });
         });
       syncMaskedAttributes(attributes);

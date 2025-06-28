@@ -19,6 +19,13 @@ type AutocompleteMode = "css" | "attributes" | "tag" | "component" | null;
 export const autocompleteMode: Writable<AutocompleteMode> = writable(null);
 export const autocompleteSuggestions: Writable<string[]> = writable([]);
 
+export interface MaskAttribute {
+  name: string;
+  value?: string | null;
+  affectedEls: [Element, string | null | undefined][];
+}
+export const maskedAttributes: MaskAttribute[] = [];
+
 export interface SavedComponent {
   name: string;
   description?: string;

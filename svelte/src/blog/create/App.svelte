@@ -79,16 +79,38 @@
   setContext("startEdit", startEdit);
 
   let attributesEditor: IAttributesEditor | undefined = $state();
+  // IMP: The attributesEditor.startAttributeUsage method should NEVER be used -
+  //      only the function found in this "startAttributeUsage" context.
+  //      (this is to ensure that document server syncing doesn't try sync the value underneath the mask)
   setContext(
     "startAttributeUsage",
-    (name: string, value?: string | null, elements?: Element[]) =>
-      attributesEditor?.startAttributeUsage(name, value, elements) ?? [
-        () => undefined,
-        () => undefined,
-      ],
+    (name: string, value?: string | null, elements?: Element[]) => {
+      elements?.forEach((el) =>
+        ignoreDOMMutation(
+          {
+            node: el,
+            type: "attributes",
+            attributeName: name,
+          },
+          () => {},
+        ),
+      );
+      return (
+        attributesEditor?.startAttributeUsage(name, value, elements) ?? [
+          () => undefined,
+          () => undefined,
+        ]
+      );
+    },
   );
   setContext("changeElementInMasks", (oldEl: Element, newEl: Element) =>
     attributesEditor?.changeElementInMasks(oldEl, newEl),
+  );
+
+  // This is used by AttributesEditor when it handles a call to update the user-facing value of an
+  //  attribute (e.g. "draggable" while the element is in a moveable selection).
+  setContext("syncFakeMutation", (mutation: TempMutationRecord) =>
+    collectedMutations.push(mutation),
   );
 
   let selected = $derived(
@@ -233,6 +255,9 @@
   type MutationIgnoreRecord = {
     node: Node;
     type: MutationRecord["type"];
+    addedNodes?: MutationRecord["addedNodes"];
+    removedNodes?: MutationRecord["removedNodes"];
+    attributeName?: MutationRecord["attributeName"];
     id?: number;
     origin?: string;
   };
@@ -271,21 +296,27 @@
   //  5- sync the document to the database through patches to the HTML string
   const { stop } = useMutationObserver(
     () => docEl,
-    (mutations) => {
+    (unfilteredMutations) => {
       // console.log("mutation observer triggered", mutations);
 
-      for (const mutation of mutations) {
+      const mutations: MutationRecord[] = [];
+      for (const mutation of unfilteredMutations) {
         const target = mutation.target;
-
-        const ignoreI = queuedMutationIgnores.findIndex(
-          ({ node, type }) => node === target && type === mutation.type,
-        );
+        // prettier-ignore
+        const ignoreI = queuedMutationIgnores.findIndex((record) => {
+          const addedNodesMatch = record.addedNodes ? record.addedNodes === mutation.addedNodes : true;
+          const removedNodesMatch = record.removedNodes ? record.removedNodes === mutation.removedNodes : true;
+          const attributeNameMatch = record.attributeName ? record.attributeName === mutation.attributeName : true;
+          return record.node === target && record.type === mutation.type && addedNodesMatch && removedNodesMatch && attributeNameMatch;
+        });
         if (ignoreI !== -1) {
           // console.log([...queuedMutationIgnores], mutation);
           queuedMutationIgnores.splice(ignoreI, 1);
-          continue;
-        }
-        // console.log("not ignored", mutation);
+        } else mutations.push(mutation);
+      }
+
+      for (const mutation of mutations) {
+        const target = mutation.target;
 
         // 1)
         mutation.addedNodes.forEach((added) => {
@@ -390,7 +421,7 @@
   onDestroy(stop);
 
   const LOG_PATCH_SYNC = false;
-  const DO_PATCH_SYNC = false;
+  const DO_PATCH_SYNC = true;
   const stopPatchInterval = setInterval(() => {
     if (!docEl || collectedMutations.length === 0) return;
     if (!DO_PATCH_SYNC) {

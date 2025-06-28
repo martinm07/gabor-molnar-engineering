@@ -12,10 +12,10 @@
 - ~~Attribute editor: Selection of multiple elements may cause some attributes to clone onto elements where they are not supposed to be~~
 - ~~CSS Editor: CSSUtilities.js doesn't recognize rules in CSS @layer at-rules.
   Now that in Tailwind V4 all the styles are in layers, and the user-agent styles are also in layer just to remain lower precedence, this is a big deal. It essentially means that the whole `handlecss.ts` file doesn't so anything, because there's no interesting styles it can find to show as initial element styles.~~
-- Document patch syncing: Doesn't ignore `potential-location` elements when they are inserted for adding/moving nodes, causing a lot of unnecessary network traffic
-- Document patch syncing: Doesn't utilize attribute masks to not sync "`draggable`" or "`contentEditable`" when they are used for editor functionality
-- Document patch syncing: Interprets `textContent` of nodes in `characterData` mutations as HTML, instead of escaping the strings. The same may also be an issue with `attribute` mutations.
-  There is a library called "[he](https://www.npmjs.com/package/he)" that can be used to address this.
+- ~~Document patch syncing: Doesn't ignore `potential-location` elements when they are inserted for adding/moving nodes, causing a lot of unnecessary network traffic~~
+- ~~Document patch syncing: Doesn't utilize attribute masks to not sync "`draggable`" or "`contentEditable`" when they are used for editor functionality~~
+- ~~Document patch syncing: Interprets `textContent` of nodes in `characterData` mutations as HTML, instead of escaping the strings. The same may also be an issue with `attribute` mutations.
+  There is a library called "[he](https://www.npmjs.com/package/he)" that can be used to address this.~~
 
 ## Current Checklist
 
