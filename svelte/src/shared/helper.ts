@@ -134,3 +134,17 @@ export function darkenColor(color: string, alpha: number) {
 export function escapeRegex(string: string) {
   return string.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
 }
+
+/**
+ * Object.assign(), but calls structuredClone on the object passed in as the first argument. This is to avoid
+ * Object.assign() modifying that object.
+ *
+ * NOTE: structuredClone() doesn't expect Proxy objects (which is what $state variables are), so if some $state
+ *       is passed in as the first argument, make sure to use $state.snapshot() first.
+ */
+export function assign<T1 extends object, T2 extends object>(
+  obj1: T1,
+  obj2: T2,
+): T1 & T2 {
+  return Object.assign(structuredClone(obj1), obj2);
+}

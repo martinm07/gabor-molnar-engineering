@@ -1,9 +1,11 @@
 <script lang="ts">
-  import { getContext } from "svelte";
+  import { getContext, untrack } from "svelte";
   import { activeElement, watch } from "runed";
-  import { autocompleteMode, autocompleteSuggestions } from "../store";
+  import { autocompleteMode, autocompleteSuggestions } from "../store.svelte";
   import { ClonedSelection, isElementVisible } from "../helper";
   import { request2AnimationFrames } from "/shared/helper";
+  import type { Attachment } from "svelte/attachments";
+  import { SvelteMap } from "svelte/reactivity";
 
   const getPrevSelection: () => ClonedSelection | null =
     getContext("getPrevSelection");
@@ -13,8 +15,41 @@
   let unfocused = $state(true);
   let suggestionEls: HTMLElement[] = $state([]);
   let suggestionGroupXs: number[][] = $state([]);
+
+  // A mapping of offsetTop values to the list of suggestion elements that share that value
+  // const suggestionElGroups = new SvelteMap<number, HTMLElement[]>();
+  // A flat list of all suggestion elements, sorted in reading order (left-to-right, top-to-bottom)
+  // const suggestionEls: HTMLElement[] = $derived(
+  //   Array.from(suggestionElGroups.entries())
+  //     .toSorted(([a], [b]) => a - b)
+  //     .flatMap(([_, els]) =>
+  //       els.toSorted((a, b) => a.offsetLeft - b.offsetLeft),
+  //     ),
+  // );
+  // A nested list of the x coordinates of suggestion elements, where the index of every entry in
+  //  a flattened version of this list corresponds correctly to an element in suggestionEls,
+  //  and entries in the same nested list are in the same horizontal row (i.e. group).
+  // const suggestionGroupXs: number[][] = $derived(
+  //   Array.from(suggestionElGroups.entries())
+  //     .toSorted(([a], [b]) => a - b)
+  //     .map(([_, els]) =>
+  //       els
+  //         .map((el) => el.offsetLeft + el.clientWidth / 2)
+  //         .toSorted((a, b) => a - b),
+  //     ),
+  // );
+
+  // watch(
+  //   [() => Boolean($autocompleteMode), () => $autocompleteSuggestions],
+  //   () => {
+  //     activeI = 0;
+  //     lastHorizontalX = 0;
+  //     unfocused = false;
+  //   },
+  // );
+
   watch(
-    () => [Boolean($autocompleteMode), $autocompleteSuggestions],
+    [() => Boolean($autocompleteMode), () => $autocompleteSuggestions],
     () => {
       activeI = 0;
       lastHorizontalX = 0;
@@ -34,6 +69,31 @@
       });
     },
   );
+  // const updateGroupsMap: Attachment = (element) => {
+  //   if (!(element instanceof HTMLElement)) return;
+  //   const i: number = Number.parseInt(element.dataset.i ?? "");
+  //   if (Number.isNaN(i))
+  //     throw new Error(
+  //       "Attachment element had an invalid value for 'i' in data-i",
+  //     );
+
+  //   const groupsMap = untrack(() => $state.snapshot(suggestionElGroups));
+
+  //   const key = element.offsetTop;
+  //   suggestionElGroups.set(key, [...(groupsMap.get(key) ?? []), element]);
+
+  //   return () => {
+  //     // console.log("performing teardown", element);
+
+  //     // FOR SOME REASON, THIS TEARDOWN DOESN'T FULLY GET RID OF OLD ELEMENTS
+
+  //     // Remove the element from the map when it gets destroyed (cleanup)
+  //     suggestionElGroups.set(
+  //       key,
+  //       (groupsMap.get(key) ?? []).filter((el_) => el_ !== element),
+  //     );
+  //   };
+  // };
 
   const getNodeElement = (node: Node) =>
     (node.nodeType === Node.TEXT_NODE
@@ -120,19 +180,19 @@
     if (newGroupI < 0) newGroupI = suggestionGroupXs.length - 1;
     else if (newGroupI >= suggestionGroupXs.length) newGroupI = 0;
 
-    let bestI: number = 0;
+    let bestInnerI: number = 0;
     let bestDistance: number = Infinity;
     for (const [i, x] of suggestionGroupXs[newGroupI].entries()) {
       const distance = Math.abs(lastHorizontalX - x);
       if (distance < bestDistance) {
         bestDistance = distance;
-        bestI = i;
+        bestInnerI = i;
       }
     }
 
     const newI =
       suggestionGroupXs.slice(0, newGroupI).reduce((p, c) => p + c.length, 0) +
-      bestI;
+      bestInnerI;
     activeI = newI;
     if (!isElementVisible(suggestionEls[activeI]))
       suggestionEls[activeI].scrollIntoView({
@@ -222,9 +282,12 @@
         type="button"
         class:active={activeI === i}
         onclick={() => acceptSuggestion(i)}
+        data-i={i}
         class="inline-block p-1 px-2 rounded bg-steel-100 hover:bg-steel-200 text-steel-600 m-1 text-sm font-mono [.active]:bg-steel-200"
         >{suggestion}</button
       >
+      <!-- {@attach updateGroupsMap}>{suggestion}</button
+        > -->
     {/each}
   {/if}
 </div>

@@ -136,7 +136,7 @@
   );
 
   watch(
-    () => [sortBy, sortOrder],
+    [() => sortBy, () => sortOrder],
     (_, p) => {
       if (p && p.some((el) => !el)) return;
       const query_ = new URLSearchParams(lastSubmittedQuery);

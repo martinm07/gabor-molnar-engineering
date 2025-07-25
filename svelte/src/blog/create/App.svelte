@@ -5,16 +5,21 @@
   } from "./cursormodes/NodeSelect.svelte";
   import EditText, { type IEditText } from "./cursormodes/EditText.svelte";
   import Sidebar from "./Sidebar.svelte";
-  import EditProps from "./cursormodes/EditProps.svelte";
-  import { useMutationObserver } from "runed";
+  import { useDebounce, useMutationObserver, watch } from "runed";
   import { onDestroy, setContext } from "svelte";
   import {
-    cursorMode,
-    sidebarMode,
+    mode,
     nodeHoverTarget,
     nodesSelection,
     autocompleteMode,
-  } from "./store";
+    savedComponents,
+    type SavedComponent,
+    editorState,
+    compLibVer,
+    compLibEdits,
+    allComponentTags,
+    changePage,
+  } from "./store.svelte";
   import AddNode, { type IAddNode } from "./cursormodes/AddNode.svelte";
   import MultipleSelect, {
     type IMultipleSelect,
@@ -35,28 +40,179 @@
     patchMutations,
   } from "./docsyncing";
   import Autocomplete from "./editors/Autocomplete.svelte";
-  import { fetch_ } from "/shared/helper";
-  import { decodeComponentStr } from "./components/component";
+  import { fetch_, assign, request2AnimationFrames } from "/shared/helper";
+  import {
+    comps,
+    decodeComponentStr,
+    generateCompContentStr,
+    updateCompEdit,
+    type CompLibUpgradeInfo,
+    type GetCompLibFetchReturn,
+  } from "./components/component.svelte";
+  import Topbar from "./Topbar.svelte";
+  import SaveChanges from "./components/SaveChanges.svelte";
+  import ArrowArcLeft from "phosphor-svelte/lib/ArrowArcLeft";
 
-  let document_: string = $state("");
+  // let compLibVer: string | null = $state(null);
+  // let latestCompLibVer: string | null = $state(null);
 
-  let documentID: number;
-  if (globalThis.jinjaParsed) documentID = globalThis.blogcreateDocumentID;
-  else
-    documentID = Number.parseInt(
-      new URLSearchParams(location.search).get("id") ?? "",
-    );
+  // const currentVerFetch = fetch_("/documents/savedcomponents_currentversion")
+  //   .then((resp) => resp.text())
+  //   .then((latestVer) => {
+  //     compLibVer.latestVer = latestVer;
+  //     // compLibVer.latestVer = "somethingotallydifferent";
+  //     // If we are in the component editor, then we will be editing the latest version of the component library
+  //     if (componentID !== null) {
+  //       compLibVer.currentVer = latestVer;
+  //       // compLibVer.currentVer = "somethingtotallydifferent";
+  //       return getSavedComponentLibrary(latestVer);
+  //     } else return Promise.resolve();
+  //   });
+
+  let documentID = $derived(
+    editorState.mode === "document"
+      ? Number.parseInt(editorState.resourceName)
+      : null,
+  );
+  let componentID = $derived(
+    editorState.mode === "component" ? editorState.resourceName : null,
+  );
+
   let patchSync: boolean | null = null;
-  // ID 114 is starter.txt
-  fetch_(`/documents/get_document_edit?id=${documentID}`)
-    .then((resp) => resp.json())
-    .then((data) => {
-      patchSync = false;
-      document_ = data.body;
-    });
+
+  let compLibUpgradeInfo: CompLibUpgradeInfo | null = null;
+  setContext("getCompLibUpgradeInfo", () => compLibUpgradeInfo);
+
+  function getSavedComponentLibrary(ver?: string) {
+    console.log("getting saved components library");
+
+    const URL = `/documents/get_component_library${typeof ver === "string" ? "?ver=" + ver : ""}`;
+    return fetch_(URL)
+      .then((resp) => resp.json())
+      .then((data: GetCompLibFetchReturn) => {
+        console.log(data);
+        // The response from the server has every field as a string, so we must
+        //  do these conversions for 'tags' and 'parts'.
+        // data.forEach((comp) => {
+        //   comp["tags"] = (comp["tags"] as unknown as string).split(",");
+        //   comp["parts"] = (comp["parts"] as unknown as string).split("|");
+        // });
+        // savedComponents.update(() => data);
+
+        const components = data.library.map((comp) =>
+          Object.assign(comp, { identName: comp.name }),
+        );
+        savedComponents.splice(0, savedComponents.length, ...components);
+        return data;
+      });
+  }
+
+  watch(() => documentID, loadDocument);
+  function loadDocument() {
+    if (documentID === null) return;
+    fetch_(`/documents/get_document_edit?id=${documentID}`)
+      .then((resp) => resp.json())
+      .then((data) => {
+        patchSync = false;
+
+        if (docEl) docEl.innerHTML = data.body;
+
+        // If we are coming back from editing components in the middle
+        //  of adding a new node, then we need to recover the editor state
+        //  to the point where the user was trying to add a new node
+        request2AnimationFrames(() => {
+          if (!docEl) return;
+          const tempAdded = Array.from(docEl.querySelectorAll(".temp-added"));
+
+          // There is in fact no attempt at adding a new node, thus we return early
+          if (tempAdded.length === 0) return;
+
+          multipleSelect?.removeSelection();
+          multipleSelect?.toggleToSelection(tempAdded);
+          mode.sidebar = "addcomponent";
+        });
+
+        const componentLibVer = data["component_lib_ver"];
+        if (typeof componentLibVer !== "string")
+          throw new Error(
+            "'/documents/get_document_edit' didn't return string for key 'component_lib_ver'.",
+          );
+        compLibVer.currentVer = componentLibVer;
+        return getSavedComponentLibrary(componentLibVer);
+      })
+      .then((data) => {
+        compLibUpgradeInfo = {
+          to_version: data.upgrade_to_version,
+          name_map: data.upgrade_name_map,
+          content_list: data.upgrade_content_list,
+          remove_list: data.upgrade_remove_list,
+          diff_msgs: data.upgrade_diff_msgs,
+        };
+        compLibVer.latestVer =
+          data.upgrade_diff_msgs.at(-1)?.version ?? compLibVer.currentVer;
+      });
+  }
+  setContext("refreshDocument", loadDocument);
+
+  watch(
+    () => componentID,
+    () => {
+      if (componentID === null) return;
+      // console.log("componentID changed", componentID);
+
+      // Get all currently defined tags, so that autocomplete can be provided when modifying component tags
+      fetch_("/documents/get_component_tags")
+        .then((resp) => resp.json())
+        .then((data: string[]) => {
+          allComponentTags.splice(0, allComponentTags.length, ...data);
+        });
+
+      fetch_("/documents/savedcomponents_currentversion")
+        .then((resp) => resp.text())
+        .then((latestVer) => {
+          compLibVer.latestVer = latestVer;
+          compLibVer.currentVer = latestVer;
+        });
+
+      getSavedComponentLibrary().then(() => {
+        if (componentID === null) return;
+        const comp = savedComponents.find((comp) => comp.name === componentID);
+        const editMatch = compLibEdits.current.find(
+          (edit) => edit.type !== "remove" && edit.identName === componentID,
+        );
+        if (!comp && !editMatch) return;
+
+        const compWithEdits = assign(
+          $state.snapshot(comp) ?? {},
+          editMatch ?? {},
+        ) as SavedComponent;
+
+        patchSync = true;
+
+        const compBody = decodeComponentStr(compWithEdits.content, "component");
+        if (docEl) docEl.innerHTML = "";
+        docEl?.appendChild(compBody);
+
+        request2AnimationFrames(() => {
+          if (!docEl) return;
+          const tempAdded = Array.from(docEl.querySelectorAll(".temp-added"));
+
+          // There is in fact no attempt at adding a new node, thus we return early
+          if (tempAdded.length === 0) return;
+
+          multipleSelect?.removeSelection();
+          multipleSelect?.toggleToSelection(tempAdded);
+          mode.sidebar = "addcomponent";
+        });
+
+        mode.sidebar = "edit";
+        multipleSelect?.removeSelection();
+      });
+    },
+  );
 
   let docEl: HTMLElement | undefined = $state();
-  // setContext("docEl", docEl);
+  setContext("getDocEl", () => docEl);
 
   let shiftPressed = $state(false);
 
@@ -72,6 +228,14 @@
   setContext("setSelection", (nodes?: Node[] | Node) => {
     multipleSelect?.removeSelection();
     multipleSelect?.toggleToSelection(nodes);
+  });
+  setContext("removeFromSelection", (nodes?: Node[] | Node) => {
+    let currentlySelected: Element[] = [];
+    if (Array.isArray(nodes))
+      currentlySelected = $nodesSelection.filter((el) => nodes.includes(el));
+    else if (nodes && nodes instanceof Element)
+      currentlySelected = $nodesSelection.includes(nodes) ? [nodes] : [];
+    multipleSelect?.toggleToSelection(currentlySelected);
   });
 
   let editText: IEditText | undefined = $state();
@@ -129,7 +293,7 @@
       ),
     );
     if (e.key === "s" && !inTextField) {
-      // $cursorMode = "noselect";
+      // mode.cursor = "noselect";
       multipleSelect?.toggleToSelection();
     } else if (e.key === "t" && !inTextField) {
       editText?.startEdit(e);
@@ -144,7 +308,7 @@
       multipleSelect?.removeSelection();
       multipleSelect?.toggleToSelection(children);
     } else if (e.key === "m" && !inTextField && $nodesSelection.length !== 0) {
-      $cursorMode = "move";
+      mode.cursor = "move";
     } else if (e.key === "Delete" && !inTextField) {
       if ($nodesSelection.length > 0) {
         $nodesSelection.forEach((el) => el.remove());
@@ -157,11 +321,11 @@
       !document.querySelector(".autocomplete-display button") &&
       !inTextField
     ) {
-      if ($sidebarMode === "component")
+      if (mode.sidebar === "addcomponent")
         $nodesSelection.forEach((el) => el.remove());
 
-      if ($cursorMode === "select") multipleSelect?.removeSelection();
-      $cursorMode = "select";
+      if (mode.cursor === "select") multipleSelect?.removeSelection();
+      mode.cursor = "select";
     } else if (
       e.key === "Escape" &&
       !document.querySelector(".autocomplete-display button") &&
@@ -170,7 +334,7 @@
     ) {
       e.target.blur();
     } else return;
-    if ($sidebarMode === "component") $sidebarMode = "edit";
+    // if (mode.sidebar === "component") mode.sidebar = "edit";
   }
 
   // const stopLogInterval = setInterval(() => {
@@ -285,6 +449,7 @@
 
   // This observer is to
   //  1- disallow non-element nodes as direct children of docEl
+  //      AND enforce at least one element in the document
   //  2- try enforce no "collapsed" elements (that is, elements with 0 height and/or width),
   //    by making those that WOULD, take a single non-breaking space (&nbsp;) character as textContent
   //  3- check elements with only whitespace as text content if that white space could be removed
@@ -297,7 +462,7 @@
   const { stop } = useMutationObserver(
     () => docEl,
     (unfilteredMutations) => {
-      // console.log("mutation observer triggered", mutations);
+      console.log("mutation observer triggered", unfilteredMutations);
 
       const mutations: MutationRecord[] = [];
       for (const mutation of unfilteredMutations) {
@@ -325,6 +490,15 @@
             added.parentElement === docEl
           )
             added.parentElement.removeChild(added);
+        });
+        request2AnimationFrames(() => {
+          // console.log("Checking for empty document", docEl);
+          if (docEl?.childElementCount === 0) {
+            const div = document.createElement("div");
+            div.innerHTML =
+              "Without at least one node, it is impossible to add anything - as it relies on adding things RELATIVE to OTHER nodes.";
+            docEl.appendChild(div);
+          }
         });
 
         // 2) Handle newly added nodes, making sure they aren't collapsed
@@ -366,7 +540,7 @@
           if (rect.height * rect.width >= 1) continue;
 
           addNBSP(el);
-          if ($cursorMode === "edit")
+          if (mode.cursor === "edit")
             getSelection()?.setBaseAndExtent(target, 0, target, 1);
         }
         // 3) We know this element has only whitespace- because of the early termination above-
@@ -376,8 +550,22 @@
           //  the user would like this element to be empty, but we don't allow that
           //  unless the element has some non-zero area that could be hovered and selected.
           const undo = removeTextContent(el);
-          const rect = el.getBoundingClientRect();
-          if (rect.height * rect.width < 1) undo();
+          if (el !== docEl) {
+            const rect = el.getBoundingClientRect();
+            if (rect.height * rect.width < 1) undo();
+          } else {
+            // The element we're trying to see is collapsed or not is the document container itself,
+            //  which is guaranteed to stretch the screen height. Thus, for this element we see add heights
+            //  of its immediate children instead.
+            const children = Array.from(el.children);
+            const avgArea = children
+              .map((child) => {
+                const rect = child.getBoundingClientRect();
+                return (rect.height * rect.width) / children.length;
+              })
+              .reduce((p, c) => p + c, 0);
+            if (avgArea < 1) undo();
+          }
         }
       }
 
@@ -420,12 +608,33 @@
   );
   onDestroy(stop);
 
+  const COMPONENT_DEBOUNCE_DURATION = 1000;
+  const updateCompEditContent = useDebounce(
+    () => {
+      if (componentID === null || !docEl) return;
+      const comp = comps.lib.find((comp) => comp.identName === componentID);
+      if (!comp) return;
+      updateCompEdit(componentID, generateCompContentStr(docEl, comp.name));
+    },
+    () => COMPONENT_DEBOUNCE_DURATION,
+  );
+  watch(
+    () => comps.lib.find((comp) => comp.identName === componentID)?.name,
+    (current, prev) => {
+      if (current !== prev) updateCompEditContent();
+    },
+  );
+
   const LOG_PATCH_SYNC = false;
   const DO_PATCH_SYNC = true;
   const stopPatchInterval = setInterval(() => {
     if (!docEl || collectedMutations.length === 0) return;
-    if (!DO_PATCH_SYNC) {
+    if (!DO_PATCH_SYNC || documentID === null) {
       collectedMutations = [];
+      if (componentID !== null) {
+        console.log("Debouncing component content edit.");
+        updateCompEditContent();
+      }
       return;
     }
 
@@ -484,19 +693,21 @@
   }}
 />
 
-<EditProps />
-
 <div
   class="grid grid-cols-[30%_1fr] grid-rows-[48px_3fr_1fr] [.hide-bl]:grid-rows-[48px_3fr_0fr] h-screen overflow-y-hidden"
-  class:hide-bl={$sidebarMode !== "edit"}
+  class:hide-bl={mode.sidebar !== "edit"}
 >
   <div
-    style="scrollbar-color: #cdcdcd var(--background);"
+    style="scrollbar-color: var(--rock-100) var(--background);"
     class="row-span-2 border-r-2 border-rock-300 bg-background p-2 overflow-y-scroll relative"
   >
     <Sidebar bind:attributesEditor />
   </div>
-  <div class="border-b-2 border-rock-300 bg-rock-50 bg-opacity-85"></div>
+  <div
+    class="topbar flex relative border-b-2 border-rock-300 bg-rock-50 bg-opacity-85"
+  >
+    <Topbar />
+  </div>
   <div
     class="flex row-span-2 col-span-1 justify-center relative z-0 overflow-auto"
   >
@@ -507,8 +718,9 @@
       <AddNode doc={docEl} bind:this={addNode} />
       <MoveNodes doc={docEl} />
     {/if}
+
     <div class="doc w-3/4 max-w-[600px]" bind:this={docEl}>
-      {@html document_}
+      Loading document...
     </div>
   </div>
   <div
@@ -529,3 +741,21 @@
     </div>
   </div>
 </div>
+
+{#if editorState.documentRedirect && mode.sidebar === "edit"}
+  <button
+    aria-label="Return to document"
+    class="absolute aspect-square text-2xl p-2 top-2 left-2 rounded-lg border-2 border-rock-100 text-rock-600 hover:bg-rock-100 hover:active:bg-rock-200 hover:active:text-rock-700 hover:active:border-rock-200 hover:active:translate-y-1"
+    onclick={() => {
+      changePage(
+        editorState.mode === "component" ? "document" : "component",
+        editorState.documentRedirect!,
+        null,
+      );
+    }}
+  >
+    <ArrowArcLeft weight="bold" />
+  </button>
+{/if}
+
+<SaveChanges />

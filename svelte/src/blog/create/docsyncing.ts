@@ -1,4 +1,5 @@
-import { maskedAttributes } from "./store";
+import { getNodeParents } from "./helper";
+import { maskedAttributes } from "./store.svelte";
 import { fetch_ } from "/shared/helper";
 import he from "he";
 
@@ -127,19 +128,6 @@ function getElementString(
 
   if (isVoidEl(el)) return [startingTagStr, null];
   else return [startingTagStr, `</${el.tagName.toLowerCase()}>`];
-}
-
-function getNodeParents(node: Node, topEl: Node): Element[] {
-  if (node === topEl || !topEl.contains(node)) return [];
-
-  let parent = node.parentElement;
-  const allParents: Element[] = [];
-
-  while (parent && parent !== topEl) {
-    allParents.push(parent);
-    parent = parent.parentElement;
-  }
-  return allParents;
 }
 
 function isVoidEl(el: Element) {

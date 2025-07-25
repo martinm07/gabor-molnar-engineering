@@ -1,4 +1,19 @@
 <script module lang="ts">
+  /**
+   * Calculates the total character offset from the start of a parent element to a given target node and offset.
+   *
+   * This function is useful for mapping a DOM selection (node and offset) to a linear character offset within the parent element's text content.
+   *
+   * @param parentEl - The parent element containing the nodes to measure.
+   * @param targetNode - The target node (can be the parent element, a child element, or a text node) where the offset is calculated.
+   * @param targetOffset - The offset within the target node (for elements, this is the child index; for text nodes, this is the character offset).
+   * @returns The total character offset from the start of the parent element to the specified target node and offset.
+   *
+   * Handles the following cases:
+   * - If the target node is the parent element itself, sums the text content lengths of its children up to the target offset.
+   * - If the target node is a child element, sums the text content lengths of all previous siblings and the offset within the target element.
+   * - If the target node is a text node, sums the lengths of all previous text nodes and adds the target offset.
+   */
   export function calculateTotalOffset(
     parentEl?: Element,
     targetNode?: Node | null,
@@ -38,6 +53,14 @@
     return totalOffset + (targetOffset ?? 0);
   }
 
+  /**
+   * Finds the text node and corresponding offset within that node, given a root element and a character offset.
+   *
+   * @param el - The root DOM element to search within.
+   * @param offset - The character offset to locate within the text nodes of the element.
+   * @returns A tuple containing the found Text node and the offset within that node.
+   *          If the element is undefined, returns a new empty Text node and offset 0.
+   */
   export function findNodeFromOffset(
     el: Element | undefined,
     offset: number,
@@ -71,7 +94,7 @@
   import { onDestroy, getContext } from "svelte";
   import { on } from "svelte/events";
   import { watch } from "runed";
-  import { cssStyles, autocompleteSuggestions } from "../../store";
+  import { cssStyles, autocompleteSuggestions } from "../../store.svelte";
   import {
     charInStrQuoted,
     getCSSProps,
@@ -671,6 +694,7 @@
   contenteditable="true"
   oninput={onInput}
   onbeforeinput={(e) => {
+    // TODO: This was for preventColonsDeletion, which has since been removed, and thus this may no longer be necessary.
     prevStyleStr = stylesEl.textContent ?? "";
   }}
   onkeydown={onKeydown}

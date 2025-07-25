@@ -8,7 +8,7 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { on } from "svelte/events";
-  import { cursorMode, nodeHoverTarget } from "../store";
+  import { mode, nodeHoverTarget } from "../store.svelte";
   import { getAllTextNodes } from "../helper";
 
   interface Props {
@@ -17,14 +17,14 @@
   let { doc }: Props = $props();
 
   $effect(() => {
-    if ($cursorMode !== "edit" && editTarget) unfocus();
+    if (mode.cursor !== "edit" && editTarget) unfocus();
   });
 
   let editTarget: HTMLElement | undefined;
 
   export function startEdit(e?: KeyboardEvent) {
     if (!($nodeHoverTarget instanceof HTMLElement)) return;
-    $cursorMode = "edit";
+    mode.cursor = "edit";
     editTarget = $nodeHoverTarget;
     $nodeHoverTarget.contentEditable = "true";
     $nodeHoverTarget.focus();
@@ -66,7 +66,7 @@
     if (!editTarget) return;
     editTarget.contentEditable = "false";
     editTarget = undefined;
-    $cursorMode = "select";
+    mode.cursor = "select";
   }
 
   let mouseX: number = 0;
@@ -78,7 +78,7 @@
       e.target instanceof HTMLElement &&
       e.target.closest(".doc")
     ) {
-      $cursorMode = "select";
+      mode.cursor = "select";
       unfocus();
     }
   }

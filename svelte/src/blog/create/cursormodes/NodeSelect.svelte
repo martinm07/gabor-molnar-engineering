@@ -7,7 +7,7 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { on } from "svelte/events";
-  import { cursorMode, nodeHoverTarget } from "../store";
+  import { mode, nodeHoverTarget } from "../store.svelte";
 
   interface Props {
     shiftPressed: boolean;
@@ -20,9 +20,9 @@
   let targetOriginal: Element | undefined;
   let ancestorCount: number = 0;
 
-  let doSelect = $derived($cursorMode === "select");
+  let doSelect = $derived(mode.cursor === "select");
   let displaySelection = $derived(
-    $cursorMode !== "edit" && $cursorMode !== "add" && $cursorMode !== "move",
+    mode.cursor !== "edit" && mode.cursor !== "add" && mode.cursor !== "move",
   );
   // When we're not in select mode, we still want to keep track of the 'theoretical hover target'
   //  so that when we go back to select mode we can instantly be back in sync with the mouse position.
@@ -73,7 +73,7 @@
   }
 
   function onWheel(e: WheelEvent) {
-    if ($cursorMode !== "select") return;
+    if (mode.cursor !== "select") return;
     if (shiftPressed && e.deltaY < 0) {
       const parent = $nodeHoverTarget?.parentElement ?? undefined;
       if (parent instanceof HTMLElement && parent.classList.contains("doc"))
@@ -93,6 +93,7 @@
 <svelte:window onwheel={onWheel} />
 <div
   class:hidden={!$nodeHoverTarget || !displaySelection}
-  class="absolute ring-8 rounded ring-rock-500/50 pointer-events-none z-10"
+  class="absolute border-8 rounded-xl border-rock-500/50 box-content -translate-x-2 -translate-y-2 pointer-events-none z-10"
+  class:border-dashed={$nodeHoverTarget?.getAttribute("data-component")}
   bind:this={highlight}
 ></div>

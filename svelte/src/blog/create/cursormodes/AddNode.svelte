@@ -334,12 +334,7 @@
 <script lang="ts">
   import { onDestroy, getContext } from "svelte";
   import { watch } from "runed";
-  import {
-    cursorMode,
-    nodeHoverTarget,
-    nodesIslandSelection,
-    sidebarMode,
-  } from "../store";
+  import { mode, nodeHoverTarget, nodesIslandSelection } from "../store.svelte";
   import { type IEditText } from "./EditText.svelte";
   import { request2AnimationFrames } from "/shared/helper";
 
@@ -355,9 +350,9 @@
   const potentialLocations = new PotentialLocations(doc);
 
   watch(
-    () => $cursorMode,
+    () => mode.cursor,
     (_, prev) => {
-      if ($cursorMode === "add") potentialLocations.addPotentialLocs();
+      if (mode.cursor === "add") potentialLocations.addPotentialLocs();
       else if (prev === "add") potentialLocations.removePotentialLocs();
     },
   );
@@ -408,22 +403,23 @@
       setSelection(newEl);
     } else {
       setSelection([]);
-      $cursorMode = "add";
+      mode.cursor = "add";
     }
   }
 </script>
 
 <svelte:window
   onmousemove={(e) => {
-    if ($cursorMode !== "add") return;
+    if (mode.cursor !== "add") return;
     potentialLocations.activeLocation = potentialLocations.handleHover(e);
   }}
   onclick={() => {
-    if ($cursorMode === "add" && potentialLocations.activeLocation) {
+    if (mode.cursor === "add" && potentialLocations.activeLocation) {
       const active = potentialLocations.activeLocation;
 
       // We cannot modify a potential-location to turn it into the actual node, as the document syncer ignores potential-location elements.
       const newEl = document.createElement(active.tagName.toLowerCase());
+      newEl.classList.add("temp-added");
       newEl.innerHTML = "&nbsp;";
       // We also MUST insert the element BEFORE the potential-location, as the document syncer uses the previousSibling to determine
       //  how to patch the document HTML string, and it causes an error if the previous sibling is the ignored potential-location element.
@@ -431,8 +427,8 @@
 
       setSelection(newEl);
       // editText();
-      $sidebarMode = "component";
-      $cursorMode = "select";
+      mode.sidebar = "addcomponent";
+      mode.cursor = "select";
       request2AnimationFrames(() => {
         // const selection = getSelection();
         // selection?.selectAllChildren(active);

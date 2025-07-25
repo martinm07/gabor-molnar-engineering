@@ -9,7 +9,7 @@
 <script lang="ts">
   import type { Attachment } from "svelte/attachments";
   import { watch } from "runed";
-  import { nodeHoverTarget, nodesSelection } from "../store";
+  import { nodeHoverTarget, nodesSelection } from "../store.svelte";
 
   let highlights: HTMLElement[] = $state([]);
   // $inspect(highlights);
@@ -101,11 +101,17 @@
       };
     };
   };
+
+  // There seems to be some sort of bug with using a store directly inside an {#each} loop,
+  //  where under certain specific circumstances it stops updating at a 0-length array.
+  //  For example, when adding a node, going to edit a component, then actually adding a node
+  //  within the component, breaks the {#each} loop when it's directly referencing $nodesSelection.
+  let selectionState = $derived($nodesSelection);
 </script>
 
-{#each $nodesSelection as _, i}
+{#each selectionState as _, i}
   <div
-    class:hidden={$nodesSelection.length === 0}
+    class:hidden={selectionState.length === 0}
     class="absolute ring-4 rounded ring-rock-700/50 pointer-events-none z-10"
     bind:this={highlights[i]}
     {@attach spliceOnDestroy(i)}

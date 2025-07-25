@@ -31,11 +31,12 @@
     savedComponents,
     maskedAttributes,
     type MaskAttribute,
-  } from "../../store";
+    editorState,
+  } from "../../store.svelte";
   import {
     changeElToComp,
     componentNameValid,
-  } from "../../components/component";
+  } from "../../components/component.svelte";
   import type { TempMutationRecord } from "../../docsyncing";
 
   const updateHighlight: () => void = getContext("updateHighlight");
@@ -192,35 +193,42 @@
   // NOTE: Be careful, even updates that don't actually change the watch value
   //        (e.g. splicing an entry then reinserting it in the same place) will
   //        trigger the callback, giving potential for infinite loops
-  watch(
-    () => [attributes.map((attr) => attr.name), selected],
-    () => {
-      const allAvailable = allAvailableAttributes();
-      attributes.forEach((attr, i) => {
-        const url = returnValidURL(attr.name, allAvailable);
-        if (
-          !url ||
-          attributes.slice(0, i).some((el) => el.name === attr.name)
-        ) {
-          attr.valid = false;
-          attr.referenceUrl = "";
-        } else {
-          attr.valid = true;
-          attr.referenceUrl = url;
-        }
-      });
-
-      const dataComponentI = attributes.findIndex(
-        (attr) => attr.name === "data-component",
-      );
-      if (dataComponentI > 0) {
-        const dataComponent = attributes.splice(dataComponentI, 1)[0];
-        attributes.unshift(dataComponent);
+  // NOTE2: It's important to understand dependencies (https://svelte.dev/docs/svelte/$effect#Understanding-dependencies)
+  //         to know when this watch will re-trigger. Essentially, if the getter
+  //         was just `() => attributes`, that would run whenever `attributes` is
+  //         reassigned and no time else. To run any time `attributes` is reassigned
+  //         OR updated, we can use `() => $state.snapshot(attributes)`. For something
+  //         in-between, we have `() => attributes.map((attr) => attr.name)`, which runs
+  //         whenever `attributes` is reassigned OR whenevever objects are added or removed
+  //         OR whenever a `name` of an object is *changed* (not merely reassigned), but not
+  //         for any other property changes.
+  //         See: https://svelte.dev/playground/8e68ac4df9a047cebdb69e99be47808c?version=5.35.5
+  watch([() => attributes.map((attr) => attr.name), () => selected], () => {
+    const allAvailable = allAvailableAttributes();
+    attributes.forEach((attr, i) => {
+      const url = returnValidURL(attr.name, allAvailable);
+      if (!url || attributes.slice(0, i).some((el) => el.name === attr.name)) {
+        attr.valid = false;
+        attr.referenceUrl = "";
+      } else {
+        attr.valid = true;
+        attr.referenceUrl = url;
       }
+    });
 
-      handleAutocomplete(allAvailable);
-    },
-  );
+    const dataComponentI = attributes.findIndex(
+      (attr) => attr.name === "data-component",
+    );
+    if (
+      dataComponentI > 0 ||
+      (dataComponentI === 0 && editorState.mode !== "document")
+    ) {
+      const dataComponent = attributes.splice(dataComponentI, 1)[0];
+      if (editorState.mode === "document") attributes.unshift(dataComponent);
+    }
+
+    handleAutocomplete(allAvailable);
+  });
 
   // Sync updates to the 'attributes' state to the DOM and user-facing values for attribute masks
   watch(
@@ -359,11 +367,12 @@
   function handleComponentAutocomplete(target: EventTarget | null) {
     if (!(target instanceof HTMLTextAreaElement)) return;
     const value = target.value;
-    const names = $savedComponents.filter(({ name }) =>
+    const names = savedComponents.filter(({ name }) =>
       name.startsWith(value.replace(/-\[?(\d+,)*\d*\]?$/g, "")),
     );
     if (names.length === 1)
       $autocompleteSuggestions = names[0].parts
+        .split("|")
         .map((part) => `${names[0].name}-[${part}]`)
         .filter((name) => name.startsWith(value))
         .toSorted((a, b) => a.length - b.length);

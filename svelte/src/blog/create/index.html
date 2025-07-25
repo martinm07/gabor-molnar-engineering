@@ -20,6 +20,8 @@
           "{{ url_for(request.endpoint).split('/')[0] + '/' }}";
 
         globalThis.csrfToken = "{{ csrf_token() }}";
+
+        globalThis.blogcreateDocumentID = Number.parseInt("{{ document_id }}");
       } catch {}
     </script>
     <script

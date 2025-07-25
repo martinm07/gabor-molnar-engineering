@@ -10,11 +10,11 @@ from .extensions import db
 
 
 class DUser(db.Model):
-    __tablename__ = "_DEPR_users"
+    __tablename__ = "_depr_users"
     id = db.Column(db.Integer, primary_key=True)
     # IMP: the `secret` of a user should NEVER be sent to the frontend
     secret_id = db.Column(
-        db.Integer, db.ForeignKey("_DEPR_usersecrets.id"), nullable=False, unique=True
+        db.Integer, db.ForeignKey("_depr_usersecrets.id"), nullable=False, unique=True
     )
 
     username = db.Column(db.String(50), nullable=False, unique=True)
@@ -55,7 +55,7 @@ class DUser(db.Model):
 
 
 class DUserSecret(db.Model):
-    __tablename__ = "_DEPR_usersecrets"
+    __tablename__ = "_depr_usersecrets"
     id = db.Column(db.Integer, primary_key=True)
     secret = db.Column(db.String(200))
 
@@ -67,9 +67,9 @@ class DUserSecret(db.Model):
 
 
 class DUserBackupFactor(db.Model):
-    __tablename__ = "_DEPR_userrecoveries"
+    __tablename__ = "_depr_userrecoveries"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("_DEPR_users.id"))
+    user_id = db.Column(db.Integer, db.ForeignKey("_depr_users.id"))
     method = db.Column(db.String(16))
     data = db.Column(db.String(128))
     user = db.relationship("DUser", back_populates="backup_factors")
@@ -79,7 +79,7 @@ class DUserBackupFactor(db.Model):
 
 
 class DRequestStamp(db.Model):
-    __tablename__ = "_DEPR_requeststamps"
+    __tablename__ = "_depr_requeststamps"
     # id = db.Column(db.Integer, primary_key=True)
     # timestamp = db.Column(db.DateTime(timezone=True), server_default=func.now())
     # ipaddress = db.Column(db.String(15))
@@ -97,7 +97,7 @@ class DRequestStamp(db.Model):
 
 
 class DNewsletterEmail(db.Model):
-    __tablename__ = "_DEPR_newsletteremails"
+    __tablename__ = "_depr_newsletteremails"
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(200))
 
@@ -106,14 +106,14 @@ class DNewsletterEmail(db.Model):
 
 
 class DComment(db.Model):
-    __tablename__ = "_DEPR_comments"
+    __tablename__ = "_depr_comments"
     id = db.Column(db.Integer, primary_key=True)
 
     time_created = db.Column(db.DateTime)
     is_edited = db.Column(db.Boolean)
     content = db.Column(db.UnicodeText)
 
-    user_id = db.Column(db.Integer, db.ForeignKey("_DEPR_users.id"))
+    user_id = db.Column(db.Integer, db.ForeignKey("_depr_users.id"))
     user = db.relationship("DUser", back_populates="comments")
 
     # to load the comments of a guidance document, it needs to have a list of all the comments on it.
@@ -126,14 +126,14 @@ class DComment(db.Model):
     # parent_comment_id, parent_comment                 # Mutually Exclusive
     # parrent_document_id, parrent_document             # Mutually Exclusive
     parent_comment_id = db.Column(
-        db.Integer, db.ForeignKey("_DEPR_comments.id"), nullable=True
+        db.Integer, db.ForeignKey("_depr_comments.id"), nullable=True
     )
     #                                    `remote_side` makes it so the "other" side of the relationship is actually here, making a Many to One
     comments = db.relationship(
         "DComment", backref=db.backref("parent_comment", remote_side=[id])
     )
     parent_document_id = db.Column(
-        db.Integer, db.ForeignKey("_DEPR_documents.id"), nullable=True
+        db.Integer, db.ForeignKey("_depr_documents.id"), nullable=True
     )
     parent_document = db.relationship("DGuidanceDocument", back_populates="comments")
 
@@ -154,14 +154,14 @@ class DComment(db.Model):
 document_tag = db.Table(
     "document_tag",
     db.Column(
-        "document_id", db.Integer, db.ForeignKey("_DEPR_documents.id"), primary_key=True
+        "document_id", db.Integer, db.ForeignKey("_depr_documents.id"), primary_key=True
     ),
-    db.Column("tag_id", db.Integer, db.ForeignKey("_DEPR_tags.id"), primary_key=True),
+    db.Column("tag_id", db.Integer, db.ForeignKey("_depr_tags.id"), primary_key=True),
 )
 
 
 class DGuidanceDocument(db.Model):
-    __tablename__ = "_DEPR_documents"
+    __tablename__ = "_depr_documents"
     id = db.Column(db.Integer, primary_key=True)
     time_created = db.Column(db.DateTime)
     title = db.Column(db.String(128))
@@ -177,7 +177,7 @@ class DGuidanceDocument(db.Model):
 
 
 class DTag(db.Model):
-    __tablename__ = "_DEPR_tags"
+    __tablename__ = "_depr_tags"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(32))
     color = db.Column(db.String(16), default="#fff")

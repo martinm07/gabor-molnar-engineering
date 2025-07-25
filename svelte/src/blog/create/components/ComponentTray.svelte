@@ -1,20 +1,31 @@
 <script lang="ts">
-  import { getContext } from "svelte";
+  import { getContext, onMount } from "svelte";
   import { watch } from "runed";
   import Fuse, { type FuseResult } from "fuse.js";
   import {
-    savedComponents,
     nodesSelection,
+    mode,
+    changePage,
+    editorState,
+    compLibVer,
     type SavedComponent,
-    sidebarMode,
-  } from "../store";
+  } from "../store.svelte";
   import { isElementVisible } from "../helper";
-  import { decodeComponentStr } from "./component";
+  import {
+    decodeComponentStr,
+    comps,
+    updateCompAdd,
+    updateCompRemove,
+    updateCompRestore,
+  } from "./component.svelte";
+  import ArrowsCounterClockwise from "phosphor-svelte/lib/ArrowsCounterClockwise";
 
   const setSelection: (nodes?: Node[] | Node) => void =
     getContext("setSelection");
+  // const comps.lib = comps.lib();
+  // $inspect(comps.lib);
 
-  const fuse = new Fuse<SavedComponent>([], {
+  const fuse = new Fuse<(typeof comps.lib)[0]>([], {
     ignoreLocation: true,
     ignoreFieldNorm: false,
     includeMatches: true,
@@ -31,7 +42,7 @@
       },
       {
         name: "tags",
-        getFn: (comp) => comp.tags.join(","),
+        getFn: (comp) => comp.tags ?? "",
         weight: 0.05,
       },
     ],
@@ -63,57 +74,78 @@
     return { parsed: quotes.join(" ").trim(), exactPhrases, withinTags };
   }
 
-  // Sync the Fuse collection with $savedComponents
+  // Sync the Fuse collection with components
   watch(
-    () => $savedComponents,
+    [() => $state.snapshot(comps.lib), () => editorState.resourceName],
     () => {
-      fuse.setCollection($savedComponents);
+      fuse.setCollection($state.snapshot(comps.lib));
+      updateSearchResults();
     },
   );
-  // Update the search results when the query changes
-  watch(
-    () => query,
-    (_, prev) => {
-      if (query) {
-        const { parsed, exactPhrases, withinTags } = parseQuery(query);
-        const parsedQuery = parsed.replace(/""/g, "").trim();
-        const fuseResults = fuse.search(parsedQuery);
+  onMount(() => {
+    fuse.setCollection($state.snapshot(comps.lib));
+  });
 
-        // If there are tag requirements...
-        if (withinTags.length > 0) {
-          // Include ALL components that satisfy the tag requirements, and filter all
-          //  from the search results that don't
-          const allWithTag = $savedComponents.filter((comp) => {
-            if (withinTags.every((tag) => comp.tags.includes(tag))) return true;
-            else return false;
-          });
-          results = [
-            ...fuseResults.filter((result) => {
-              return allWithTag.some((comp) => result.item === comp);
+  // Update the search results when the query changes
+  function updateSearchResults() {
+    if (query) {
+      const { parsed, exactPhrases, withinTags } = parseQuery(query);
+      const parsedQuery = parsed.replace(/""/g, "").trim();
+      const fuseResults = fuse.search(parsedQuery);
+
+      // If there are tag requirements...
+      if (withinTags.length > 0) {
+        // Include ALL components that satisfy the tag requirements, and filter all
+        //  from the search results that don't
+        const allWithTag = comps.lib.filter((comp) => {
+          if (withinTags.every((tag) => comp.tags?.split(",").includes(tag)))
+            return true;
+          else return false;
+        });
+        results = [
+          ...fuseResults.filter((result) => {
+            return allWithTag.some((comp) => result.item === comp);
+          }),
+          ...allWithTag
+            .filter(
+              (comp) => !fuseResults.some((result) => result.item === comp),
+            )
+            .map((comp, i) => {
+              return {
+                item: comp,
+                refIndex: i,
+              };
             }),
-            ...allWithTag
-              .filter(
-                (comp) => !fuseResults.some((result) => result.item === comp),
-              )
-              .map((comp, i) => {
-                return {
-                  item: comp,
-                  refIndex: i,
-                };
-              }),
-          ];
-        } else {
-          results = fuseResults;
-        }
-        // console.log(parsedQuery, withinTags, exactPhrases);
+        ];
       } else {
-        results = $savedComponents.map((comp, i) => {
+        results = fuseResults;
+      }
+      results = results.filter((result) =>
+        editorState.mode === "component" && mode.sidebar === "addcomponent"
+          ? editorState.resourceName !== result.item.identName
+          : true,
+      );
+      // console.log(parsedQuery, withinTags, exactPhrases);
+    } else {
+      results = comps.lib
+        .filter((comp) =>
+          editorState.mode === "component" && mode.sidebar === "addcomponent"
+            ? editorState.resourceName !== comp.identName
+            : true,
+        )
+        .map((comp, i) => {
           return {
             item: comp,
             refIndex: i,
           };
         });
-      }
+    }
+  }
+  watch(
+    () => query,
+    (_, prev) => {
+      // console.log("Updating search results (query update): ", query);
+      updateSearchResults();
       if (typeof prev === "string") activeResultI = 0;
     },
   );
@@ -132,8 +164,8 @@
   );
 
   function addHighlights(
-    comp: SavedComponent,
-    matches: FuseResult<SavedComponent>["matches"],
+    comp: (typeof comps.lib)[0],
+    matches: FuseResult<(typeof comps.lib)[0]>["matches"],
   ) {
     if (!matches) return comp;
     // console.log($state.snapshot(comp), $state.snapshot(matches));
@@ -156,24 +188,81 @@
         });
       if (match.key === "name") newComp.name = value ?? "";
       else if (match.key === "description") newComp.description = value;
-      else if (match.key === "tags") newComp.tags = value?.split(",") ?? [];
+      else if (match.key === "tags") newComp.tags = value;
     }
     return newComp;
   }
 
-  function selectComponent(i_?: number) {
+  function selectComponentAdd(i_?: number) {
+    if (editorState.mode !== "document") return;
     const i = i_ ?? activeResultI;
     // console.log("Selected component!", results[i]);
-    const componentFrag = decodeComponentStr(results[i].item.content);
+    const componentFrag = decodeComponentStr(
+      results[i].item.content,
+      editorState.mode,
+    );
     const topLevel = Array(...componentFrag.childNodes);
     $nodesSelection[0].replaceWith(componentFrag);
     setSelection(topLevel);
-    $sidebarMode = "edit";
+    mode.sidebar = "edit";
     query = "";
   }
 
+  function selectComponentEdit(comp: (typeof comps.lib)[0]) {
+    if (!compLibVer.isVersFetched || !compLibVer.isLibUpToDate) return;
+    changePage(
+      "component",
+      comp.identName,
+      editorState.mode === "document"
+        ? editorState.resourceName
+        : editorState.documentRedirect,
+    );
+  }
+
+  function selectComponentCreate() {
+    let startName = 1;
+    while (comps.lib.some((comp) => comp.name === `unnamed-${startName}`))
+      startName++;
+    const edit = updateCompAdd({
+      name: `unnamed-${startName}`,
+      content: `<div data-component="unnamed-${startName}-[1]">*initial*</div>`,
+      parts: "1",
+    });
+    changePage(
+      "component",
+      edit.identName,
+      editorState.mode === "document"
+        ? editorState.resourceName
+        : editorState.documentRedirect,
+    );
+  }
+
+  function selectComponentRemove(comp: (typeof comps.lib)[0]) {
+    updateCompRemove(comp.identName);
+  }
+
+  function selectComponentRestore(comp: (typeof comps.lib)[0]) {
+    updateCompRestore(comp.identName);
+  }
+
+  const compStateToSortNum = (
+    a: (typeof comps.lib)[0],
+    b: (typeof comps.lib)[0],
+  ) => {
+    const toNum = (state: typeof a.state) => {
+      if (state === "added") return -3;
+      if (state === "removed") return -2;
+      if (state === "modified") return -1;
+      else return 0;
+    };
+    return toNum(a.state) - toNum(b.state);
+  };
+
   let query = $state("");
-  let results: FuseResult<SavedComponent>[] = $state([]);
+  let results: FuseResult<(typeof comps.lib)[0]>[] = $state([]);
+  let resultsSorted = $derived(
+    results.toSorted((a, b) => compStateToSortNum(a.item, b.item)),
+  );
   let resultEls: HTMLElement[] = $state([]);
   let activeResultI: number = $state(-1);
   let searchInpFocused = $state(false);
@@ -181,12 +270,12 @@
 
 <form
   onsubmit={(e) => {
-    selectComponent();
+    selectComponentAdd();
     e.preventDefault();
   }}
   role="search"
-  class="my-2 sticky z-10 top-0"
-  class:hidden={$sidebarMode !== "component"}
+  class="my-2 sticky z-20 top-0"
+  class:hidden={!mode.sidebar.includes("component")}
 >
   <input
     type="text"
@@ -232,44 +321,133 @@
     </div>
   </div>
 </form>
-<div class="text-rock-700" class:hidden={$sidebarMode !== "component"}>
-  {#each results as result, i}
-    {@const comp = addHighlights(result.item, result.matches)}
-    <!-- {result.matches.} -->
-    <div
-      bind:this={resultEls[i]}
-      class:active={i === activeResultI}
-      role="button"
-      tabindex="0"
-      onkeydown={(e) => {
-        if (e.key === "Enter") selectComponent(i);
-      }}
-      onclick={() => selectComponent(i)}
-      class="component-search-result flex my-1 p-1 rounded-lg [.active]:bg-rock-100 hover:bg-rock-100 has-[button:hover]:!bg-background focus:bg-rock-100 cursor-pointer scroll-mt-16 scroll-mb-4"
-    >
-      <div class="w-full">
-        <div class="font-mono">{@html comp.name}</div>
-        <div class="text-rock-600 text-sm">{@html comp.description ?? ""}</div>
-        <div class="text-sm mt-1 w-full">
-          {#each comp.tags as tag}
-            <span
-              class="bg-steel-100 border-[1px] border-steel-200 rounded px-0.5 m-0.5 inline-block"
-              >{@html tag}</span
-            >
-          {/each}
-        </div>
-      </div>
-      <div class="flex items-center justify-center">
-        <button
-          class="hover:bg-rock-100 focus:bg-rock-100 p-1 rounded-lg"
-          aria-label="Edit component"
-        >
-          <ion-icon name="build-outline"></ion-icon>
-        </button>
+
+{#snippet resultEl(comp: (typeof comps.lib)[0], i: number)}
+  <svelte:element
+    this={mode.sidebar === "viewcomponent" ? "a" : "div"}
+    href="/documents/edit/component/{comp.identName}"
+    bind:this={resultEls[i]}
+    class:active={i === activeResultI}
+    role="button"
+    tabindex="0"
+    onkeydown={(e: KeyboardEvent) => {
+      if (e.key === "Enter")
+        mode.sidebar === "addcomponent"
+          ? selectComponentAdd(i)
+          : editorState.mode === "component" && selectComponentEdit(comp);
+    }}
+    onclick={(e: Event) => {
+      e.preventDefault();
+      mode.sidebar === "addcomponent"
+        ? selectComponentAdd(i)
+        : editorState.mode === "component" && selectComponentEdit(comp);
+    }}
+    class="component-search-result flex my-1 p-1 rounded-lg [.active]:bg-rock-100 hover:bg-rock-100 has-[.inner-btn:hover]:!bg-background focus:bg-rock-100 cursor-pointer scroll-mt-16 scroll-mb-4"
+    class:!cursor-default={editorState.mode === "document" &&
+      mode.sidebar === "viewcomponent"}
+  >
+    <div class="w-full" class:line-through={comp.state === "removed"}>
+      <div class="font-mono">{@html comp.name}</div>
+      <div class="text-rock-600 text-sm">{@html comp.description ?? ""}</div>
+      <div class="text-sm mt-1 w-full">
+        {#each comp.tags?.split(",") ?? [] as tag}
+          <span
+            class="bg-steel-100 border-[1px] border-steel-200 rounded px-0.5 m-0.5 inline-block"
+            >{@html tag}</span
+          >
+        {/each}
       </div>
     </div>
-    <div class="h-[2px] bg-rock-200 last-of-type:h-0"></div>
+    <div class="flex items-center justify-center">
+      {#if mode.sidebar === "addcomponent" || editorState.mode !== "component"}
+        <a
+          href="/documents/edit/component/{comp.identName}"
+          class="inner-btn hover:bg-rock-100 focus:bg-rock-100 p-1 rounded-lg [.disabled]:opacity-40 [.disabled]:pointer-events-none"
+          class:disabled={!compLibVer.isLibUpToDate}
+          tabindex={!compLibVer.isLibUpToDate ? -1 : 0}
+          aria-label="Edit component"
+          onclick={(e) => {
+            e.preventDefault();
+            selectComponentEdit(comp);
+          }}
+          onkeydown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              selectComponentEdit(comp);
+            }
+          }}
+        >
+          <ion-icon name="build-outline"></ion-icon>
+        </a>
+      {:else if mode.sidebar === "viewcomponent" && comp.state !== "removed"}
+        <button
+          aria-label="Remove component"
+          class="inner-btn hover:bg-rock-100 focus:bg-rock-100 p-1 rounded-lg [.disabled]:hidden"
+          onclick={(e) => {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            selectComponentRemove(comp);
+          }}
+          onkeydown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              selectComponentRemove(comp);
+            }
+          }}><ion-icon name="trash-outline"></ion-icon></button
+        >
+      {:else if mode.sidebar === "viewcomponent"}
+        <button
+          aria-label="Restore component"
+          class="inner-btn hover:bg-rock-100 focus:bg-rock-100 p-1 rounded-lg [.disabled]:hidden text-lg"
+          onclick={(e) => {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            selectComponentRestore(comp);
+          }}
+          onkeydown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              selectComponentRestore(comp);
+            }
+          }}><ArrowsCounterClockwise /></button
+        >
+      {/if}
+    </div>
+  </svelte:element>
+{/snippet}
+
+<div class="text-rock-700" class:hidden={!mode.sidebar.includes("component")}>
+  {#each resultsSorted as result, i}
+    {@const comp = addHighlights(result.item, result.matches)}
+    {#if (resultsSorted[i - 1]?.item?.state ?? "unmodified") !== comp.state}
+      <div
+        class="sec-title text-lg font-bold mx-1 relative flex items-center justify-center"
+      >
+        <div class="absolute w-full h-0.5 bg-rock-200"></div>
+        <span class="uppercase bg-background text-rock-600 inline-block z-10"
+          >{comp.state}</span
+        >
+      </div>
+    {/if}
+    {@render resultEl(comp, i)}
+    <div
+      class="h-[2px] bg-rock-200 last-of-type:h-0 has-[+_.sec-title]:h-0"
+    ></div>
   {/each}
+</div>
+
+<div
+  class="p-2 flex items-center justify-center mt-4"
+  class:hidden={!mode.sidebar.includes("component") ||
+    editorState.mode !== "component"}
+>
+  <button
+    class="px-3 py-1.5 border-steel-300 border-2 rounded bg-steel-100 text-steel-600 font-bold text-lg font-mono shadow-2xs inset-shadow-xs inset-shadow-rock-500 hover:shadow-md hover:inset-shadow-2xs hover:inset-shadow-steel-100 hover:px-3.5 transition-[padding,box-shadow] hover:active:bg-steel-200 hover:active:text-steel-700 hover:active:translate-y-1"
+    onclick={selectComponentCreate}>New component</button
+  >
 </div>
 
 <style>

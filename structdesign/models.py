@@ -193,3 +193,6 @@ class SavedComponentDiff(db.Model):
     version: Mapped[str] = mapped_column(Text(), nullable=False)
     next_version: Mapped[str] = mapped_column(Text(), nullable=True)
     diff: Mapped[str] = mapped_column(Text())
+    message: Mapped[str] = mapped_column(String(128))
+    description: Mapped[str] = mapped_column(String(1024))
+    is_safe: Mapped[bool]

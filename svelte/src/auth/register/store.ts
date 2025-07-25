@@ -1,5 +1,5 @@
 import { get, writable, type Writable } from "svelte/store";
-import { fetch_ } from "/shared/helper";
+import { fetch_, assign } from "/shared/helper";
 
 interface RegState {
   page: string;
@@ -30,7 +30,7 @@ fetch_("/register/get_session_state")
   .then((resp) => resp.json())
   .then((data) => {
     state_.update((st) =>
-      Object.assign(st, {
+      assign(st, {
         name: data.username,
         email: data.email,
         password: data.password,
@@ -44,7 +44,7 @@ export function changePage(newPage: string, doTransition: boolean = false) {
     throw new Error(
       `Unexpected value for newPage. Got '${newPage}' but expected one of ${pages.map((page) => "'" + page + "'").join(", ")}.`,
     );
-  state_.update((st) => Object.assign(st, { page: newPage, doTransition }));
+  state_.update((st) => assign(st, { page: newPage, doTransition }));
   const searchParams = new URLSearchParams(window.location.search);
   searchParams.set("page", newPage);
   history.pushState(get(state_), "", "?" + searchParams.toString());
@@ -58,7 +58,5 @@ window.addEventListener("popstate", (e) => {
     changePage(correctedPage, false);
     return;
   }
-  state_.update((st) =>
-    Object.assign(st, { page: newPage, doTransition: false }),
-  );
+  state_.update((st) => assign(st, { page: newPage, doTransition: false }));
 });

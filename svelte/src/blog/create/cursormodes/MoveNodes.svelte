@@ -2,7 +2,7 @@
   import { onDestroy, getContext } from "svelte";
   import { on } from "svelte/events";
   import { watch } from "runed";
-  import { cursorMode, nodesIslandSelection, nodesSelection } from "../store";
+  import { mode, nodesIslandSelection, nodesSelection } from "../store.svelte";
   import { prevSibling, nextSibling } from "../helper";
   import { PotentialLocations, type Rect } from "./AddNode.svelte";
   import { type IAttributesEditor } from "../editors/attributes/AttributesEditor.svelte";
@@ -42,7 +42,7 @@
         (el) => e.target instanceof Node && el.contains(e.target),
       )
     ) {
-      $cursorMode = "move";
+      mode.cursor = "move";
       potentialLocations.addPotentialLocs(
         (loc) =>
           !$nodesIslandSelection.some(
@@ -58,19 +58,19 @@
 
   const off2 = on(docParent, "dragend", (e) => {
     potentialLocations.removePotentialLocs();
-    if ($cursorMode === "move") $cursorMode = "select";
+    if (mode.cursor === "move") mode.cursor = "select";
   });
   onDestroy(off2);
 
   const off3 = on(docParent, "dragover", (e) => {
-    if ($cursorMode !== "move") return;
+    if (mode.cursor !== "move") return;
     potentialLocations.activeLocation = potentialLocations.handleHover(e);
     if (potentialLocations.activeLocation) e.preventDefault();
   });
   onDestroy(off3);
 
   const off4 = on(docParent, "drop", (e) => {
-    if ($cursorMode !== "move" || !potentialLocations.activeLocation) return;
+    if (mode.cursor !== "move" || !potentialLocations.activeLocation) return;
     e.preventDefault();
     potentialLocations.activeLocation.before(...$nodesIslandSelection);
     updateHighlight();

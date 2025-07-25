@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, getContext } from "svelte";
-  import { autocompleteSuggestions, nodesSelection } from "../../store";
+  import { autocompleteSuggestions, nodesSelection } from "../../store.svelte";
   import {
     calculateTotalOffset,
     findNodeFromOffset,

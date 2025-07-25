@@ -26,15 +26,15 @@
     - Determine whether mutation resulted in illegal HTML structure
     - Use undo manager to automatically go back on illegal operations and create toast popup informing the error
     - BONUS: Have "relaxed" and "strict" modes of HTML structure validation
-- [ ] Component library editor
-    - URL management
-    - A back button (if coming from editing a document, make part of the URL?) and a save button for creating new library versions
-    - A method for navigating to different components in the library
-    - A method for modifying component metadata (name, description, tags)
+- [x] Component library editor
+    - ~~URL management~~
+    - ~~A back button (if coming from editing a document, make part of the URL?) and a save button for creating new library versions~~
+    - ~~A method for navigating to different components in the library~~
+    - ~~A method for modifying component metadata (name, description, tags)~~
     - Presets for container element to see how component behaves in each (e.g. `display: flex/block/inline`, `position: relative/absolute/static`)
-- [ ] Managing document component library version
-    - Detection of old component library version and displayed warning.
-    - Updating component instances in document upon updating library version 
+- [x] Managing document component library version
+    - ~~Detection of old component library version and displayed warning.~~
+    - ~~Updating component instances in document upon updating library version ~~
 - [ ] Managing document metadata 
     - (button on navbar that brings screen-wide popup for modifying title, description, tags, accent colour, thumbnail, and published status) probably using identical code as the popup for modifying component metadata
 - [ ] Admin view of all guidance documents, creation of new ones, etc.
@@ -72,3 +72,4 @@ The big expansion after everything will be "macros". Here was my initial idea fo
 It would essentially involve creating a JavaScript API for the document editor, implementing a web-based JavaScript editor (probably using a third-party library), implementing keyboard shortcut customisation, icon customisation, etc. and somehow involving them in component library versioning.
 
 At this point though, I think it is fine to call the editor complete without macros implemented.
+
