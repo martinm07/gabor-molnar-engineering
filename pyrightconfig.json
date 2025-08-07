@@ -1,0 +1,13 @@
+{
+  "typeCheckingMode": "standard",
+  "venvPath": ".",
+  "venv": ".venv",
+  "reportIncompatibleMethodOverride": false,
+  "reportUnknownMemberType": false,
+  "reportUnknownVariableType": false,
+  "reportUnknownArgumentType": false,
+  "reportMissingTypeStubs": false,
+  "reportPrivateUsage": false,
+  "reportCallIssue": false
+  // "reportGeneralTypeIssues": false
+}

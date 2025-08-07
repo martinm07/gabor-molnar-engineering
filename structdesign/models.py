@@ -5,6 +5,7 @@ from typing import List, Literal
 
 from sqlalchemy import Column, ForeignKey, String, Table, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from typesense.types.collection import CollectionCreateSchema
 
 from .extensions import db
 
@@ -119,7 +120,7 @@ class DocumentTag(db.Model):
     )
 
 
-documents_schema = {
+documents_schema: CollectionCreateSchema = {
     "name": "documents",
     "fields": [
         {"name": "title", "type": "string"},

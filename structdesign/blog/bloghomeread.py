@@ -25,7 +25,7 @@ def guidance_documents():
     return render_template("blog/home.html", user=None, bool=bool)
 
 
-def paginate(gen: Iterable, page: float, length: int):
+def paginate(gen: Iterable, page: float | None, length: int | None):
     if length is None:
         return gen
     if page is None:
@@ -43,8 +43,8 @@ def onfalsey(val, fallback):
 @bp.route("/get_latest")
 @cors_enabled(methods=["GET"])
 def get_latest():
-    page = float(request.args.get("p")) if "p" in request.args else None
-    length = int(request.args.get("l")) if "l" in request.args else None
+    page = float(request.args.get("p")) if "p" in request.args else None # type: ignore
+    length = int(request.args.get("l")) if "l" in request.args else None # type: ignore
 
     results = []
     rows = db.session.scalars(
@@ -83,8 +83,8 @@ def get_blogs_tag():
     if not name:
         return jsonify([])
 
-    page = float(request.args.get("p")) if "p" in request.args else None
-    length = int(request.args.get("l")) if "l" in request.args else None
+    page = float(request.args.get("p")) if "p" in request.args else None # type: ignore
+    length = int(request.args.get("l")) if "l" in request.args else None # type: ignore
 
     scalar_subq = (
         select(DocumentTag.id).where(DocumentTag.name == name).scalar_subquery()

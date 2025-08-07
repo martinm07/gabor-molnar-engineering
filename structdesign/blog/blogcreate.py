@@ -5,7 +5,7 @@ import re
 import urllib.parse
 from collections.abc import Iterable
 from functools import cmp_to_key
-from typing import Any
+from typing import Any, Sequence, Union
 
 import requests
 from bs4 import BeautifulSoup
@@ -38,7 +38,7 @@ Endpoints:
     - Returns the latest version string of the component library
     - No parameters required
 
-    /get_component_library [GET] 
+    /get_component_library [GET]
     - Retrieves components at a specific version
     - Parameters: ver (string) - Version hash to retrieve
     - Returns list of component objects or error message if version not found
@@ -57,7 +57,7 @@ Endpoints:
     - Parameters: id (integer) - Document ID
     - Returns document object with all fields
 
-    /sync_document_full [POST, OPTIONS] 
+    /sync_document_full [POST, OPTIONS]
     - Updates entire document content
     - Request body (JSON):
         id: Document ID
@@ -92,7 +92,7 @@ Endpoints:
 
 Dependencies:
     - Flask
-    - SQLAlchemy 
+    - SQLAlchemy
     - requests
     - BeautifulSoup
     - diff_match_patch
@@ -121,6 +121,8 @@ def get_component_lib():
     library = db.session.scalars(
         select(SavedComponentLibrary).filter_by(name="base")
     ).first()
+    if library is None:
+        raise Exception("Missing library with name 'base'")
     return library
 
 
@@ -128,6 +130,8 @@ def get_version(version: str):
     diff = db.session.scalars(
         select(SavedComponentDiff).filter_by(version=version)
     ).first()
+    if diff is None:
+        raise Exception(f"Found no SavedComponentDiff for version '{version}'")
     return diff
 
 
@@ -302,10 +306,14 @@ def get_library_components(lib: SavedComponentLibrary) -> list[SavedComponent]:
     #  as the order is not saved in the database)
     # Still, it is vital that the order of components is consistent always, so that diffs
     #  always make sense and never go 'rotten'.
+
     # lib.components.sort(key=lambda x: x.id)
-    key = cmp_to_key(
-        lambda a, b: a.id - b.id if (a.id is not None) and (b.id is not None) else 0
-    )
+    ## Sort by ID, but don't try to sort component instances with an ID of None (which causes an error)
+    ##  because they haven't been commited to the database yet.
+    def compare(a, b):
+        return a.id - b.id if (a.id is not None) and (b.id is not None) else 0
+
+    key = cmp_to_key(compare)
     lib.components.sort(key=key)
     print([comp.name for comp in lib.components])
 
@@ -357,7 +365,7 @@ def get_component_library():
 
     current = get_version(lib.latest_version)
     current_version = current.version
-    comp_versions = version.split(",")
+    comp_versions: list[Union[str, None]] = version.split(",") # type: ignore
 
     # Mapping from names in the requested library version (as keys) to names in the latest version (as values)
     g.comp_name_map = {}
@@ -378,7 +386,7 @@ def get_component_library():
     #     ver = get_version(ver.next_version)
     # print("---")
 
-    final: list[dict[str, str]] = [None for _ in range(len(comp_versions))]
+    final: list[dict[str, str] | None] = [None for _ in range(len(comp_versions))]
     # print(f"{version}  Required comps num: {len(comp_versions)}\n----------")
     while True:
         current_comp_vers = current_version.split(",")
@@ -440,7 +448,7 @@ def get_component_library():
         print(f"Old name: '{old_name}'   New name: '{new_name}'")
 
         old_content = next(
-            comp["content"] for comp in final if comp["name"] == old_name
+            comp["content"] for comp in final if comp and comp["name"] == old_name
         )
         new_content = next(
             comp["content"] for comp in latest_components if comp["name"] == new_name
@@ -612,11 +620,14 @@ def update_components():
         curval = comp.tags_str
         if newval is not None and newval != curval:
             modified = True
+            # if type(newval) is list:
+            #     newvalstr = ",".join(newval)
+            newvalstr: str = ",".join(newval) if isinstance(newval, list) else newval
             # The order when we request "tags" is unreliable, thus we need to separate
             #  table column "tags_str" that gives the order. It's also useful for being
             #  the same as what's generated from the diffs
-            comp.tags_str = newval
-            comp.tags = fill_tag_names(newval)
+            comp.tags_str = newvalstr
+            comp.tags = fill_tag_names(newvalstr)
             diff_parts[-1]["tags"] = dmp.patch_toText(dmp.patch_make(newval, curval))
 
     for new_comp_data in add:
@@ -629,15 +640,17 @@ def update_components():
                 f"'name', 'content' and 'parts' are required when adding new components. Attempted to add {new_comp_data}",
                 400,
             )
-        if type(new_comp_data["parts"]) is list:
+        if isinstance(new_comp_data["parts"], list):
             new_comp_data["parts"] = "|".join(new_comp_data["parts"])
+
+        new_comp_data_tags = ",".join(new_comp_data["tags"]) if isinstance(new_comp_data["tags"], list) else new_comp_data["tags"]
 
         new_comp = SavedComponent(
             name=new_comp_data.get("name"),
             description=new_comp_data.get("description", ""),
             content=new_comp_data.get("content"),
             parts=new_comp_data.get("parts"),
-            tags=fill_tag_names(new_comp_data.get("tags")),
+            tags=fill_tag_names(new_comp_data_tags),
             tags_str=new_comp_data.get("tags", ""),
             library=lib,
         )
@@ -695,8 +708,12 @@ def update_components():
 @bp.route("/get_document_edit")
 @cors_enabled(methods=["GET"])
 def get_document_edit():
-    id_ = int(request.args.get("id"))
-    doc = db.session.get(GuidanceDocument, id_)
+    id_ = request.args.get("id")
+    if id_ is None:
+        return "Required URL parameter 'id'", 400
+    doc = db.session.get(GuidanceDocument, int(id_))
+    if doc is None:
+        return f"Found no document of id '{id_}'", 400
 
     return {
         "id": doc.id,
@@ -731,6 +748,8 @@ def sync_document_full():
         return "Missing required 'body' key", 400
 
     document = db.session.get(GuidanceDocument, int(id_))
+    if document is None:
+        return f"Found no document of id '{id_}'", 400
     document.body = body
     db.session.commit()
     return ""
@@ -787,8 +806,8 @@ def sync_document_patch():
     #  to insert it at, and how many characters to replace
 
     for patch in patches:
-        value = patch.get("value", "")
-        length = patch.get("length", 0)
+        value = str(patch.get("value", ""))
+        length = int(patch.get("length", 0))
         index = patch.get("index")
         if type(index) is not int:
             return "Each patch object requires an index", 400
@@ -945,7 +964,7 @@ def iframeresizer():
     iframeresizer_script = soup.new_tag("script")
     iframeresizer_script["type"] = "text/javascript"
     iframeresizer_script["src"] = "https://cdn.jsdelivr.net/npm/@iframe-resizer/child"
-    iframeresizer_script["async"] = True
+    iframeresizer_script["async"] = ""
 
     serviceworker_script = soup.new_tag("script")
     serviceworker_script["type"] = "text/javascript"
@@ -975,10 +994,12 @@ const registerServiceWorker = async () => {
 registerServiceWorker();
 """
 
-    head_tag = soup.head
-    head_tag.insert(0, serviceworker_script)
-    body_tag = soup.body
-    body_tag.insert(-1, iframeresizer_script)
+    # NOTE: We could make the insertion here a little more reliable than depending
+    #  on the document to have a head and body tag.
+    if (head_tag := soup.head) is not None:
+        head_tag.insert(0, serviceworker_script)
+    if (body_tag := soup.body) is not None:
+        body_tag.insert(-1, iframeresizer_script)
 
     return str(soup)
 

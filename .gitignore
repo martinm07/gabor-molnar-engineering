@@ -15,6 +15,7 @@ build/
 
 SECRET.txt
 .env
+!svelte/src/.env
 .prodenv
 mobileNATpool-assignment-example.txt
 ngrok.exe

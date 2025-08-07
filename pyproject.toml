@@ -1,0 +1,33 @@
+[project]
+name = "gabor-molnar-engineering"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "beautifulsoup4>=4.13.4",
+    "cryptography>=45.0.5",
+    "diff-match-patch>=20241021",
+    "flask>=3.1.1",
+    "flask-migrate>=4.1.0",
+    "flask-sqlalchemy>=3.1.1",
+    "flask-wtf>=1.2.2",
+    "fnv128a>=0.0.2",
+    "passlib>=1.7.4",
+    "py3-validate-email",
+    "pymysql>=1.1.1",
+    "pytest>=8.4.1",
+    "python-dotenv>=1.1.1",
+    "twilio>=9.7.0",
+    "typesense>=1.1.1",
+]
+
+[tool.uv.sources]
+py3-validate-email = { git = "https://git.ksol.io/karolyi/py3-validate-email", rev = "v1.0.12" }
+
+[dependency-groups]
+dev = [
+    "docker>=7.1.0",
+    "mysql-connector-python>=9.4.0",
+    "pytest-mock>=3.14.1",
+]

@@ -38,6 +38,7 @@ def test_update_components_update(client: FlaskClient):
     )
     comp = db.session.scalars(select(SavedComponent).filter_by(id=comps[0].id)).first()
 
+    assert comp
     assert comp.content == "altered content"
     assert comp.name == "altered name"
     assert len(new_ver.split(",")) == 5
@@ -50,6 +51,7 @@ def test_update_components_update(client: FlaskClient):
     new_ver = post(new_ver, {comps[4].name: {"tags": "tag1,tag2"}})
     comp = db.session.scalars(select(SavedComponent).filter_by(id=comps[4].id)).first()
 
+    assert comp
     assert (
         db.session.scalar(select(func.count("*")).select_from(SavedComponentTag)) == 2
     )
@@ -133,14 +135,15 @@ def test_update_components_remove(client: FlaskClient):
 
 def test_get_component_library(client: FlaskClient):
     def get(ver: str):
-        resp = client.get("/documents/get_component_library", query_string={"ver": ver})
-        print(resp.status, resp.text)
-        return resp.json
+        resp_ = client.get("/documents/get_component_library", query_string={"ver": ver})
+        print(resp_.status, resp_.text)
+        assert resp_.json
+        return resp_.json
 
     lib = create_component_lib()
     comps, ver = populate_components(5, lib)
 
-    resp = get(ver)
+    resp: list[dict[str, Any]] = get(ver)
 
     # We don't include 'tags' in this list because the db and result represent it differently.
     #  We test tags separately at the end.
@@ -166,8 +169,8 @@ def test_get_component_library(client: FlaskClient):
         },
     )
 
-    resp: list[dict[str, Any]] = get(ver)
-    print(resp)
+    resp = get(ver)
+
     assert [d for d in resp if d["name"] == "name0"][0]["content"] != "altered"
     assert (
         len(
@@ -181,6 +184,7 @@ def test_get_component_library_add_remove(client: FlaskClient):
     def get(ver: str):
         resp = client.get("/documents/get_component_library", query_string={"ver": ver})
         print(resp.status, resp.text)
+        assert resp.json
         return resp.json
 
     lib = create_component_lib()
@@ -213,7 +217,7 @@ def test_get_component_library_add_remove(client: FlaskClient):
     assert resp[3]["name"] == "new-comp"
     assert resp[4]["name"] == "new-comp2"
 
-    resp: list[dict[str, Any]] = get(ver)
+    resp = get(ver)
 
     assert resp[1]["description"] != "altered"
     assert resp[3]["name"] != "new-comp"
@@ -243,6 +247,7 @@ def test_sync_document_patch(client: FlaskClient):
     # ).first()
     print(resp)
     document = db.session.get(GuidanceDocument, int(docs[0].id))
+    assert document
     assert document.body == "Rlog3x@mp1econtent"
 
     get_resp(docs[1].id, [{"index": 0, "value": "P", "length": 3}])

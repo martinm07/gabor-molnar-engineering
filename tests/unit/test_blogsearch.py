@@ -27,7 +27,9 @@ def import_docs(docs, client):
 
 def test_query(client: FlaskClient, typesense_client, mocker: MockerFixture):
     def get(**kwargs):
-        return client.get("/documents/query", query_string=kwargs).json
+        resp_ =  client.get("/documents/query", query_string=kwargs).json
+        assert resp_
+        return resp_
 
     # This is necessary of all tests for all collections they interact with,
     #  in order to maintain test atomicity.
@@ -69,7 +71,9 @@ def test_query(client: FlaskClient, typesense_client, mocker: MockerFixture):
 
 def test_advanced_query(client: FlaskClient, typesense_client, mocker: MockerFixture):
     def get(**kwargs):
-        return client.get("/documents/advanced_query", query_string=kwargs).json
+        resp_ = client.get("/documents/advanced_query", query_string=kwargs).json
+        assert resp_
+        return resp_
 
     if collection_exists(typesense_client, "documents"):
         typesense_client.collections["documents"].delete()

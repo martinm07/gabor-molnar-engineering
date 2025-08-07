@@ -14,9 +14,10 @@ from structdesign.models import (
 
 def populate_blogs(num: int, **kwargs) -> list[GuidanceDocument]:
     def getval(name: str, i: int, default=None):
+        specific_vals = kwargs.get(name)
         return (
-            kwargs.get(name)[i]
-            if kwargs.get(name) and kwargs.get(name)[i:]
+            specific_vals[i]
+            if specific_vals and specific_vals[i:]
             else default
         )
 
@@ -42,9 +43,10 @@ def populate_blogs(num: int, **kwargs) -> list[GuidanceDocument]:
 
 def populate_tags(num: int, docs, **kwargs) -> list[DocumentTag]:
     def getval(name: str, i: int, default=None):
+        specific_vals = kwargs.get(name)
         return (
-            kwargs.get(name)[i]
-            if kwargs.get(name) and kwargs.get(name)[i:]
+            specific_vals[i]
+            if specific_vals and specific_vals[i:]
             else default
         )
 
@@ -55,10 +57,9 @@ def populate_tags(num: int, docs, **kwargs) -> list[DocumentTag]:
         tag = DocumentTag(
             name=getval("name", i, f"tag{i}"),
             description=getval("description", i, f"tagdescription{i}"),
-            accent=getval("accent", "0 0 0"),
+            accent=getval("accent", i, "0 0 0"),
         )
-        if getval("doc_ids", i):
-            doc_ids = getval("doc_ids", i)
+        if (doc_ids := getval("doc_ids", i)):
             [blog.tags.append(tag) for blog in blogs if blog.id in doc_ids]
         tags.append(tag)
         db.session.add(tag)
@@ -70,9 +71,10 @@ def populate_components(
     num: int, lib: SavedComponentLibrary, **kwargs
 ) -> tuple[list[SavedComponent], str]:
     def getval(name: str, i: int, default=None):
+        specific_vals = kwargs.get(name)
         return (
-            kwargs.get(name)[i]
-            if kwargs.get(name) and kwargs.get(name)[i:]
+            specific_vals[i]
+            if specific_vals and specific_vals[i:]
             else default
         )
 

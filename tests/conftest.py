@@ -1,6 +1,7 @@
 import os
 import time
 from pathlib import Path
+import warnings
 
 import docker
 import mysql.connector
@@ -39,10 +40,14 @@ def database(client):
     )
     dbname = DB_OPTS.get("database")
 
+    if dbname is None:
+      raise Exception("Missing key 'database' in DB_OPTS.")
+
+
     cursor = test_db.cursor()
 
     cursor.execute("SHOW DATABASES")
-    if next((x for x in cursor if x[0] == dbname), -1) == -1:
+    if next((x for x in cursor if x[0] == dbname), -1) == -1: # type: ignore
         cursor.execute("CREATE DATABASE " + dbname)
     # Potentially unread results in cursor
     cursor.reset()
@@ -76,7 +81,7 @@ def enable_transactional_tests(database: SQLAlchemy):
     connection = database.engine.connect()
     transaction = connection.begin()
 
-    database.session = scoped_session(
+    database.session = scoped_session( #type: ignore
         session_factory=sessionmaker(
             bind=connection,
             join_transaction_mode="create_savepoint",
@@ -127,12 +132,12 @@ def typesense_client():
         if not container.status == "running":
             container.start()
 
-    typesense_client = typesense.Client(
+    typesense_client = typesense.Client( # type: ignore
         {
             "nodes": [
                 {
                     "host": "localhost",
-                    "port": "8109",
+                    "port": 8109,
                     "protocol": "http",
                 }
             ],

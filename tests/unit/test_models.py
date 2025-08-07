@@ -21,7 +21,7 @@ def test_user(client):
     db.session.add(user)
     db.session.commit()
 
-    print(user.__table__.c.date_created, user.date_created)
+    print(user.__table__.c.date_created, user.date_created) # type: ignore
 
     assert user.name == "brutha"
     assert user.title == "138, Prophet"

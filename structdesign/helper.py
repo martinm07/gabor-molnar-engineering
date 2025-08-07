@@ -35,7 +35,7 @@ def cors_enabled(methods=["POST"], allow_credentials=True, development_only=Fals
 
             @csrf.exempt
             @functools.wraps(view)
-            def wrapped_view(*args, **kwargs):
+            def wrapped_view_cors(*args, **kwargs):
                 global old_samesite
                 old_samesite = current_app.config.get("SESSION_COOKIE_SAMESITE")
 
@@ -59,13 +59,15 @@ def cors_enabled(methods=["POST"], allow_credentials=True, development_only=Fals
                         resp.access_control_allow_origin = "*"
                     resp.access_control_allow_credentials = allow_credentials
                 return resp
+
+            return wrapped_view_cors
         else:
 
             @functools.wraps(view)
-            def wrapped_view(**kwargs):
+            def wrapped_view_generic(**kwargs):
                 return make_response(view(**kwargs))
 
-        return wrapped_view
+            return wrapped_view_generic
 
     return decorator
 
@@ -440,7 +442,7 @@ def send_email_info(email_filename, address, **kwargs):
     message.attach(MIMEText(text, "plain"))
     message.attach(MIMEText(html, "html"))
 
-    smtp = smtplib.SMTP(EMAIL_SMTP_SERVER, port=EMAIL_PORT)
+    smtp = smtplib.SMTP(EMAIL_SMTP_SERVER, port=int(EMAIL_PORT))
 
     smtp.starttls(context=context)
     smtp.login(INFO_EMAIL_LOGIN_USER, INFO_EMAIL_LOGIN_PASSWORD)

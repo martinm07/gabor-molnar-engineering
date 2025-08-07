@@ -94,10 +94,12 @@ def set_name():
     data: dict = json.loads(request.data.decode("utf-8"))
     username: str = data["username"]
     if " " in username:
-        return 400
+        return "Name cannot contain spaces", 400
 
     userid = session.get("register_userid")
     user = DUser(username) if not userid else db.session.get(DUser, userid)
+    if user is None:
+        return "User referenced by session key 'register_userid' does not exist", 400
     db.session.add(user) if not userid else setattr(user, "username", username)
     db.session.commit()
     session["register_userid"] = user.id
@@ -175,6 +177,8 @@ def set_info():
     type_, info = data["type"], data["data"]
 
     user = db.session.get(DUser, session["register_userid"])
+    if user is None:
+        return "User referenced by session key 'register_userid' does not exist", 400
     # Do nothing if we're not making any changes to the info
     if (type_ == "email" and user.email == info) or (
         type_ == "phone" and user.phone_number == info
@@ -297,14 +301,18 @@ def stamp_request(name):
 
 def compute_token():
     user = db.session.get(DUser, session["register_userid"])
+    if user is None:
+        return "User referenced by session key 'register_userid' does not exist", 400
     usersecret = db.session.get(DUserSecret, user.secret_id)
+    if usersecret is None:
+        return "User missing secret", 400
     curtime = str(
         int(
             (time.time() - session.get("register_tokentimeoffset", 0))
-            // (float(os.environ.get("VERIFY_TOKEN_EXPIRE_MINS")) * 60)
+            // (float(os.environ.get("VERIFY_TOKEN_EXPIRE_MINS", 5)) * 60)
         )
     )
-    info = user.email or user.phone_number
+    info = user.email or user.phone_number or ""
     ipaddress = get_ipaddress()
     cookie_id = session.get("cookie_hash", "")
     token = str(
@@ -364,6 +372,8 @@ def can_sendtoken_info():
 
 def send_token_email(token):
     user = db.session.get(DUser, session["register_userid"])
+    if user is None:
+        return "User referenced by session key 'register_userid' does not exist"
     send_email_info("register-confirm", user.email, token=token)
     print(f"Sent the token to email address {user.email}: {token}")
 
@@ -371,6 +381,8 @@ def send_token_email(token):
 def send_token_sms(token):
     # TODO: Use Twilio to send the SMS message (probably using client.messages.create() - see https://www.twilio.com/docs/messaging/quickstart)
     user = db.session.get(DUser, session["register_userid"])
+    if user is None:
+        return "User referenced by session key 'register_userid' does not exist"
     print(f"Sent the token to phone number {user.phone_number}: {token}")
 
 
@@ -385,6 +397,8 @@ def send_token():
     first_send_only = data["firstSendOnly"]
 
     user = db.session.get(DUser, session["register_userid"])
+    if user is None:
+        return "User referenced by session key 'register_userid' does not exist", 400
     info = user.email or user.phone_number
 
     can_send, attempts, last_attempt = (
@@ -406,9 +420,11 @@ def send_token():
             return_msg = send_token_email(compute_token())
         elif session["register_info_type"] == "phone":
             return_msg = send_token_sms(compute_token())
+        else:
+            return {"msgType": "error", "message": ""}
 
         if return_msg:
-            return return_msg
+            return {"msgType": "error", "message": return_msg}
 
         session["first_token_sent"] = True
         stamp_request("send_token")
@@ -465,12 +481,14 @@ def check_token():
 @cors_enabled(methods=["POST"])
 def validate_info():
     if request.method != "POST":
-        return
+        return ""
     data: dict = json.loads(request.data.decode("utf-8"))
     token = data["token"]
     if not validate_token_regulated(token):
         return {"message": "Incorrect token"}, 400
     user = db.session.get(DUser, session["register_userid"])
+    if user is None:
+        return "User referenced by session key 'register_userid' does not exist", 400
     user.is_verified = True
     db.session.commit()
     return {}
@@ -482,6 +500,8 @@ def set_password():
     data: dict = json.loads(request.data.decode("utf-8"))
     new_password = data["password"]
     user = db.session.get(DUser, session["register_userid"])
+    if user is None:
+        return "User referenced by session key 'register_userid' does not exist", 400
     user.set_password(new_password)
     db.session.commit()
     return {}
@@ -492,6 +512,8 @@ def set_password():
 def set_is2fa():
     data: bool = json.loads(request.data.decode("utf-8"))
     user = db.session.get(DUser, session["register_userid"])
+    if user is None:
+        return "User referenced by session key 'register_userid' does not exist", 400
     user.is_2fa = data
     db.session.commit()
     return {}
@@ -502,7 +524,7 @@ def set_is2fa():
 def phone_number_has_country_code():
     number: str = json.loads(request.data.decode("utf-8"))
     phone_number = checkout_phone_number(number)
-    return jsonify("INVALID_COUNTRY_CODE" not in phone_number.validation_errors)
+    return jsonify("INVALID_COUNTRY_CODE" not in (phone_number.validation_errors or []))
 
 
 @bp.route("/api/register/fast_is_valid_email", methods=["POST"])
@@ -519,6 +541,8 @@ def recovery_option_isinuse():
     data: dict = json.loads(request.data.decode("utf-8"))
     info, type_ = data["info"], data["type"]
     user = db.session.get(DUser, session["register_userid"])
+    if user is None:
+        return "User referenced by session key 'register_userid' does not exist", 400
     info = checkout_phone_number(info).phone_number if type_ == "phone" else info
     possession = user.email or user.phone_number
     return jsonify(
@@ -549,6 +573,8 @@ def get_country_code():
 
 def new_recovery_option_checks(data, type_):
     user = db.session.get(DUser, session["register_userid"])
+    if user is None:
+        return {"message": "User data missing in server"}, 400
     if type_ == "email":
         if not is_email_valid(data, fast=True):
             return {"message": "Invalid email address."}, 400
@@ -593,6 +619,8 @@ def remove_recovery_option():
     data: dict = json.loads(request.data.decode("utf-8"))
     factorid = data["id"]
     user = db.session.get(DUser, session["register_userid"])
+    if user is None:
+        return "User referenced by session key 'register_userid' does not exist", 400
     factor = db.session.get(DUserBackupFactor, factorid)
     if factor not in user.backup_factors:
         return {"message": "Backup factor not one of the current user's."}, 400
@@ -607,6 +635,8 @@ def edit_recovery_option():
     data: dict = json.loads(request.data.decode("utf-8"))
     factorid, new_data = data["id"], data["value"]
     user = db.session.get(DUser, session["register_userid"])
+    if user is None:
+        return "User referenced by session key 'register_userid' does not exist", 400
     factor = db.session.get(DUserBackupFactor, factorid)
 
     if factor not in user.backup_factors:

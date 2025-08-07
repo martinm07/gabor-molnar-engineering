@@ -3,7 +3,7 @@ from datetime import datetime
 
 from passlib.hash import argon2
 from sqlalchemy import String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from .extensions import db
@@ -26,7 +26,7 @@ class DUser(db.Model):
     password_hash = db.Column(db.String(256), nullable=True)
     is_2fa = db.Column(db.Boolean, default=True)
 
-    backup_factors = db.relationship("DUserBackupFactor", back_populates="user")
+    backup_factors: Mapped[list["DUserBackupFactor"]] = relationship("DUserBackupFactor", back_populates="user")
     comments = db.relationship("DComment", back_populates="user")
     # phone number, 2FA method, recover data (phone number OR email), recover method
     hasher = argon2.using(time_cost=10, memory_cost=50_000)

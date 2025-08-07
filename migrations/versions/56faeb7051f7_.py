@@ -87,13 +87,13 @@ def upgrade():
         sa.Column("document_id", sa.Integer(), nullable=False),
         sa.Column("tag_id", sa.Integer(), nullable=False),
         sa.ForeignKeyConstraint(
-            ["document_id"], ["_depr_documents.id"], name="fk_document_tag_document_id"
+            ["document_id"], ["_depr_documents.id"], name="fk_document_tag_deprdocument_id"
         ),
         sa.ForeignKeyConstraint(
-            ["tag_id"], ["_depr_tags.id"], name="fk_document_tag_tag_id"
+            ["tag_id"], ["_depr_tags.id"], name="fk_document_tag_deprtag_id"
         ),
         sa.PrimaryKeyConstraint(
-            "document_id", "tag_id", name="pk_document_tag_document_id_tag_id"
+            "document_id", "tag_id", name="pk_document_tag_deprdocument_id_deprtag_id"
         ),
     )
     op.create_table(

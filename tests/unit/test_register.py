@@ -20,6 +20,7 @@ def test_get_session_state(client: FlaskClient):
         session["REG-phone"] = "+35847347239"
 
     response = client.get("register/get_session_state").json
+    assert response
 
     assert response.get("username") == session.get("REG-username")
     assert response.get("email") == session.get("REG-email")
@@ -30,6 +31,7 @@ def test_get_session_state(client: FlaskClient):
         session2.update(session)
         session2.pop("REG-username")
     response = client.get("register/get_session_state").json
+    assert response
     assert response["username"] is None
 
 
@@ -74,6 +76,7 @@ def test_add_username(client: FlaskClient, monkeypatch):
     with client:
         response = get_resp("seanhorses2")
         assert session.get("REG-username") != "seanhorses2"
+    assert response
     assert response["result"] is False
     assert response["code"] == "PHC"
 
@@ -128,9 +131,11 @@ def test_is_password_valid():
 
 def test_add_email_password(client: FlaskClient, monkeypatch):
     def get_resp(email, password):
-        return client.post(
+        resp_ = client.post(
             "/register/add_email_password", json={"email": email, "password": password}
         ).json
+        assert resp_
+        return resp_
 
     with client:
         # This email address is only valid because in testing we aren't checking the DNS or SMTP servers
@@ -170,9 +175,11 @@ def test_add_email_password(client: FlaskClient, monkeypatch):
 
 def test_set_loginmode(client: FlaskClient):
     def get_resp(loginmode: str):
-        return client.post(
+        resp_ = client.post(
             "/register/set_loginmode", data=loginmode, content_type="text/plain"
         ).json
+        assert resp_
+        return resp_
 
     for loginmode in [None, "bananas"]:
         with client:
@@ -305,4 +312,4 @@ def test_finish_possession_loginmode(client: FlaskClient):
         sess["REG-email"] = "seanhorses2@gmail.com"
         sess["REG-phone"] = "+35847347239"
         sess["REG-loginmode"] = "possession"
-    client.post("/register/finish").status_code == 400
+    # client.post("/register/finish").status_code == 400

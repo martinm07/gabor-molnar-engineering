@@ -1,5 +1,6 @@
 import json
 from datetime import date
+from typing import cast
 
 from flask import Blueprint, render_template, request
 from sqlalchemy import select
@@ -28,13 +29,12 @@ def query():
     sort_descending = request.args.get("desc", True)
 
     sort_str = f"{sort_by if sort_by != 'relevance' else '_text_match'}:{'DESC' if sort_descending else 'ASC'}"
-    search_parameters = {
+
+    return typesense_client.collections["documents"].documents.search({
         "q": query,
         "query_by": ",".join(["title", "description", "body", "tags"]),
         "sort_by": f"{sort_str}{',_text_match:DESC' if sort_by != 'relevance' else ''}",
-    }
-
-    return typesense_client.collections["documents"].documents.search(search_parameters)
+    })
 
 
 @bp.route("/advanced_query")
@@ -63,17 +63,15 @@ def advanced_query():
         )
 
     sort_str = f"{sort_by if sort_by != 'relevance' else '_text_match'}:{'desc' if sort_descending else 'asc'}"
-    search_parameters = {
+
+    results = typesense_client.collections["documents"].documents.search({
         "q": query,
         "query_by": ",".join(["title", "description", "body", "tags"]),
         "sort_by": f"{sort_str}{',_text_match:desc' if sort_by != 'relevance' else ''}",
         "filter_by": " && ".join(filter_args),
         "facet_by": "tags",
-        "page": page,
-    }
-    results = typesense_client.collections["documents"].documents.search(
-        search_parameters
-    )
+        "page": int(page),
+    })
 
     # This whole getting the tags in oder to add the color is very slow
     tags_i = next(
@@ -85,12 +83,13 @@ def advanced_query():
         None,
     )
     if tags_i is not None:
-        tags_list = results["facet_counts"][tags_i]["counts"]
+        tags_list = cast(list[dict[str, str]], results["facet_counts"][tags_i]["counts"])
         for tag in tags_list:
             tag_accent = db.session.scalars(
                 select(DocumentTag.accent).filter_by(name=tag["value"])
             ).first()
-            tag["color"] = tag_accent
+            if tag_accent is not None:
+                tag["color"] = tag_accent
 
     return results
 
