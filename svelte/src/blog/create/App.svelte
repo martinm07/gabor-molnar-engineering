@@ -148,8 +148,7 @@
           remove_list: data.upgrade_remove_list,
           diff_msgs: data.upgrade_diff_msgs,
         };
-        compLibVer.latestVer =
-          data.upgrade_diff_msgs.at(-1)?.version ?? compLibVer.currentVer;
+        compLibVer.latestVer = compLibUpgradeInfo.to_version;
       });
   }
   setContext("refreshDocument", loadDocument);
@@ -180,7 +179,12 @@
         const editMatch = compLibEdits.current.find(
           (edit) => edit.type !== "remove" && edit.identName === componentID,
         );
-        if (!comp && !editMatch) return;
+        if (!comp && !editMatch) {
+          if (docEl)
+            docEl.innerHTML =
+              "<div>Welcome to purgatory - Please either select or create a component</div>";
+          return;
+        }
 
         const compWithEdits = assign(
           $state.snapshot(comp) ?? {},

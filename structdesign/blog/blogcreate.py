@@ -6,6 +6,7 @@ import urllib.parse
 from collections.abc import Iterable
 from functools import cmp_to_key
 from typing import Any, Sequence, Union
+import warnings
 
 import requests
 from bs4 import BeautifulSoup
@@ -365,7 +366,11 @@ def get_component_library():
 
     current = get_version(lib.latest_version)
     current_version = current.version
-    comp_versions: list[Union[str, None]] = version.split(",") # type: ignore
+    if version != "":
+        # If the version IS an empty string, then this would return [''] and in the end have `final = [None]` (hence the need for special logic)
+        comp_versions: list[str | None] = version.split(",") # type: ignore
+    else:
+        comp_versions = []
 
     # Mapping from names in the requested library version (as keys) to names in the latest version (as values)
     g.comp_name_map = {}
@@ -424,6 +429,7 @@ def get_component_library():
                 "description": current.description,
             },
         )
+
         current_version = current.next_version
         # This will be None when at the very base of the library history, but
         #  we should still give one final check before saying the history was exhausted
@@ -434,6 +440,29 @@ def get_component_library():
     print(final)
     print("--------")
     print(g.comp_name_map)
+
+    ## Attempt to complete the diff message history by continuing until the diff version actually matches the requested version
+    ## (instead of just when the requested version is satisfied)
+    ## NOTE: This may fail (gracefully) when requesting "custom" library versions that don't match any one real version of the library
+
+    extra_diff_msgs: list[dict[str, str]] = []
+    while current_version != version:
+        try:
+            diff = get_version(current_version)
+        except Exception:
+            warnings.warn("Exhausted version history trying to complete the diff messages report. Likely a custom library version was requested.")
+            extra_diff_msgs = []
+            break
+
+        extra_diff_msgs.insert(0, {
+            "version": diff.version,
+            "message": diff.message,
+            "description": diff.description,
+        })
+
+        current_version = diff.next_version
+
+    diff_msgs.extend(extra_diff_msgs)
 
     # Check for duds in the name map (where old_name == new_name)
     for k, v in list(g.comp_name_map.items()):

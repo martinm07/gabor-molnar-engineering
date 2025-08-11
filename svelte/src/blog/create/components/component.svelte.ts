@@ -667,7 +667,10 @@ class Comps {
     // For example, when viewing a document who's component library isn't up to date in one tab,
     //  and making edits to the component library in another tab, we don't want those edits to be
     //  applied to the old component library in the tab where we're viewing the document.
-    if (compLibVer.isVersFetched && !compLibVer.isLibUpToDate)
+    if (
+      editorState.mode !== "component" ||
+      (compLibVer.isVersFetched && !compLibVer.isLibUpToDate)
+    )
       return savedComps.map((comp) =>
         Object.assign(comp, { state: "unmodified" as "unmodified" }),
       );

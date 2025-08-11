@@ -450,6 +450,26 @@
   >
 </div>
 
+{#if comps.savedLib.length === 0 && editorState.mode !== "component" && mode.sidebar.includes("component")}
+  <div class="text-3xl italic text-gray-400 text-center mt-4">
+    There appear to be no components in this library, for now.<br />
+    <a
+      class="underline hover:no-underline text-gray-500"
+      href="/documents/edit/component"
+      onclick={(e) => {
+        e.preventDefault();
+        changePage("component", "null", editorState.resourceName);
+      }}
+      onkeydown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          changePage("component", "null", editorState.resourceName);
+        }
+      }}>Edit component library?</a
+    >
+  </div>
+{/if}
+
 <style>
   :global(.component-search-result mark) {
     background-color: var(--steel-100);

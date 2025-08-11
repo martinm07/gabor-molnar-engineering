@@ -90,6 +90,9 @@
             echo "No virtual environment detected (checked existence of './.venv/bin/activate'). Recommended you run 'uv init' to create it."
           fi
 
+          # Clear the hash table so that the PATH updates (by activating the virtual environment) are reflected immediately
+          hash -r
+
           #alias ls=eza
           #alias ls="ls -alh --color=auto"
           alias ls="eza --long --group --header -a --classify --links --level=3 --color=auto --sort=type --time-style=long-iso --extended"
