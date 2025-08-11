@@ -1,21 +1,12 @@
 ## Issues
 
-- CSSEditor undo/redo: Edits made in multiple selections are forgotten when editing nodes individually. 
-  This behaviour is unintuitive, but hard to overcome. Each edit would require computing the CSS string for each element in the selection individually to find the full CSS styles that can have state added to. Then, if we really don't want CSS edit history to be dependent on the selection- only the elements themselves- then we must somehow construct an edit history from the individual histories for multiple selections. This would involve constructing a history as far back as possible where the *changes* made to each element of the selection are still identical. For example, the latest states in every element may involve adding `color: red;`, the state before that may also be the same for every element, being removing `display: block;`, or changing `position: relative;` to `position: absolute;`, etc.
-  **Basically, we want the intersection of any shared undo history.**
-  This of course involves finding the *changes* in state, which should be impervious to changes that don't affect the style calculation e.g. changing the order of properties. This is something which has not yet been implemented.
-- CSS Editor undo/redo: When undoing, the autocomplete menu does strange things, seemingly trying to autocomplete the first parameter name. This causes unexpected stealing of control from keyboard cursor navigation.
-- ~~CSS Editor: Pressing "backspace" on a line with 3 or less characters (e.g. `a:;`) that is in the middle of 2 other CSS properties messes up the structure: the property name of the following line becomes part of the property value pf the preceding line.~~
-- ~~Tag name editor: When it live refreshes the element, focus doesn't return back to the input.
-  In general, changing the tag name is a rather destructive action (it can remove attributes, change styles and so on), thus it shouldn't live update, but have some confirmation button.~~
-- ~~Tag name editor/attribute editor: When the tag name is updated (involving the creation and deletion of an element), the attribute masks are lost.~~
-- ~~Attribute editor: Selection of multiple elements may cause some attributes to clone onto elements where they are not supposed to be~~
-- ~~CSS Editor: CSSUtilities.js doesn't recognize rules in CSS @layer at-rules.
-  Now that in Tailwind V4 all the styles are in layers, and the user-agent styles are also in layer just to remain lower precedence, this is a big deal. It essentially means that the whole `handlecss.ts` file doesn't so anything, because there's no interesting styles it can find to show as initial element styles.~~
-- ~~Document patch syncing: Doesn't ignore `potential-location` elements when they are inserted for adding/moving nodes, causing a lot of unnecessary network traffic~~
-- ~~Document patch syncing: Doesn't utilize attribute masks to not sync "`draggable`" or "`contentEditable`" when they are used for editor functionality~~
-- ~~Document patch syncing: Interprets `textContent` of nodes in `characterData` mutations as HTML, instead of escaping the strings. The same may also be an issue with `attribute` mutations.
-  There is a library called "[he](https://www.npmjs.com/package/he)" that can be used to address this.~~
+- There is no ability to "discard local changes" in the component library editor.
+- Some potential locations for elements are missing.
+- Potential location elements are not ignored by the component library editor (because it is utilising `reconstructHTMLString()` directly which does not handle ignoring `potential-location` elements).
+- The selection highlight (still) sometimes doesn't show up (requiring a reload to restore).
+- When adding an element in the component library editor, the current component appears in the list of what can be added for a second, before disappearing.
+- In the document editor, it is possible to insert/move elements in between the parts of a component, breaking up its structure.
+- In the document editor, there is no indication—when a component part is selected—the component it is a part of. There should be an additional outline around the overall component to make it clear to the user that this element is part of a larger, immutable unit.
 
 ## Current Checklist
 
@@ -42,6 +33,8 @@
     - Button on navbar that brings up little view of media files with thumbnails
     - Clicking media thumbnail copies the path to clipboard.
     - Ability to upload and delete media files
+- [ ] Floating UI at cursor position activated through keyboard shortcuts for colour picking and media tray file URL insertion
+	- The colour picker should also have the option of managing a colour palette (which then needs to be saved on the document in document editor mode and as a special component in component library editor mode. Palette colours should also appear when in documents that inherit the library).
 - [ ] Node hierarchy view
 
 ## Current Plans
