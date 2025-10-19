@@ -1,16 +1,12 @@
 <script lang="ts">
-  import { onMount } from "svelte";
-  import type {
-    FormEventHandler,
-    HTMLTextareaAttributes,
-  } from "svelte/elements";
+  import type { HTMLTextareaAttributes } from "svelte/elements";
+  import { watch } from "runed";
 
   interface Props extends HTMLTextareaAttributes {}
 
   let { value = $bindable(), oninput, ...props }: Props = $props();
 
   let el: HTMLTextAreaElement;
-  let paddingY: number;
 
   function getPaddingY() {
     const computed = getComputedStyle(el);
@@ -23,29 +19,26 @@
     return paddingY;
   }
 
-  onMount(() => {
-    el.dispatchEvent(new Event("input", { bubbles: true }));
-  });
+  watch(
+    () => value,
+    () => {
+      el.style.width = `${el.value.length || el.placeholder.length}ch`;
 
-  function oninputModified(
-    e: Parameters<FormEventHandler<HTMLTextAreaElement>>[0],
-  ) {
-    el.style.width = `${el.value.length || el.placeholder.length}ch`;
+      el.style.height = "0px";
+      // This calls getComputedStyle() which should force a style calculation, thus letting
+      //  the above 0px height assignment take effect to calculate the true scrollHeight
+      const paddingY = getPaddingY();
 
-    el.style.height = "0px";
-    // This calls getComputedStyle() which should force a style calculation, thus letting
-    //  the above 0px height assignment take effect to calculate the true scrollHeighr
-    const paddingY = getPaddingY();
-
-    el.style.height = `${el.scrollHeight - paddingY}px`;
-    if (el.scrollWidth > el.offsetWidth) {
-      console.log(
-        `Text content seems to have exceeded max width. scrollWidth: ${el.scrollWidth}  offsetWidth: ${el.offsetWidth}`,
-      );
-    }
-    if (e) oninput?.(e);
-  }
+      el.style.height = `${el.scrollHeight - paddingY}px`;
+      if (el.scrollWidth > el.offsetWidth) {
+        console.log(
+          `Text content seems to have exceeded max width. scrollWidth: ${el.scrollWidth}  offsetWidth: ${el.offsetWidth}`,
+        );
+      }
+    },
+  );
 </script>
 
-<textarea bind:this={el} oninput={oninputModified} bind:value {...props}
-></textarea>
+<!-- This element should be styled to have text-wrap: wrap; and some value for max-width
+     to activate the wrapping (otherwise, the textarea width will just grow infinitely). -->
+<textarea bind:this={el} {oninput} bind:value {...props}></textarea>

@@ -16,7 +16,6 @@
     value: string;
     referenceUrl: string;
     valid: boolean;
-    id: number;
   }
 </script>
 
@@ -50,7 +49,6 @@
   }
   let { selected, disabled, attributes = $bindable([]) }: Props = $props();
 
-  let attributeID: number = 0;
   // let attributes: Attribute[] = $state([]);
   let prevAttributes: Attribute[];
 
@@ -151,7 +149,6 @@
         value: value!,
         referenceUrl: "",
         valid: true,
-        id: attributeID++,
       };
     };
 
@@ -410,7 +407,7 @@
 </script>
 
 <ul class="mt-10 attributes-display">
-  {#each attributes as attr, i (attr.id)}
+  {#each attributes as attr, i}
     <li
       class:invalid={attr.name && !attr.valid}
       class:disabled={disabled && attr.name !== "data-component"}
@@ -543,7 +540,6 @@
         value: "",
         referenceUrl: "",
         valid: false,
-        id: attributeID++,
       })}>+</button
   >
 </div>
