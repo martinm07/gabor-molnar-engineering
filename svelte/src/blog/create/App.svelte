@@ -34,6 +34,7 @@
   } from "./helper";
   import {
     type DocNodeMap,
+    type StringPosNodeMap,
     type TempMutationRecord,
     reconstructHTMLString,
     processMutations,
@@ -448,6 +449,7 @@
   //  However, there is no such mutation as "changing the tag name of an element"- that simply
   //  involves deleting and adding a new element.
   let docNodes: DocNodeMap = new Map();
+  let stringPosNodeMap: StringPosNodeMap = new Map();
   let htmlStr: string;
   let collectedMutations: TempMutationRecord[] = [];
 
@@ -463,6 +465,8 @@
   //    content. These <br>s do nothing (typically) for page flow or otherwise, and are just artefacts
   //    from the contentEditable process (in which there is no way for the user to delete them manually)
   //  5- sync the document to the database through patches to the HTML string
+  //  6- update the undo stack, either adding a new state if another part of the editor asks for it,
+  //      or merging into the current topmost state of the stack otherwise
   const { stop } = useMutationObserver(
     () => docEl,
     (unfilteredMutations) => {
@@ -630,10 +634,10 @@
   );
 
   const LOG_PATCH_SYNC = false;
-  const DO_PATCH_SYNC = true;
+  const DO_PATCH_SYNC = false;
   const stopPatchInterval = setInterval(() => {
     if (!docEl || collectedMutations.length === 0) return;
-    if (!DO_PATCH_SYNC || documentID === null) {
+    if (documentID === null) {
       collectedMutations = [];
       if (componentID !== null) {
         console.log("Debouncing component content edit.");
@@ -652,14 +656,14 @@
       documentID,
       {
         docNodes,
+        stringPosNodeMap,
         docContainer: docEl,
       },
-      LOG_PATCH_SYNC
-        ? {
-            updateHTMLStr: htmlStr,
-            debug: true,
-          }
-        : {},
+      {
+        updateHTMLStr: htmlStr,
+        debug: LOG_PATCH_SYNC,
+        disableServerSync: !DO_PATCH_SYNC,
+      },
     );
 
     if (LOG_PATCH_SYNC) {

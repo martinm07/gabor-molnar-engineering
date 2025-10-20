@@ -19,10 +19,27 @@ export type DocNodeEntry =
     };
 export type DocNodeMap = Map<Node, DocNodeEntry>;
 
-export type DocPatch = {
+export type StringPosNodeMap = Map<number, Node>;
+
+export type DocPatchStr = {
   value: string;
   start: number;
   length: number;
+};
+export type DocPatchDom = {
+  start: number;
+  type:
+    | "addFirstChild"
+    | "addNextSibling"
+    | "remove"
+    | "attributes"
+    | "characterData";
+  value: string;
+  oldValue: string | null;
+};
+export type DocPatch = {
+  str_: DocPatchStr;
+  dom: DocPatchDom;
 };
 
 // Derived from MutationRecord type
@@ -302,7 +319,7 @@ export function reconstructHTMLString(
  */
 function handleNodeAdd(
   node: Node,
-  p: { docNodes: DocNodeMap; docContainer: Element; debug?: boolean },
+  p: HandleMutationParams,
   returnType: "start" | "length" | "taglength" = "start",
 ): [patches: DocPatch[], startIndex: number] {
   const findStartIndex = (
@@ -397,8 +414,11 @@ function handleNodeAdd(
   }
 
   // First we do all the index shifting- essentially "making space" for the added node before including it in docNodes
-  p.docNodes.values().forEach((val) => {
-    if (val.stringPos >= startIndex) val.stringPos += fullString.length;
+  let prevNodeStart: number = -1;
+  p.docNodes.forEach((val) => {
+    if (val.stringPos > prevNodeStart && val.stringPos < startIndex)
+      prevNodeStart = val.stringPos;
+    else if (val.stringPos >= startIndex) val.stringPos += fullString.length;
   });
   newInfo.parentList.forEach((parent) => {
     newPatches.push(...handleNodeAdd(parent, p)[0]);
@@ -422,18 +442,29 @@ function handleNodeAdd(
     } else p.docNodes.set(key, val);
   });
 
-  newPatches.push({
+  const strPatch: DocPatch["str_"] = {
     value: fullString,
     start: startIndex,
     length: 0,
-  });
+  };
+  const domPatch: DocPatch["dom"] = {
+    start: prevNodeStart,
+    type: node.previousSibling ? "addNextSibling" : "addFirstChild",
+    value: fullString,
+    oldValue: "",
+  };
+  const patch: DocPatch = { str_: strPatch, dom: domPatch };
+  newPatches.push(patch);
+
+  // Apply string patch to HTML string right away
+  if (p.htmlStr) p.htmlStr = applyPatches(p.htmlStr, [patch]);
 
   return [newPatches, calculateStartIndex(newInfo)];
 }
 
 function handleNodeRemove(
   node: Node,
-  p: { docNodes: DocNodeMap; docContainer: Element; debug?: boolean },
+  p: HandleMutationParams,
 ): [patches: DocPatch[]] {
   const nodeInfo = p.docNodes.get(node);
   if (!nodeInfo) {
@@ -480,20 +511,28 @@ function handleNodeRemove(
     parentInfo.stringLen -= nodeInfo.stringLen;
   });
 
-  return [
-    [
-      {
-        value: "",
-        start: nodeInfo.stringPos,
-        length: nodeInfo.stringLen,
-      },
-    ],
-  ];
+  const strPatch: DocPatch["str_"] = {
+    value: "",
+    start: nodeInfo.stringPos,
+    length: nodeInfo.stringLen,
+  };
+  const domPatch: DocPatch["dom"] = {
+    start: nodeInfo.stringPos,
+    type: "remove",
+    value: "",
+    oldValue: getNodeSourceRepresentation(node),
+  };
+  const patch: DocPatch = { str_: strPatch, dom: domPatch };
+
+  // Apply string patch to HTML string right away
+  if (p.htmlStr) p.htmlStr = applyPatches(p.htmlStr, [patch]);
+
+  return [[patch]];
 }
 
 function handleAttributeChange(
   el: Element,
-  p: { docNodes: DocNodeMap; docContainer: Element; debug?: boolean },
+  p: HandleMutationParams,
 ): [patches: DocPatch[]] {
   const nodeInfo = p.docNodes.get(el);
   if (!nodeInfo) {
@@ -531,22 +570,36 @@ function handleAttributeChange(
   }
 
   // Define the patch before we update the nodeInfo of this node
-  const patch: DocPatch = {
+  const strPatch: DocPatch["str_"] = {
     value: newStartTag,
     start: nodeInfo.stringPos,
     length: nodeInfo.startTagLen,
   };
+  const domPatch: DocPatch["dom"] = {
+    start: nodeInfo.stringPos,
+    type: "attributes",
+    value: newStartTag,
+    oldValue:
+      p.htmlStr?.slice(
+        nodeInfo.stringPos,
+        nodeInfo.stringPos + nodeInfo.startTagLen,
+      ) ?? null,
+  };
+  const patch: DocPatch = { str_: strPatch, dom: domPatch };
 
   nodeInfo.startTagLen += lenDiff;
   nodeInfo.stringLen += lenDiff;
   if (p.debug) console.log("----Changing attributes of node", el);
+
+  // Apply string patch to HTML string right away
+  if (p.htmlStr) p.htmlStr = applyPatches(p.htmlStr, [patch]);
 
   return [[patch]];
 }
 
 function handleCharacterDataChange(
   node: Node,
-  p: { docNodes: DocNodeMap; docContainer: Element; debug?: boolean },
+  p: HandleMutationParams,
 ): [patches: DocPatch[]] {
   const nodeInfo = p.docNodes.get(node);
   // TODO: We ignore adding nodes with a string representation length of 0 to docNodes, because they
@@ -586,23 +639,47 @@ function handleCharacterDataChange(
   }
 
   // Define the patch before we update the nodeInfo of this node
-  const patch: DocPatch = {
+  const strPatch: DocPatch["str_"] = {
     value: newNodeStr,
     start: nodeInfo.stringPos,
     length: nodeInfo.stringLen,
   };
+  const domPatch: DocPatch["dom"] = {
+    start: nodeInfo.stringPos,
+    type: "characterData",
+    value: newNodeStr,
+    oldValue:
+      p.htmlStr?.slice(
+        nodeInfo.stringPos,
+        nodeInfo.stringPos + nodeInfo.stringLen,
+      ) ?? null,
+  };
+  const patch: DocPatch = { str_: strPatch, dom: domPatch };
 
   nodeInfo.stringLen += lenDiff;
   if (p.debug) console.log("----Changing text of node", node);
 
+  // Apply string patch to HTML string right away
+  if (p.htmlStr) p.htmlStr = applyPatches(p.htmlStr, [patch]);
+
   return [[patch]];
+}
+
+interface HandleMutationParams {
+  docNodes: DocNodeMap;
+  docContainer: Element;
+  htmlStr?: string;
+  debug?: boolean;
 }
 
 export function handleMutationRecordPatch(
   record: TempMutationRecord,
-  p: { docNodes: DocNodeMap; docContainer: Element; debug?: boolean },
-): DocPatch[] {
+  p: HandleMutationParams,
+): [patches: DocPatch[], newHTMLStr?: string] {
   const patches: DocPatch[] = [];
+
+  // prettier-ignore
+  if (!p.htmlStr) console.warn("Without providing the last derived htmlStr of the document, the DOM patches for attributes and characterData won't have an oldValue.")
 
   switch (record.type) {
     case "childList":
@@ -652,7 +729,7 @@ export function handleMutationRecordPatch(
       break;
   }
 
-  return patches;
+  return [patches, p.htmlStr];
 }
 
 export function processMutations(
@@ -692,11 +769,13 @@ export function patchMutations(
   documentID: number,
   p: {
     docNodes: DocNodeMap;
+    stringPosNodeMap: StringPosNodeMap;
     docContainer: Element;
   },
   opts: {
     updateHTMLStr?: string;
     debug?: boolean;
+    disableServerSync?: boolean;
   } = {},
 ) {
   let newHTMLString = opts.updateHTMLStr ?? "";
@@ -729,15 +808,29 @@ export function patchMutations(
     )
       continue;
 
-    const newPatches = handleMutationRecordPatch(mutation, {
+    const [newPatches, htmlStrUpdate] = handleMutationRecordPatch(mutation, {
       ...p,
+      htmlStr: opts.updateHTMLStr ? newHTMLString : undefined,
       debug: opts.debug,
     });
     patches.push(...newPatches);
 
-    if (opts.updateHTMLStr)
-      newHTMLString = applyPatches(newHTMLString, newPatches);
+    if (opts.updateHTMLStr) {
+      if (typeof htmlStrUpdate !== "string")
+        throw new Error(
+          "Somehow got undefined htmlStrUpdate from handleMutationRecordPatch when opts.updateHTMLStr was set.",
+        );
+      // handleMutationRecordPatch updates the HTML string immediately after every docNodes change
+      //  (when a new patch is created), because DOM `DocPatch`es of type attribute and characterData rely
+      //  on an up-to-date HTML string for their `oldValue`s.
+      newHTMLString = htmlStrUpdate;
+    }
   }
+
+  p.stringPosNodeMap = new Map();
+  p.docNodes.forEach((val, key) => p.stringPosNodeMap.set(val.stringPos, key));
+
+  console.log("PATCHES:", patches);
 
   const createFetch = () =>
     fetch_("/documents/sync_document_patch", {
@@ -746,15 +839,15 @@ export function patchMutations(
         id: documentID,
         patches: patches.map((patch) => {
           return {
-            index: patch.start,
-            length: patch.length,
-            value: patch.value,
+            index: patch.str_.start,
+            length: patch.str_.length,
+            value: patch.str_.value,
           };
         }),
       }),
     });
 
-  if (patches.length > 0) {
+  if (!opts.disableServerSync && patches.length > 0) {
     if (prevFetch === null) prevFetch = createFetch();
     else prevFetch = prevFetch.then(createFetch);
   }
@@ -765,11 +858,11 @@ export function patchMutations(
 export function applyPatches(docStr: string, patches: DocPatch[]) {
   // debugger;
   for (const patch of patches) {
-    debugger;
+    // debugger;
     docStr =
-      docStr.slice(0, patch.start) +
-      patch.value +
-      docStr.slice(patch.start + patch.length);
+      docStr.slice(0, patch.str_.start) +
+      patch.str_.value +
+      docStr.slice(patch.str_.start + patch.str_.length);
   }
   return docStr;
 }
