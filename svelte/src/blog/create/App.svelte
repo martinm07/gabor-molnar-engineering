@@ -39,6 +39,7 @@
     reconstructHTMLString,
     processMutations,
     patchMutations,
+    type DocPatch,
   } from "./docsyncing";
   import Autocomplete from "./editors/Autocomplete.svelte";
   import { fetch_, assign, request2AnimationFrames } from "/shared/helper";
@@ -53,6 +54,7 @@
   import Topbar from "./Topbar.svelte";
   import SaveChanges from "./components/SaveChanges.svelte";
   import ArrowArcLeft from "phosphor-svelte/lib/ArrowArcLeft";
+  import { HistoryManager } from "./undo";
 
   // let compLibVer: string | null = $state(null);
   // let latestCompLibVer: string | null = $state(null);
@@ -448,10 +450,14 @@
   // Also consider closing tags! They will change if the tag name of an element changes.
   //  However, there is no such mutation as "changing the tag name of an element"- that simply
   //  involves deleting and adding a new element.
-  let docNodes: DocNodeMap = new Map();
-  let stringPosNodeMap: StringPosNodeMap = new Map();
+  const docNodes: DocNodeMap = new Map();
+  const stringPosNodeMap: StringPosNodeMap = new Map();
   let htmlStr: string;
   let collectedMutations: TempMutationRecord[] = [];
+
+  const historyManager = new HistoryManager(docNodes, stringPosNodeMap, {
+    debug: true,
+  });
 
   // This observer is to
   //  1- disallow non-element nodes as direct children of docEl
@@ -651,7 +657,9 @@
         `Patch syncing ${collectedMutations.length} mutations:`,
         collectedMutations,
       );
-    htmlStr = patchMutations(
+
+    let patches: DocPatch[];
+    [patches, htmlStr] = patchMutations(
       collectedMutations,
       documentID,
       {
@@ -674,6 +682,11 @@
       console.log(htmlStr);
       console.groupEnd();
     }
+
+    // Send DOM patches to the document history stack for undo/redo
+    historyManager.addToHistoryStack(patches.map((patch) => patch.dom));
+    historyManager.resetFlagsAndClaims();
+    console.log("🎈 docHistory: ", structuredClone(historyManager.docHistory));
 
     collectedMutations = [];
   });

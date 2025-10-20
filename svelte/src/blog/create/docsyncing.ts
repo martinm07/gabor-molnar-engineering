@@ -777,7 +777,7 @@ export function patchMutations(
     debug?: boolean;
     disableServerSync?: boolean;
   } = {},
-) {
+): [patches: DocPatch[], htmlStr: string] {
   let newHTMLString = opts.updateHTMLStr ?? "";
 
   // Should be negative if a precedes b
@@ -827,8 +827,12 @@ export function patchMutations(
     }
   }
 
-  p.stringPosNodeMap = new Map();
-  p.docNodes.forEach((val, key) => p.stringPosNodeMap.set(val.stringPos, key));
+  // We do this instead of assigning an empty Map to ensure the reference to stringPosNodeMap in App.svelte doesn't break
+  p.stringPosNodeMap.forEach((_, key) => p.stringPosNodeMap.delete(key));
+
+  p.docNodes.forEach((info, node) =>
+    p.stringPosNodeMap.set(info.stringPos, node),
+  );
 
   console.log("PATCHES:", patches);
 
@@ -852,7 +856,7 @@ export function patchMutations(
     else prevFetch = prevFetch.then(createFetch);
   }
 
-  return newHTMLString;
+  return [patches, newHTMLString];
 }
 
 export function applyPatches(docStr: string, patches: DocPatch[]) {
