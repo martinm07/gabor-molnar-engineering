@@ -27,11 +27,14 @@ export type DocPatchStr = {
   length: number;
 };
 export type DocPatchDom = {
-  start: number;
+  forwardstart: number;
+  backStart: number;
+  mapBackStart: boolean;
   type:
     | "addFirstChild"
     | "addNextSibling"
-    | "remove"
+    | "removeFirstChild"
+    | "removeNextSibling"
     | "attributes"
     | "characterData";
   value: string;
@@ -420,6 +423,14 @@ function handleNodeAdd(
       prevNodeStart = val.stringPos;
     else if (val.stringPos >= startIndex) val.stringPos += fullString.length;
   });
+  // Any provided DOM patches, plus the list of already generated patches by this function, must be index shifted.
+  [...(p.currentPatches ?? []), ...newPatches].forEach((patch) => {
+    if (patch.dom.backStart >= startIndex)
+      patch.dom.backStart += fullString.length;
+    if (patch.dom.forwardstart >= startIndex)
+      patch.dom.forwardstart += fullString.length;
+  });
+
   newInfo.parentList.forEach((parent) => {
     newPatches.push(...handleNodeAdd(parent, p)[0]);
     const parentInfo = p.docNodes.get(parent);
@@ -448,7 +459,9 @@ function handleNodeAdd(
     length: 0,
   };
   const domPatch: DocPatch["dom"] = {
-    start: prevNodeStart,
+    forwardstart: prevNodeStart,
+    backStart: startIndex,
+    mapBackStart: true,
     type: node.previousSibling ? "addNextSibling" : "addFirstChild",
     value: fullString,
     oldValue: "",
@@ -480,11 +493,16 @@ function handleNodeRemove(
 
   p.docNodes.delete(node);
   if (p.debug) console.log("%c    Removing node", "font-style: italic;", node);
+
+  // prettier-ignore
+  let prevNodeInfo = { stringPos: -1, stringLen: -1, isEl: false, parentList: [] } as DocNodeEntry;
+
   // Also delete all the children. Cannot exactly rely on getAllChildNodes, because
   //  there may have been removals also happening that stop what is considered a child
   //  of this node by the map at this time from being an actual child now
   //  (what getAllChildNodes is checking)
   p.docNodes.forEach((val, key) => {
+    // Nodes inside the length of this node (assuming its an element)
     if (
       nodeInfo.isEl &&
       val.stringPos >= nodeInfo.stringPos + nodeInfo.startTagLen &&
@@ -493,10 +511,25 @@ function handleNodeRemove(
       p.docNodes.delete(key);
       if (p.debug)
         console.log("%c    Removing node", "font-style: italic;", key);
+      // Nodes positioned after this node in the hierarchy (like further siblings)
     } else if (val.stringPos >= nodeInfo.stringPos + nodeInfo.stringLen) {
       // It's fine to modify this entry during iteration as it doesn't affect other entries
       val.stringPos -= nodeInfo.stringLen;
+      // Nodes position before this node in the hierarchy
+    } else if (
+      val.stringPos > prevNodeInfo.stringPos &&
+      val.stringPos < nodeInfo.stringPos
+    ) {
+      prevNodeInfo = val;
     }
+  });
+
+  // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
+  p.currentPatches?.forEach((patch) => {
+    if (patch.dom.forwardstart >= nodeInfo.stringPos + nodeInfo.stringLen)
+      patch.dom.forwardstart -= nodeInfo.stringLen;
+    if (patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen)
+      patch.dom.backStart -= nodeInfo.stringLen;
   });
 
   nodeInfo.parentList.forEach((parent) => {
@@ -516,9 +549,25 @@ function handleNodeRemove(
     start: nodeInfo.stringPos,
     length: nodeInfo.stringLen,
   };
+  // If the previous node is an element, and the end position of the node-to-be-removed is BEFORE the end position of the previous node element,
+  //  that means the node-to-be-removed is a child of that element, and hence the remove type should be "removeFirstChild"
+  const removeType =
+    prevNodeInfo.isEl &&
+    nodeInfo.stringPos + nodeInfo.stringLen <
+      prevNodeInfo.stringPos + prevNodeInfo.stringLen
+      ? "removeFirstChild"
+      : "removeNextSibling";
   const domPatch: DocPatch["dom"] = {
-    start: nodeInfo.stringPos,
-    type: "remove",
+    forwardstart: nodeInfo.stringPos,
+    // Note, this is because we'd have to add this node going in the backwards direction. Thus we need reference to the node before it for the insertion location.
+    //  This of course requires that the previous node exist when we attempt to do that adding.
+    // This MAY require the remove calls be ordered amongst themselves, according to the DOM order of the nodes they're removing.
+    // If they aren't ordered, and this is processed before the node before it (in the DOM) is removed, then this backStart will refer to that node, then it will be removed.
+    // The logic for the undo operation in HistoryManager will require the calls be processed in the reverse order, so that that node is added again before this call
+    //  is processed, so that this reference to that node will work again, before it is processed.
+    backStart: prevNodeInfo.stringPos,
+    mapBackStart: true,
+    type: removeType,
     value: "",
     oldValue: getNodeSourceRepresentation(node),
   };
@@ -555,10 +604,18 @@ function handleAttributeChange(
   const lenDiff = newStartTag.length - nodeInfo.startTagLen;
 
   if (lenDiff !== 0) {
-    p.docNodes.forEach((val, key) => {
+    p.docNodes.forEach((val) => {
       if (val.stringPos >= nodeInfo.stringPos + nodeInfo.startTagLen)
         val.stringPos += lenDiff;
     });
+    // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
+    p.currentPatches?.forEach((patch) => {
+      if (patch.dom.forwardstart >= nodeInfo.stringPos + nodeInfo.stringLen)
+        patch.dom.forwardstart += lenDiff;
+      if (patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen)
+        patch.dom.backStart += lenDiff;
+    });
+
     nodeInfo.parentList.forEach((parent) => {
       const parentInfo = p.docNodes.get(parent);
       if (!parentInfo)
@@ -576,7 +633,9 @@ function handleAttributeChange(
     length: nodeInfo.startTagLen,
   };
   const domPatch: DocPatch["dom"] = {
-    start: nodeInfo.stringPos,
+    forwardstart: nodeInfo.stringPos,
+    backStart: nodeInfo.stringPos,
+    mapBackStart: true,
     type: "attributes",
     value: newStartTag,
     oldValue:
@@ -623,10 +682,18 @@ function handleCharacterDataChange(
   const lenDiff = newNodeStr.length - nodeInfo.stringLen;
 
   if (lenDiff !== 0) {
-    p.docNodes.forEach((val, key) => {
+    p.docNodes.forEach((val) => {
       if (val.stringPos >= nodeInfo.stringPos + nodeInfo.stringLen)
         val.stringPos += lenDiff;
     });
+    // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
+    p.currentPatches?.forEach((patch) => {
+      if (patch.dom.forwardstart >= nodeInfo.stringPos + nodeInfo.stringLen)
+        patch.dom.forwardstart += lenDiff;
+      if (patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen)
+        patch.dom.backStart += lenDiff;
+    });
+
     nodeInfo.parentList.forEach((parent) => {
       const parentInfo = p.docNodes.get(parent);
       if (!parentInfo) {
@@ -645,7 +712,9 @@ function handleCharacterDataChange(
     length: nodeInfo.stringLen,
   };
   const domPatch: DocPatch["dom"] = {
-    start: nodeInfo.stringPos,
+    forwardstart: nodeInfo.stringPos,
+    backStart: nodeInfo.stringPos,
+    mapBackStart: true,
     type: "characterData",
     value: newNodeStr,
     oldValue:
@@ -668,6 +737,7 @@ function handleCharacterDataChange(
 interface HandleMutationParams {
   docNodes: DocNodeMap;
   docContainer: Element;
+  currentPatches?: DocPatch[];
   htmlStr?: string;
   debug?: boolean;
 }
@@ -770,6 +840,8 @@ export function patchMutations(
   p: {
     docNodes: DocNodeMap;
     stringPosNodeMap: StringPosNodeMap;
+    stringPosForwardUpdateMap: Map<number, number>;
+    stringPosBackwardUpdateMap: Map<number, number>;
     docContainer: Element;
   },
   opts: {
@@ -777,7 +849,12 @@ export function patchMutations(
     debug?: boolean;
     disableServerSync?: boolean;
   } = {},
-): [patches: DocPatch[], htmlStr: string] {
+): [
+  patches: DocPatch[],
+  stringPosForwardUpdateMap: Map<number, number>,
+  stringPosBackwardUpdateMap: Map<number, number>,
+  htmlStr: string,
+] {
   let newHTMLString = opts.updateHTMLStr ?? "";
 
   // Should be negative if a precedes b
@@ -811,6 +888,7 @@ export function patchMutations(
     const [newPatches, htmlStrUpdate] = handleMutationRecordPatch(mutation, {
       ...p,
       htmlStr: opts.updateHTMLStr ? newHTMLString : undefined,
+      currentPatches: patches,
       debug: opts.debug,
     });
     patches.push(...newPatches);
@@ -826,6 +904,59 @@ export function patchMutations(
       newHTMLString = htmlStrUpdate;
     }
   }
+
+  // This map will be used for updating this set of DOM patches, in their forwardStart values
+  //  The stringPos references in the forwardStart values here will need to be mapped to the
+  //  stringPos references that will be available when the document is in its "previous" state.
+  // Provided as input to patchMutations is the mapping from the previous states of the maps to whatever
+  //  state is currently the merge target of HistoryManager. All of the keys of this map need to be updated
+  //  according to the changes made to docNodes.
+  // Provided stringPosUpdateMap maps OLD stringPos --> BASE stringPos
+  // We must update the mapping to NEW stringPos --> BASE stringPos
+  const newStringPosForwardUpdateMap: Map<number, number> = new Map();
+  p.stringPosForwardUpdateMap.forEach((baseStringPos, oldStringPos) => {
+    // This gives us the node that the OLD stringPos referred to
+    const referredNode = p.stringPosNodeMap.get(oldStringPos);
+    if (!referredNode) {
+      console.error(
+        "Key",
+        oldStringPos,
+        " not found in stringPosNodeMap: ",
+        p.stringPosNodeMap,
+      );
+      throw new Error(
+        "Somehow had entry in stringPosUpdateMap that's not in the old stringPosNodeMap",
+      );
+    }
+    const newStringPos = p.docNodes.get(referredNode)?.stringPos;
+    if (newStringPos === undefined) {
+      // This means the latest set of mutations removed the node referred to by this entry of the map;
+      //  we no longer need to concern ourselves with mapping this node.
+      // TODO: While this node, that was in the base map but no longer has a place in the HTML string/ maps,
+      //        may no need to make sure its associated stringPos in future DOM patches doesn't go rotten
+      //        when they're merged (since future DOM patches won't reference this node), the node may also very
+      //        well be added back by a future patch (as in, the reference to the Node DOM object is reconnected to the DOM),
+      //        and what happens in this scenario needs to be assessed. Maybe we never have the original newStringPosUpdateMap
+      //        shrink through new patches, but rather we flag certain entries when they get disconnected, and also associate
+      //        a reference to a Node object in every entry.
+      //       Thinking about it more, this shouldn't be necessary, but it depends on how the implementations of undo/redo are done.
+      return;
+    }
+    newStringPosForwardUpdateMap.set(newStringPos, baseStringPos);
+  });
+
+  // Mapping what used to be the most up-to-date node string position values, to the new up-to-date locations.
+  const newStringPosBackwardUpdateMap: Map<number, number> = new Map();
+  p.stringPosNodeMap.forEach((node, oldPos) => {
+    const newPos = p.docNodes.get(node)?.stringPos;
+    if (newPos === undefined) {
+      // This node no longer has a place in the new HTML string, most likely because one of the
+      //  mutations provided to this call of patchMutations() had removed the node.
+      // The consequences of this are discussed in top-level comments inside ./undo.ts, in (2)
+      return;
+    }
+    newStringPosBackwardUpdateMap.set(oldPos, newPos);
+  });
 
   // We do this instead of assigning an empty Map to ensure the reference to stringPosNodeMap in App.svelte doesn't break
   p.stringPosNodeMap.forEach((_, key) => p.stringPosNodeMap.delete(key));
@@ -856,7 +987,12 @@ export function patchMutations(
     else prevFetch = prevFetch.then(createFetch);
   }
 
-  return [patches, newHTMLString];
+  return [
+    patches,
+    newStringPosForwardUpdateMap,
+    newStringPosBackwardUpdateMap,
+    newHTMLString,
+  ];
 }
 
 export function applyPatches(docStr: string, patches: DocPatch[]) {

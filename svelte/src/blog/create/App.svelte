@@ -458,6 +458,11 @@
   const historyManager = new HistoryManager(docNodes, stringPosNodeMap, {
     debug: true,
   });
+  // --- References to these won't stay fresh; since they're constantly being reassigned by patchMutations()
+  /** For mapping what used to be the most up-to-date node string position values, to the new up-to-date locations. */
+  let stringPosBackwardUpdateMap: Map<number, number> = new Map();
+  /** For mapping the up-to-date HTML string locations of nodes, to their locations when the document was in its previous state. */
+  let stringPosForwardUpdateMap: Map<number, number> = new Map();
 
   // This observer is to
   //  1- disallow non-element nodes as direct children of docEl
@@ -659,20 +664,23 @@
       );
 
     let patches: DocPatch[];
-    [patches, htmlStr] = patchMutations(
-      collectedMutations,
-      documentID,
-      {
-        docNodes,
-        stringPosNodeMap,
-        docContainer: docEl,
-      },
-      {
-        updateHTMLStr: htmlStr,
-        debug: LOG_PATCH_SYNC,
-        disableServerSync: !DO_PATCH_SYNC,
-      },
-    );
+    [patches, stringPosForwardUpdateMap, stringPosBackwardUpdateMap, htmlStr] =
+      patchMutations(
+        collectedMutations,
+        documentID,
+        {
+          docNodes,
+          stringPosNodeMap,
+          stringPosForwardUpdateMap,
+          stringPosBackwardUpdateMap,
+          docContainer: docEl,
+        },
+        {
+          updateHTMLStr: htmlStr,
+          debug: LOG_PATCH_SYNC,
+          disableServerSync: !DO_PATCH_SYNC,
+        },
+      );
 
     if (LOG_PATCH_SYNC) {
       const docNodesTemp: DocNodeMap = new Map();
@@ -684,7 +692,11 @@
     }
 
     // Send DOM patches to the document history stack for undo/redo
-    historyManager.addToHistoryStack(patches.map((patch) => patch.dom));
+    [stringPosForwardUpdateMap] = historyManager.addToHistoryStack(
+      patches.map((patch) => patch.dom),
+      stringPosForwardUpdateMap,
+      stringPosBackwardUpdateMap,
+    );
     historyManager.resetFlagsAndClaims();
     console.log("🎈 docHistory: ", structuredClone(historyManager.docHistory));
 
