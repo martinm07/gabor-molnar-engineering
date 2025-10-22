@@ -27,7 +27,7 @@ export type DocPatchStr = {
   length: number;
 };
 export type DocPatchDom = {
-  forwardstart: number;
+  forwardStart: number;
   backStart: number;
   mapBackStart: boolean;
   type:
@@ -37,8 +37,8 @@ export type DocPatchDom = {
     | "removeNextSibling"
     | "attributes"
     | "characterData";
-  value: string;
-  oldValue: string | null;
+  forwardValue: string;
+  backValue: string | null;
 };
 export type DocPatch = {
   str_: DocPatchStr;
@@ -427,8 +427,8 @@ function handleNodeAdd(
   [...(p.currentPatches ?? []), ...newPatches].forEach((patch) => {
     if (patch.dom.backStart >= startIndex)
       patch.dom.backStart += fullString.length;
-    if (patch.dom.forwardstart >= startIndex)
-      patch.dom.forwardstart += fullString.length;
+    if (patch.dom.forwardStart >= startIndex)
+      patch.dom.forwardStart += fullString.length;
   });
 
   newInfo.parentList.forEach((parent) => {
@@ -459,12 +459,12 @@ function handleNodeAdd(
     length: 0,
   };
   const domPatch: DocPatch["dom"] = {
-    forwardstart: prevNodeStart,
+    forwardStart: prevNodeStart,
     backStart: startIndex,
     mapBackStart: true,
     type: node.previousSibling ? "addNextSibling" : "addFirstChild",
-    value: fullString,
-    oldValue: "",
+    forwardValue: fullString,
+    backValue: "",
   };
   const patch: DocPatch = { str_: strPatch, dom: domPatch };
   newPatches.push(patch);
@@ -526,8 +526,8 @@ function handleNodeRemove(
 
   // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
   p.currentPatches?.forEach((patch) => {
-    if (patch.dom.forwardstart >= nodeInfo.stringPos + nodeInfo.stringLen)
-      patch.dom.forwardstart -= nodeInfo.stringLen;
+    if (patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.stringLen)
+      patch.dom.forwardStart -= nodeInfo.stringLen;
     if (patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen)
       patch.dom.backStart -= nodeInfo.stringLen;
   });
@@ -558,7 +558,7 @@ function handleNodeRemove(
       ? "removeFirstChild"
       : "removeNextSibling";
   const domPatch: DocPatch["dom"] = {
-    forwardstart: nodeInfo.stringPos,
+    forwardStart: nodeInfo.stringPos,
     // Note, this is because we'd have to add this node going in the backwards direction. Thus we need reference to the node before it for the insertion location.
     //  This of course requires that the previous node exist when we attempt to do that adding.
     // This MAY require the remove calls be ordered amongst themselves, according to the DOM order of the nodes they're removing.
@@ -568,8 +568,8 @@ function handleNodeRemove(
     backStart: prevNodeInfo.stringPos,
     mapBackStart: true,
     type: removeType,
-    value: "",
-    oldValue: getNodeSourceRepresentation(node),
+    forwardValue: "",
+    backValue: getNodeSourceRepresentation(node),
   };
   const patch: DocPatch = { str_: strPatch, dom: domPatch };
 
@@ -610,8 +610,8 @@ function handleAttributeChange(
     });
     // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
     p.currentPatches?.forEach((patch) => {
-      if (patch.dom.forwardstart >= nodeInfo.stringPos + nodeInfo.stringLen)
-        patch.dom.forwardstart += lenDiff;
+      if (patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.stringLen)
+        patch.dom.forwardStart += lenDiff;
       if (patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen)
         patch.dom.backStart += lenDiff;
     });
@@ -633,12 +633,12 @@ function handleAttributeChange(
     length: nodeInfo.startTagLen,
   };
   const domPatch: DocPatch["dom"] = {
-    forwardstart: nodeInfo.stringPos,
+    forwardStart: nodeInfo.stringPos,
     backStart: nodeInfo.stringPos,
     mapBackStart: true,
     type: "attributes",
-    value: newStartTag,
-    oldValue:
+    forwardValue: newStartTag,
+    backValue:
       p.htmlStr?.slice(
         nodeInfo.stringPos,
         nodeInfo.stringPos + nodeInfo.startTagLen,
@@ -688,8 +688,8 @@ function handleCharacterDataChange(
     });
     // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
     p.currentPatches?.forEach((patch) => {
-      if (patch.dom.forwardstart >= nodeInfo.stringPos + nodeInfo.stringLen)
-        patch.dom.forwardstart += lenDiff;
+      if (patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.stringLen)
+        patch.dom.forwardStart += lenDiff;
       if (patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen)
         patch.dom.backStart += lenDiff;
     });
@@ -712,12 +712,12 @@ function handleCharacterDataChange(
     length: nodeInfo.stringLen,
   };
   const domPatch: DocPatch["dom"] = {
-    forwardstart: nodeInfo.stringPos,
+    forwardStart: nodeInfo.stringPos,
     backStart: nodeInfo.stringPos,
     mapBackStart: true,
     type: "characterData",
-    value: newNodeStr,
-    oldValue:
+    forwardValue: newNodeStr,
+    backValue:
       p.htmlStr?.slice(
         nodeInfo.stringPos,
         nodeInfo.stringPos + nodeInfo.stringLen,
@@ -952,7 +952,7 @@ export function patchMutations(
     if (newPos === undefined) {
       // This node no longer has a place in the new HTML string, most likely because one of the
       //  mutations provided to this call of patchMutations() had removed the node.
-      // The consequences of this are discussed in top-level comments inside ./undo.ts, in (2)
+      // The consequences of this are discussed in top-level comments inside ./history.ts, in (2)
       return;
     }
     newStringPosBackwardUpdateMap.set(oldPos, newPos);

@@ -54,7 +54,7 @@
   import Topbar from "./Topbar.svelte";
   import SaveChanges from "./components/SaveChanges.svelte";
   import ArrowArcLeft from "phosphor-svelte/lib/ArrowArcLeft";
-  import { HistoryManager } from "./undo";
+  import { HistoryManager } from "./history";
 
   // let compLibVer: string | null = $state(null);
   // let latestCompLibVer: string | null = $state(null);

@@ -4,6 +4,7 @@ import type {
   DocPatchDom,
   StringPosNodeMap,
 } from "./docsyncing";
+import { insertAfter } from "./helper";
 import { nodesSelection } from "./store.svelte";
 import { get } from "svelte/store";
 
@@ -91,7 +92,7 @@ export class HistoryManager {
   // These mappings are readonly, because only docsyncing.ts should be updating them every event
   //  cycle, when there are new mutations.
   docNodes: ReadonlyMap<Node, DocNodeEntry>;
-  stringPosNodeMap: ReadonlyMap<number, Node>;
+  posNodes: ReadonlyMap<number, Node>;
   private prevStrPosForwardMap?: Map<number, number>;
   private prevStrPosNodeMapKeys?: ReadonlyArray<number>;
   debug: boolean;
@@ -107,7 +108,7 @@ export class HistoryManager {
     opts?: { debug?: boolean },
   ) {
     this.docNodes = docNodes;
-    this.stringPosNodeMap = stringPosNodeMap;
+    this.posNodes = stringPosNodeMap;
     this.debug = Boolean(opts?.debug);
   }
 
@@ -139,7 +140,7 @@ export class HistoryManager {
   ): [strPosForwardMap: Map<number, number>] {
     if (this.flagHistoryStateChange) {
       this.prevStrPosForwardMap = strPosForwardMap;
-      this.prevStrPosNodeMapKeys = Array.from(this.stringPosNodeMap.keys());
+      this.prevStrPosNodeMapKeys = Array.from(this.posNodes.keys());
       if (this.debug)
         console.log(
           "Skipping adding list of patches due to HistoryStateChange flag. Skipped:",
@@ -151,9 +152,9 @@ export class HistoryManager {
     // Apply stringPosForwardUpdateMap to forwardstart values of patches
     //  (this is the same whether we're merging the patches, or creating a new history item)
     patches.forEach((patch) => {
-      const mappedForwardStart = strPosForwardMap.get(patch.forwardstart);
+      const mappedForwardStart = strPosForwardMap.get(patch.forwardStart);
       if (mappedForwardStart !== undefined) {
-        patch.forwardstart = mappedForwardStart;
+        patch.forwardStart = mappedForwardStart;
       } else {
         // This means there is no place for this node in the old HTML string. The consequences
         //  of this are discussed in top-level comments of this file, in (3).
@@ -193,9 +194,7 @@ export class HistoryManager {
       // UNLESS this is the first history item (which has no version of the HTML string "before")- the first
       //  history item gets special treatment :)
       if (this.docHistory.length === 1)
-        this.stringPosNodeMap.forEach((_, key) =>
-          resetForwardMap.set(key, key),
-        );
+        this.posNodes.forEach((_, key) => resetForwardMap.set(key, key));
       else {
         if (!this.prevStrPosNodeMapKeys)
           throw new Error(
@@ -206,7 +205,7 @@ export class HistoryManager {
         );
       }
 
-      this.prevStrPosNodeMapKeys = Array.from(this.stringPosNodeMap.keys());
+      this.prevStrPosNodeMapKeys = Array.from(this.posNodes.keys());
       this.prevStrPosForwardMap = strPosForwardMap;
       return [resetForwardMap];
     } else {
@@ -260,7 +259,7 @@ export class HistoryManager {
         }
       });
 
-      this.docHistory[0].patches.push(...patches);
+      this.docHistory[0].patches.unshift(...patches);
       // TODO: Might want to NOT override caret state if we're overriding with null.
       //       Depends on what behaviour will be more intuitive.
       Object.assign(this.docHistory[0], this.claimedCaretState);
@@ -269,7 +268,7 @@ export class HistoryManager {
 
       // IMP: Make sure any earlier returns in this function have a copy of this line.
       this.prevStrPosForwardMap = strPosForwardMap;
-      this.prevStrPosNodeMapKeys = Array.from(this.stringPosNodeMap.keys());
+      this.prevStrPosNodeMapKeys = Array.from(this.posNodes.keys());
       return [strPosForwardMap];
     }
   }
@@ -289,5 +288,201 @@ export class HistoryManager {
     this.claimedCaretState = { focusArea: null };
     this.flagNewHistoryItem = false;
     this.flagHistoryStateChange = false;
+  }
+
+  private parseHTMLFragment(htmlStr: string): Node[] {
+    // A <template> element is efficient, because the content is inert;
+    //  scripts don't run, images don't load.
+    // The other option for this behaviour was using (new DOMParser()).parseFromString(htmlStr, "text/xml")
+    // "text/html" produces a HTML document starting with a root <html> node, which is not what we want.
+    // "text/xml", meanwhile, doesn't handle bare Text nodes.
+    const template = document.createElement("template");
+    template.innerHTML = htmlStr;
+    return Array.from(template.content.childNodes);
+  }
+
+  private removeNode(referredNode: Node, patch: DocPatchDom) {
+    if (!referredNode.isConnected) {
+      console.warn(
+        "The node is already removed from the DOM: ",
+        referredNode,
+        "by patch:",
+        patch,
+      );
+      return;
+    }
+    const parent = referredNode.parentNode;
+    if (!parent)
+      throw new Error(
+        "referredNode didn't have parent despite being connected",
+      );
+    parent.removeChild(referredNode);
+  }
+
+  private addNode(referredNode: Node, value: string, patch: DocPatchDom) {
+    const newNodes = this.parseHTMLFragment(value);
+
+    if (newNodes.length === 0) console.warn(`Added nothing from "${value}"`);
+
+    if (patch.type === "addFirstChild" || patch.type === "removeFirstChild") {
+      if (!(referredNode instanceof Element)) {
+        console.error("referredNode:", referredNode);
+        throw new Error(
+          "referredNode was not an element while trying to insert node as its first child.",
+        );
+      }
+      newNodes.toReversed().forEach((node) => referredNode.prepend(node));
+    } else if (
+      patch.type === "addNextSibling" ||
+      patch.type === "removeNextSibling"
+    ) {
+      newNodes.toReversed().forEach((node) => insertAfter(referredNode, node));
+    } else {
+      throw new Error("Unexpected value for patch.type");
+    }
+
+    // TODO: How should this case be properly handled?
+    // ANSWER: This scenario should in fact be impossible! processMutations() in `docsyncing.ts`
+    //          ensures that we're only ever adding (or removing) one node at a time.
+    if (newNodes.length > 1)
+      console.warn(
+        `ADDED MORE THAN ONE NODE AT ONCE.\ntempPosNodes WILL ONLY MAP THE PATCH'S backStart VALUE FOR THE FIRST NODE.`,
+      );
+    return newNodes;
+  }
+
+  private setAttributes(referredNode: Node, value: string, patch: DocPatchDom) {
+    const newNode = this.parseHTMLFragment(value).at(0);
+    if (!newNode || !(newNode instanceof Element))
+      throw new Error(`Could not parse string "${value}" as a single element.`);
+    if (!(referredNode instanceof Element)) {
+      console.error("referredNode: ", referredNode, "for patch:", patch);
+      throw new Error(
+        "referredNode was not an element for a patch modifying attributes.",
+      );
+    }
+    const allAttrs = Array.from(newNode.attributes);
+    // Remove all attributes from referredNode
+    while (referredNode.attributes.length > 0)
+      referredNode.removeAttribute(referredNode.attributes[0].name);
+    // Set all the attributes parsed from `value` onto referredNode
+    allAttrs.forEach((attr) => {
+      referredNode.setAttribute(attr.name, attr.value);
+    });
+  }
+
+  private setCharacterData(referredNode: Node, value: string) {
+    if (referredNode instanceof Element)
+      console.warn("characterData is an element in a characterData patch.");
+    referredNode.textContent = value;
+  }
+
+  redo() {
+    if (this.docHistActiveIndex === 0) return;
+
+    // const tempDocNodes: DocNodeMap = new Map();
+    const tempPosNodes: Map<number, Node> = new Map();
+
+    const patches = this.docHistory[this.docHistActiveIndex + 1].patches;
+    for (let i = 0; i < patches.length; i++) {
+      const patch = patches[i];
+      let referredNode = this.posNodes.get(patch.forwardStart);
+      // TODO: Assess whether this could result in spurious matches
+      if (!referredNode) {
+        referredNode = tempPosNodes.get(patch.forwardStart);
+      }
+      if (!referredNode) {
+        console.error(
+          "posNodes:",
+          this.posNodes,
+          "tempPosNodes:",
+          tempPosNodes,
+        );
+        throw new Error(
+          `Could not resolve forwardStart value "${patch.forwardStart}" using either posNodes nor tempPosNodes.`,
+        );
+      }
+
+      switch (patch.type) {
+        case "addFirstChild":
+        case "addNextSibling":
+          const newNodes = this.addNode(
+            referredNode,
+            patch.forwardValue,
+            patch,
+          );
+          // We are adding the node going forwards, so we're removing the node going backwards,
+          //  and so backStart refers to the node itself (whereas forwardStart refers to the node before).
+          tempPosNodes.set(patch.backStart, newNodes[0]);
+          break;
+        case "removeFirstChild":
+        case "removeNextSibling":
+          this.removeNode(referredNode, patch);
+          break;
+        case "attributes":
+          this.setAttributes(referredNode, patch.forwardValue, patch);
+          break;
+        case "characterData":
+          this.setCharacterData(referredNode, patch.forwardValue);
+          break;
+      }
+    }
+
+    this.docHistActiveIndex++;
+  }
+
+  undo() {
+    if (this.docHistActiveIndex === this.docHistory.length - 1) return;
+
+    const tempPosNodes: Map<number, Node> = new Map();
+
+    const patches = this.docHistory[this.docHistActiveIndex].patches;
+    // We go through the patches in the reverse order
+    for (let i = patches.length - 1; i >= 0; i--) {
+      const patch = patches[i];
+      if (patch.backValue === null)
+        throw new Error(
+          "Cannot undo with oldValue being null in DocPatchDom objects.",
+        );
+
+      let referredNode = patch.mapBackStart
+        ? this.posNodes.get(patch.backStart)
+        : tempPosNodes.get(patch.backStart);
+      if (!referredNode) {
+        console.error(
+          "posNodes:",
+          this.posNodes,
+          "tempPosNodes:",
+          tempPosNodes,
+        );
+        throw new Error(
+          `Could not resolve backStart value "${patch.forwardStart}" using either posNodes nor tempPosNodes.`,
+        );
+      }
+
+      switch (patch.type) {
+        case "addFirstChild":
+        case "addNextSibling":
+          // --- We must REMOVE this node (since we are going backwards)
+          this.removeNode(referredNode, patch);
+          break;
+        case "removeFirstChild":
+        case "removeNextSibling":
+          // --- We must ADD this node (since we are going backwards)
+          const newNodes = this.addNode(referredNode, patch.backValue, patch);
+          // We are removing the node going forwards, and so forwardStart refers to the node itself
+          //  (whereas backStart refers to the node before).
+          tempPosNodes.set(patch.forwardStart, newNodes[0]);
+          break;
+        case "attributes":
+          this.setAttributes(referredNode, patch.backValue, patch);
+          break;
+        case "characterData":
+          this.setCharacterData(referredNode, patch.backValue);
+          break;
+      }
+    }
+
+    this.docHistActiveIndex--;
   }
 }
