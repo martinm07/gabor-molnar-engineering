@@ -425,10 +425,13 @@ function handleNodeAdd(
   });
   // Any provided DOM patches, plus the list of already generated patches by this function, must be index shifted.
   [...(p.currentPatches ?? []), ...newPatches].forEach((patch) => {
+    if (
+      !patch.dom.type.includes("remove") &&
+      patch.dom.forwardStart >= startIndex
+    )
+      patch.dom.forwardStart += fullString.length;
     if (patch.dom.backStart >= startIndex)
       patch.dom.backStart += fullString.length;
-    if (patch.dom.forwardStart >= startIndex)
-      patch.dom.forwardStart += fullString.length;
   });
 
   newInfo.parentList.forEach((parent) => {
@@ -496,6 +499,26 @@ function handleNodeRemove(
 
   // prettier-ignore
   let prevNodeInfo = { stringPos: -1, stringLen: -1, isEl: false, parentList: [] } as DocNodeEntry;
+  const isBetterPrevNodeCandidate = (
+    old: DocNodeEntry,
+    new_: DocNodeEntry,
+    node: DocNodeEntry,
+  ) => {
+    if (old.stringPos === -1) return true;
+    const oldEnd = old.stringPos + old.stringLen;
+    const newEnd = new_.stringPos + new_.stringLen;
+
+    // `old` is parent of node, `new` isn't, thus `old` automatically wins
+    if (oldEnd > node.stringPos && newEnd <= node.stringPos) return false;
+    // `new` is parent of node, `old` isn't, thus `new` automatically wins
+    if (oldEnd <= node.stringPos && newEnd > node.stringPos) return true;
+    // Both candidates are parents of node, the candidate that is closer to the node (the smaller end value) wins
+    if (oldEnd > node.stringPos && newEnd > node.stringPos)
+      return newEnd < oldEnd;
+    // (oldEnd <= node.stringPos && newEnd <= node.stringPos)
+    // Neither candidate is parent of node, the candidate with the greater end value wins
+    return newEnd > oldEnd;
+  };
 
   // Also delete all the children. Cannot exactly rely on getAllChildNodes, because
   //  there may have been removals also happening that stop what is considered a child
@@ -515,10 +538,10 @@ function handleNodeRemove(
     } else if (val.stringPos >= nodeInfo.stringPos + nodeInfo.stringLen) {
       // It's fine to modify this entry during iteration as it doesn't affect other entries
       val.stringPos -= nodeInfo.stringLen;
-      // Nodes position before this node in the hierarchy
+      // Nodes positioned before this node in the hierarchy
     } else if (
-      val.stringPos > prevNodeInfo.stringPos &&
-      val.stringPos < nodeInfo.stringPos
+      val.stringPos < nodeInfo.stringPos &&
+      isBetterPrevNodeCandidate(prevNodeInfo, val, nodeInfo)
     ) {
       prevNodeInfo = val;
     }
@@ -526,7 +549,10 @@ function handleNodeRemove(
 
   // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
   p.currentPatches?.forEach((patch) => {
-    if (patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.stringLen)
+    if (
+      !patch.dom.type.includes("remove") &&
+      patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.stringLen
+    )
       patch.dom.forwardStart -= nodeInfo.stringLen;
     if (patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen)
       patch.dom.backStart -= nodeInfo.stringLen;
@@ -610,7 +636,10 @@ function handleAttributeChange(
     });
     // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
     p.currentPatches?.forEach((patch) => {
-      if (patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.stringLen)
+      if (
+        !patch.dom.type.includes("remove") &&
+        patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.stringLen
+      )
         patch.dom.forwardStart += lenDiff;
       if (patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen)
         patch.dom.backStart += lenDiff;
@@ -688,7 +717,10 @@ function handleCharacterDataChange(
     });
     // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
     p.currentPatches?.forEach((patch) => {
-      if (patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.stringLen)
+      if (
+        !patch.dom.type.includes("remove") &&
+        patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.stringLen
+      )
         patch.dom.forwardStart += lenDiff;
       if (patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen)
         patch.dom.backStart += lenDiff;
@@ -865,6 +897,18 @@ export function patchMutations(
     if (a.type === "childList" && b.type === "childList") {
       if (a.removedNode && b.addedNode) return -1;
       else if (a.addedNode && b.removedNode) return 1;
+      // Remove calls are ordered amongst themselves such that there is no index shifting affecting
+      //  the position of the node by the time it is processed. This is for remove-type DOM patches.
+      else if (a.removedNode && b.removedNode) {
+        const aPos = p.docNodes.get(a.removedNode)?.stringPos;
+        // This node must've been added and then immediately removed in this same set of mutations.
+        //  No patches will be created for adding/removing this node; there's no need to sort it (and sorting doesn't make sense anyway)
+        if (aPos === undefined) return 0;
+        const bPos = p.docNodes.get(b.removedNode)?.stringPos;
+        if (bPos === undefined) return 0;
+        // Sort from greatest stringPos to least
+        return bPos - aPos;
+      }
     } else if (a.type === "childList" && b.type !== "childList") return -1;
     else if (a.type !== "childList" && b.type === "childList") return 1;
     return 0;
@@ -919,14 +963,12 @@ export function patchMutations(
     const referredNode = p.stringPosNodeMap.get(oldStringPos);
     if (!referredNode) {
       console.error(
-        "Key",
+        "Somehow had entry in stringPosForwardUpdateMap that's not in the old stringPosNodeMap.\nKey",
         oldStringPos,
         " not found in stringPosNodeMap: ",
         p.stringPosNodeMap,
       );
-      throw new Error(
-        "Somehow had entry in stringPosUpdateMap that's not in the old stringPosNodeMap",
-      );
+      return;
     }
     const newStringPos = p.docNodes.get(referredNode)?.stringPos;
     if (newStringPos === undefined) {
@@ -964,8 +1006,6 @@ export function patchMutations(
   p.docNodes.forEach((info, node) =>
     p.stringPosNodeMap.set(info.stringPos, node),
   );
-
-  console.log("PATCHES:", patches);
 
   const createFetch = () =>
     fetch_("/documents/sync_document_patch", {

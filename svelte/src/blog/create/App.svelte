@@ -340,6 +340,16 @@
       e.target instanceof HTMLElement
     ) {
       e.target.blur();
+    } else if (e.ctrlKey && e.key === "z") {
+      historyManager.undo();
+    } else if (e.ctrlKey && e.key === "y") {
+      historyManager.redo();
+    } else if (e.ctrlKey && e.key === "Q") {
+      debugCreateNewHistoryItem = !debugCreateNewHistoryItem;
+      console.log(
+        "⚠ debugCreateNewHistoryItem IS NOW",
+        debugCreateNewHistoryItem,
+      );
     } else return;
     // if (mode.sidebar === "component") mode.sidebar = "edit";
   }
@@ -463,6 +473,9 @@
   let stringPosBackwardUpdateMap: Map<number, number> = new Map();
   /** For mapping the up-to-date HTML string locations of nodes, to their locations when the document was in its previous state. */
   let stringPosForwardUpdateMap: Map<number, number> = new Map();
+
+  // For testing purposes only
+  let debugCreateNewHistoryItem: boolean = false;
 
   // This observer is to
   //  1- disallow non-element nodes as direct children of docEl
@@ -646,6 +659,7 @@
 
   const LOG_PATCH_SYNC = false;
   const DO_PATCH_SYNC = false;
+
   const stopPatchInterval = setInterval(() => {
     if (!docEl || collectedMutations.length === 0) return;
     if (documentID === null) {
@@ -691,6 +705,10 @@
       console.groupEnd();
     }
 
+    if (debugCreateNewHistoryItem) {
+      historyManager.suggestCreateNewHistoryItem();
+    }
+
     // Send DOM patches to the document history stack for undo/redo
     [stringPosForwardUpdateMap] = historyManager.addToHistoryStack(
       patches.map((patch) => patch.dom),
@@ -699,6 +717,11 @@
     );
     historyManager.resetFlagsAndClaims();
     console.log("🎈 docHistory: ", structuredClone(historyManager.docHistory));
+    console.log("🎈 posNodes: ", stringPosNodeMap);
+
+    if (debugCreateNewHistoryItem)
+      console.log("⚠ debugCreateNewHistoryItem IS NOW", false);
+    debugCreateNewHistoryItem = false;
 
     collectedMutations = [];
   });

@@ -94,7 +94,7 @@ export class HistoryManager {
   docNodes: ReadonlyMap<Node, DocNodeEntry>;
   posNodes: ReadonlyMap<number, Node>;
   private prevStrPosForwardMap?: Map<number, number>;
-  private prevStrPosNodeMapKeys?: ReadonlyArray<number>;
+  private prevPosNodes: ReadonlyMap<number, Node> = new Map();
   debug: boolean;
 
   flagNewHistoryItem: boolean = false;
@@ -133,27 +133,39 @@ export class HistoryManager {
     return newNodesSelection;
   }
 
-  addToHistoryStack(
-    patches: DocPatchDom[],
-    strPosForwardMap: Map<number, number>,
-    strPosBackwardMap: Map<number, number>,
-  ): [strPosForwardMap: Map<number, number>] {
-    if (this.flagHistoryStateChange) {
-      this.prevStrPosForwardMap = strPosForwardMap;
-      this.prevStrPosNodeMapKeys = Array.from(this.posNodes.keys());
-      if (this.debug)
-        console.log(
-          "Skipping adding list of patches due to HistoryStateChange flag. Skipped:",
-          patches,
-        );
-      return [strPosBackwardMap];
-    }
+  private clonePosNodes(): typeof this.posNodes {
+    const newPosNodes: StringPosNodeMap = new Map();
+    this.posNodes.forEach((node, stringPos) => {
+      newPosNodes.set(stringPos, node);
+    });
+    return newPosNodes;
+  }
 
+  private mapForwardStartVals(
+    patches: DocPatchDom[],
+    forwardMap: Map<number, number>,
+    prevForwardMap?: Map<number, number>,
+  ) {
+    this.log(
+      "💙 Mapping forwardStart vals using forwardMap:",
+      forwardMap,
+      "and prevForwardMap:",
+      prevForwardMap,
+    );
     // Apply stringPosForwardUpdateMap to forwardstart values of patches
     //  (this is the same whether we're merging the patches, or creating a new history item)
     patches.forEach((patch) => {
-      const mappedForwardStart = strPosForwardMap.get(patch.forwardStart);
+      // Patches which remove nodes are in terms of the previous HTML string
+      //  (where they have a non-0 length and thus unique stringPos), so we use prevStrPosForwardMap to map them
+      const mappedForwardStart = (
+        patch.type.includes("remove") ? prevForwardMap : forwardMap
+      )?.get(patch.forwardStart);
+
       if (mappedForwardStart !== undefined) {
+        if (patch.forwardStart !== mappedForwardStart)
+          this.log(
+            `💙 ▶▶▶ Mapped forward start. "${patch.forwardStart}" -> "${mappedForwardStart}"`,
+          );
         patch.forwardStart = mappedForwardStart;
       } else {
         // This means there is no place for this node in the old HTML string. The consequences
@@ -163,6 +175,35 @@ export class HistoryManager {
         return;
       }
     });
+  }
+
+  addToHistoryStack(
+    patches: DocPatchDom[],
+    strPosForwardMap: Map<number, number>,
+    strPosBackwardMap: Map<number, number>,
+  ): [strPosForwardMap: Map<number, number>] {
+    if (this.flagHistoryStateChange) {
+      this.prevStrPosForwardMap = strPosForwardMap;
+      // this.prevStrPosNodeMapKeys = Array.from(this.posNodes.keys());
+      this.prevPosNodes = this.clonePosNodes();
+      this.log(
+        "Skipping adding list of patches due to HistoryStateChange flag. Skipped:",
+        patches,
+      );
+      return [strPosForwardMap];
+    }
+
+    // Check if the patches actually change anything
+    if (
+      patches.every((patch) => patch.forwardValue === patch.backValue) &&
+      this.docHistory.length !== 0
+    ) {
+      this.log(
+        "Skipping adding list of patches due to patches not changing anything. Skipped",
+        patches,
+      );
+      return [strPosForwardMap];
+    }
 
     // Note that if we make an edit from a previous history state, this will always make that edit
     //  a new history item (along with splicing away all history states more recent),
@@ -172,13 +213,42 @@ export class HistoryManager {
       this.docHistActiveIndex > 0 ||
       this.docHistory.length <= 1 // Add to the history stack if we need to create the initial state, or so that we never merge onto the initial state
     ) {
-      if (this.debug) console.log("Adding a new item onto the history stack.");
+      this.log("Adding a new item onto the history stack.");
 
       if (this.docHistActiveIndex > 0) {
-        if (this.debug)
-          console.log("Splicing newer history states from current state.");
+        this.log("Splicing newer history states from current state.");
         this.docHistory.splice(0, this.docHistActiveIndex);
       }
+
+      const resetForwardMap: Map<number, number> = new Map();
+      this.prevStrPosForwardMap = new Map();
+      // The new BASE stringPos values are the ones referring to the version of the HTML string right before
+      //  this set of patches was applied, since these are the first patches of the new history item,
+      // UNLESS this is the first history item (which has no version of the HTML string "before")- the first
+      //  history item gets special treatment :)
+      if (this.docHistory.length === 0)
+        this.posNodes.forEach((_, key) => {
+          resetForwardMap.set(key, key);
+          this.prevStrPosForwardMap!.set(key, key);
+        });
+      else {
+        this.prevPosNodes.forEach((node, oldStringPos) => {
+          const newStringPos = this.docNodes.get(node)?.stringPos;
+          if (newStringPos === undefined) {
+            // This refers to a node that doesn't have a place in the new HTML string; skip mapping it
+            return;
+          }
+          resetForwardMap.set(newStringPos, oldStringPos);
+          this.prevStrPosForwardMap!.set(oldStringPos, oldStringPos);
+        });
+      }
+
+      this.log("🧡 RESET stringPosForwardUpdateMap", resetForwardMap);
+      this.mapForwardStartVals(
+        patches,
+        resetForwardMap,
+        this.prevStrPosForwardMap,
+      );
 
       this.docHistory.unshift({
         // We don't need to store patches in the initial history state stack item
@@ -188,32 +258,20 @@ export class HistoryManager {
       });
       this.docHistActiveIndex = 0;
 
-      const resetForwardMap: Map<number, number> = new Map();
-      // The new BASE stringPos values are the ones referring to the version of the HTML string right before
-      //  this set of patches was applied, since these are the first patches of the new history item,
-      // UNLESS this is the first history item (which has no version of the HTML string "before")- the first
-      //  history item gets special treatment :)
-      if (this.docHistory.length === 1)
-        this.posNodes.forEach((_, key) => resetForwardMap.set(key, key));
-      else {
-        if (!this.prevStrPosNodeMapKeys)
-          throw new Error(
-            "prevStrPosNodeMapKeys is undefined even though this isn't the first history item",
-          );
-        this.prevStrPosNodeMapKeys.forEach((key) =>
-          resetForwardMap.set(key, key),
-        );
-      }
-
-      this.prevStrPosNodeMapKeys = Array.from(this.posNodes.keys());
-      this.prevStrPosForwardMap = strPosForwardMap;
+      this.prevPosNodes = this.clonePosNodes();
       return [resetForwardMap];
     } else {
-      if (this.debug)
-        console.log(
-          "Merging onto the history stack. Claimed caret state: ",
-          this.claimedCaretState,
-        );
+      this.log(
+        "Merging onto the history stack. Claimed caret state: ",
+        this.claimedCaretState,
+      );
+
+      // Apply stringPosForwardUpdateMap to forwardStart values of the patches that we are adding to the history stack
+      this.mapForwardStartVals(
+        patches,
+        strPosForwardMap,
+        this.prevStrPosForwardMap,
+      );
 
       // Apply stringPosBackwardUpdateMap to backStart values of the patches that are being merged into
       this.docHistory[0].patches.forEach((patch) => {
@@ -259,7 +317,7 @@ export class HistoryManager {
         }
       });
 
-      this.docHistory[0].patches.unshift(...patches);
+      this.docHistory[0].patches.push(...patches);
       // TODO: Might want to NOT override caret state if we're overriding with null.
       //       Depends on what behaviour will be more intuitive.
       Object.assign(this.docHistory[0], this.claimedCaretState);
@@ -268,19 +326,18 @@ export class HistoryManager {
 
       // IMP: Make sure any earlier returns in this function have a copy of this line.
       this.prevStrPosForwardMap = strPosForwardMap;
-      this.prevStrPosNodeMapKeys = Array.from(this.posNodes.keys());
+      this.prevPosNodes = this.clonePosNodes();
       return [strPosForwardMap];
     }
   }
 
   claimCaretState(caretState: EditorCaret) {
-    if (this.debug)
-      console.log("Claimed the caret state! Setting it to: ", caretState);
+    this.log("Claimed the caret state! Setting it to: ", caretState);
     this.claimedCaretState = caretState;
   }
 
   suggestCreateNewHistoryItem() {
-    if (this.debug) console.log("Flagged for new history item!");
+    this.log("Flagged for new history item!");
     this.flagNewHistoryItem = true;
   }
 
@@ -378,12 +435,18 @@ export class HistoryManager {
   }
 
   redo() {
-    if (this.docHistActiveIndex === 0) return;
+    this.log(
+      `🎈🎈🎈 Attempting Redo! Going from index ${this.docHistActiveIndex} -> ${this.docHistActiveIndex - 1}`,
+    );
+    if (this.docHistActiveIndex === 0) {
+      this.log("Not redoing because we're at the latest state.");
+      return;
+    }
 
     // const tempDocNodes: DocNodeMap = new Map();
     const tempPosNodes: Map<number, Node> = new Map();
 
-    const patches = this.docHistory[this.docHistActiveIndex + 1].patches;
+    const patches = this.docHistory[this.docHistActiveIndex - 1].patches;
     for (let i = 0; i < patches.length; i++) {
       const patch = patches[i];
       let referredNode = this.posNodes.get(patch.forwardStart);
@@ -402,6 +465,11 @@ export class HistoryManager {
           `Could not resolve forwardStart value "${patch.forwardStart}" using either posNodes nor tempPosNodes.`,
         );
       }
+
+      this.log(
+        `▶▶▶ (${i}) Redo - perform "${patch.type}" from node at "${patch.forwardStart}":`,
+        referredNode,
+      );
 
       switch (patch.type) {
         case "addFirstChild":
@@ -428,11 +496,18 @@ export class HistoryManager {
       }
     }
 
-    this.docHistActiveIndex++;
+    this.docHistActiveIndex--;
+    this.flagHistoryStateChange = true;
   }
 
   undo() {
-    if (this.docHistActiveIndex === this.docHistory.length - 1) return;
+    this.log(
+      `🎈🎈🎈 Attempting Undo! Going from index ${this.docHistActiveIndex} -> ${this.docHistActiveIndex + 1}`,
+    );
+    if (this.docHistActiveIndex === this.docHistory.length - 1) {
+      this.log("Not undoing because we're at the base state.");
+      return;
+    }
 
     const tempPosNodes: Map<number, Node> = new Map();
 
@@ -460,6 +535,11 @@ export class HistoryManager {
         );
       }
 
+      this.log(
+        `▶▶▶ (${i}) Undo - perform "${patch.type}" from node at "${patch.backStart}":`,
+        referredNode,
+      );
+
       switch (patch.type) {
         case "addFirstChild":
         case "addNextSibling":
@@ -483,6 +563,11 @@ export class HistoryManager {
       }
     }
 
-    this.docHistActiveIndex--;
+    this.docHistActiveIndex++;
+    this.flagHistoryStateChange = true;
+  }
+
+  private log(message?: any, ...optionalParams: any[]) {
+    if (this.debug) console.log(message, ...optionalParams);
   }
 }

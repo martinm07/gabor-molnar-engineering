@@ -140,7 +140,13 @@
       let commonStyles: StylesList | undefined;
       for (const target of targets) {
         let styles_ = $cssStyles.get(target);
-        if (!styles_) {
+        // TODO: When the styles of an element update, the updated styles will NEVER be reflected, in the editor currently.
+        //       This is because it reads the style information of the elemenet the first time it needs to display them,
+        //        then stores it in $cssStyles. If styles are updated through the editor, the updated styles are stored in
+        //        $cssStyles, so those changes will be reflected. But styles being updated OUTSIDE the editor will never
+        //        be stored in $cssStyles.
+        //       This needs to be addressed in a better way. For now, we just abandon the use of $cssStyles entirely.
+        if (!styles_ || true) {
           const genStyles = getCSSProps(target);
           $cssStyles.set(target, genStyles);
           target.setAttribute(
