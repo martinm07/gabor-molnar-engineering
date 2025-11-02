@@ -66,3 +66,26 @@ It would essentially involve creating a JavaScript API for the document editor, 
 
 At this point though, I think it is fine to call the editor complete without macros implemented.
 
+## Thoughts Board
+
+### History Manager
+
+**Think through possibilities of other stringPos values in DOM patches getting incorrectly mapped**
+
+`backStart` values need to be mapped from OLD `stringPos` -> NEW `stringPos`
+...for patches that are being merged into.
+
+We do NOT map values that no longer "have a place" in the new HTML string.
+
+These are of course the nodes that have been removed by the latest set of patches. Thus, the patch that removed a node (and so has a technical string length of 0 in the new HTML string) won't be mapped (instead, it'll be mapped to the BASE HTML string), and we don't have a problem.
+
+We determine if a `backStart` value cannot be mapped ONCE, when the node has a non-0 length in the previous HTML string, so if that `stringPos` doesn't have an entry in the new HTML string we are guaranteed that indeed it got removed by the latest of patches; thus no longer "has a place". This logic is sound.
+
+What about patches that add a node? These could be said to have a string length of 0 in the previous HTML string.
+――> Luckily, these patches don't refer to the insertion location of the node, but rather to the `stringPos` of the node that precedes it, which of course always has non-0 length, and so there's no need to worry that they will get misidentified by a map, forwards nor backwards.
+
+The reason `forwardStart` remove-type patches *SPECIFICALLY* were vulnerable to this is because the `forwardUpdateMap` was keyed in the latest version of the HTML string, where these patches represented nodes that didn't have a place in that string.
+
+The `backwardUpdateMap` is keyed in the previous version of the HTML string.
+Add-type patches always refer to a node that exists in the new HTML string. The `forwardUpdateMap` which is keyed in the new HTML string is satisfied by this. The `backwardUpdateMap` is keyed in the previous HTML string, but is only applied to the patches when they do indeed become the "previous HTML string".
+

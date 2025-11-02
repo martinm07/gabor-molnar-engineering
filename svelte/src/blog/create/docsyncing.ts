@@ -30,6 +30,7 @@ export type DocPatchDom = {
   forwardStart: number;
   backStart: number;
   mapBackStart: boolean;
+  mapForwardStart: boolean;
   type:
     | "addFirstChild"
     | "addNextSibling"
@@ -465,7 +466,11 @@ function handleNodeAdd(
     forwardStart: prevNodeStart,
     backStart: startIndex,
     mapBackStart: true,
-    type: node.previousSibling ? "addNextSibling" : "addFirstChild",
+    mapForwardStart: true,
+    type:
+      node.previousSibling && prevNodeStart !== -1
+        ? "addNextSibling"
+        : "addFirstChild",
     forwardValue: fullString,
     backValue: "",
   };
@@ -498,26 +503,17 @@ function handleNodeRemove(
   if (p.debug) console.log("%c    Removing node", "font-style: italic;", node);
 
   // prettier-ignore
-  let prevNodeInfo = { stringPos: -1, stringLen: -1, isEl: false, parentList: [] } as DocNodeEntry;
-  const isBetterPrevNodeCandidate = (
-    old: DocNodeEntry,
-    new_: DocNodeEntry,
-    node: DocNodeEntry,
-  ) => {
-    if (old.stringPos === -1) return true;
-    const oldEnd = old.stringPos + old.stringLen;
-    const newEnd = new_.stringPos + new_.stringLen;
+  // We set isEl to true and stringLen to Infinity so that if there is no previous Node (to the node being deleted)
+  //  and this object isn't replaced, the type the DOM patch resolves to is "removeFirstChild"
+  //  (so that when undoing, the prevNode can be set to the parent el of the document and the function knows we should be adding the node as a first child to that)
+  let prevNodeInfo = { stringPos: -1, stringLen: Infinity, startTagLen: -1, isEl: true, parentList: [] } as DocNodeEntry;
 
-    // `old` is parent of node, `new` isn't, thus `old` automatically wins
-    if (oldEnd > node.stringPos && newEnd <= node.stringPos) return false;
-    // `new` is parent of node, `old` isn't, thus `new` automatically wins
-    if (oldEnd <= node.stringPos && newEnd > node.stringPos) return true;
-    // Both candidates are parents of node, the candidate that is closer to the node (the smaller end value) wins
-    if (oldEnd > node.stringPos && newEnd > node.stringPos)
-      return newEnd < oldEnd;
-    // (oldEnd <= node.stringPos && newEnd <= node.stringPos)
-    // Neither candidate is parent of node, the candidate with the greater end value wins
-    return newEnd > oldEnd;
+  const isPrevNode = (candidate: DocNodeEntry, node: DocNodeEntry) => {
+    return (
+      (candidate.isEl &&
+        candidate.stringPos + candidate.startTagLen === node.stringPos) ||
+      candidate.stringPos + candidate.stringLen === node.stringPos
+    );
   };
 
   // Also delete all the children. Cannot exactly rely on getAllChildNodes, because
@@ -541,7 +537,7 @@ function handleNodeRemove(
       // Nodes positioned before this node in the hierarchy
     } else if (
       val.stringPos < nodeInfo.stringPos &&
-      isBetterPrevNodeCandidate(prevNodeInfo, val, nodeInfo)
+      isPrevNode(val, nodeInfo)
     ) {
       prevNodeInfo = val;
     }
@@ -593,6 +589,7 @@ function handleNodeRemove(
     //  is processed, so that this reference to that node will work again, before it is processed.
     backStart: prevNodeInfo.stringPos,
     mapBackStart: true,
+    mapForwardStart: true,
     type: removeType,
     forwardValue: "",
     backValue: getNodeSourceRepresentation(node),
@@ -665,6 +662,7 @@ function handleAttributeChange(
     forwardStart: nodeInfo.stringPos,
     backStart: nodeInfo.stringPos,
     mapBackStart: true,
+    mapForwardStart: true,
     type: "attributes",
     forwardValue: newStartTag,
     backValue:
@@ -747,6 +745,7 @@ function handleCharacterDataChange(
     forwardStart: nodeInfo.stringPos,
     backStart: nodeInfo.stringPos,
     mapBackStart: true,
+    mapForwardStart: true,
     type: "characterData",
     forwardValue: newNodeStr,
     backValue:

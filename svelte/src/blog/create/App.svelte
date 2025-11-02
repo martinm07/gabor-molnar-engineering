@@ -457,6 +457,10 @@
     });
   }
 
+  const LOG_PATCH_SYNC = false;
+  const LOG_DOC_HIST = true;
+  const DO_PATCH_SYNC = false;
+
   // Also consider closing tags! They will change if the tag name of an element changes.
   //  However, there is no such mutation as "changing the tag name of an element"- that simply
   //  involves deleting and adding a new element.
@@ -466,7 +470,7 @@
   let collectedMutations: TempMutationRecord[] = [];
 
   const historyManager = new HistoryManager(docNodes, stringPosNodeMap, {
-    debug: true,
+    debug: LOG_DOC_HIST,
   });
   // --- References to these won't stay fresh; since they're constantly being reassigned by patchMutations()
   /** For mapping what used to be the most up-to-date node string position values, to the new up-to-date locations. */
@@ -494,7 +498,7 @@
   const { stop } = useMutationObserver(
     () => docEl,
     (unfilteredMutations) => {
-      console.log("mutation observer triggered", unfilteredMutations);
+      // console.log("mutation observer triggered", unfilteredMutations);
 
       const mutations: MutationRecord[] = [];
       for (const mutation of unfilteredMutations) {
@@ -657,10 +661,7 @@
     },
   );
 
-  const LOG_PATCH_SYNC = false;
-  const DO_PATCH_SYNC = false;
-
-  const stopPatchInterval = setInterval(() => {
+  const patchInterval = setInterval(() => {
     if (!docEl || collectedMutations.length === 0) return;
     if (documentID === null) {
       collectedMutations = [];
@@ -716,8 +717,14 @@
       stringPosBackwardUpdateMap,
     );
     historyManager.resetFlagsAndClaims();
-    console.log("🎈 docHistory: ", structuredClone(historyManager.docHistory));
-    console.log("🎈 posNodes: ", stringPosNodeMap);
+    if (LOG_DOC_HIST) {
+      console.log(
+        "🎈 docHistory: ",
+        structuredClone(historyManager.docHistory),
+      );
+      console.log("🎈 posNodes: ", stringPosNodeMap);
+      console.groupEnd();
+    }
 
     if (debugCreateNewHistoryItem)
       console.log("⚠ debugCreateNewHistoryItem IS NOW", false);
@@ -725,7 +732,7 @@
 
     collectedMutations = [];
   });
-  onDestroy(() => clearInterval(stopPatchInterval));
+  onDestroy(() => clearInterval(patchInterval));
 
   let currentSelection: ClonedSelection | null = null;
   let prevSelection: ClonedSelection | null = null;

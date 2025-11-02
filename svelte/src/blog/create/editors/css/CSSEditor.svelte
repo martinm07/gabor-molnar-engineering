@@ -107,11 +107,11 @@
     insertAtIndex,
     isInputEvent,
   } from "../../helper";
-  import {
-    type CSSEditorState,
-    type StyleStrSelection,
-    UndoManager,
-  } from "./undo.svelte";
+  // import {
+  //   type CSSEditorState,
+  //   type StyleStrSelection,
+  //   UndoManager,
+  // } from "./undo.svelte";
 
   let styles = $state("");
   let stylesEl: HTMLElement;
@@ -119,12 +119,12 @@
   const getPrevSelection: () => ClonedSelection | null =
     getContext("getPrevSelection");
 
-  const undoManager = new UndoManager();
+  // const undoManager = new UndoManager();
 
   let prevSelection: ClonedSelection | null = $state(null);
 
-  let styleStrSelection: StyleStrSelection | null = null;
-  let prevStyleStrSelection: StyleStrSelection | null = null;
+  // let styleStrSelection: StyleStrSelection | null = null;
+  // let prevStyleStrSelection: StyleStrSelection | null = null;
 
   interface Props {
     selected: Element[];
@@ -170,17 +170,17 @@
       [styles, , plainStr] = parseStylesStr(styleStr);
       if (stylesEl?.innerHTML) stylesEl.innerHTML = styles;
 
-      undoManager.changeSelection(targets, {
-        text: plainStr,
-        selection: {
-          isCollapsed: true,
-          focusIndex: 0,
-          anchorIndex: 0,
-          direction: "none",
-          focusLoc: "other",
-        },
-        insertType: "other",
-      });
+      // undoManager.changeSelection(targets, {
+      //   text: plainStr,
+      //   selection: {
+      //     isCollapsed: true,
+      //     focusIndex: 0,
+      //     anchorIndex: 0,
+      //     direction: "none",
+      //     focusLoc: "other",
+      //   },
+      //   insertType: "other",
+      // });
     },
   );
 
@@ -319,7 +319,7 @@
 
   let prevStyleStr: string;
 
-  let doingEditInput: boolean = false;
+  // let doingEditInput: boolean = false;
 
   function onInput(e_: Event) {
     if (!stylesEl) return;
@@ -348,30 +348,30 @@
     }
     handleAutocomplete();
 
-    let insertType: "insert" | "delete" | "other";
-    if (isInputEvent(event) && event.inputType.startsWith("insert"))
-      insertType = "insert";
-    else if (isInputEvent(event) && event.inputType.startsWith("delete"))
-      insertType = "delete";
-    else insertType = "other";
-    const newState = {
-      text: plainStr,
-      selection: styleStrSelection,
-      insertType,
-    };
+    // let insertType: "insert" | "delete" | "other";
+    // if (isInputEvent(event) && event.inputType.startsWith("insert"))
+    //   insertType = "insert";
+    // else if (isInputEvent(event) && event.inputType.startsWith("delete"))
+    //   insertType = "delete";
+    // else insertType = "other";
+    // const newState = {
+    //   text: plainStr,
+    //   selection: styleStrSelection,
+    //   insertType,
+    // };
 
-    undoManager.updateInitialStateSelection(styleStrSelection);
+    // undoManager.updateInitialStateSelection(styleStrSelection);
 
     // Only set doingEditInput to true if this input event actually caused the
     //  editor text content to change- creating a new item on the stack (or at least combining with the topmost item).
-    if (undoManager.isTrueEdit(newState)) {
-      doingEditInput = true;
-    }
+    // if (undoManager.isTrueEdit(newState)) {
+    //   doingEditInput = true;
+    // }
 
-    if (!undoManager.isTrueEdit(newState))
-      console.log("input event did not result in changed text content");
+    // if (!undoManager.isTrueEdit(newState))
+    //   console.log("input event did not result in changed text content");
 
-    undoManager.addEdit(newState, event);
+    // undoManager.addEdit(newState, event);
 
     enterPressed = undefined;
   }
@@ -407,37 +407,37 @@
     );
   }
 
-  function selectionToState(selection: Selection): StyleStrSelection {
-    const determineLoc = (node: Node | null) => {
-      if (node === null) return "other";
-      const topEl = getTopEl(node) as Element | null;
-      if (topEl === null) return "other";
-      if (topEl.tagName === "B") return "prop";
-      else if (topEl.tagName === "EM") return "val";
-      return "other";
-    };
-    // console.log(determineLoc(selection.focusNode));
-    return {
-      isCollapsed: selection.isCollapsed,
-      focusIndex: calculateTotalOffset(
-        stylesEl,
-        selection.focusNode,
-        selection.focusOffset,
-      ),
-      anchorIndex: calculateTotalOffset(
-        stylesEl,
-        selection.anchorNode,
-        selection.anchorOffset,
-      ),
-      direction: selection.direction as "backward" | "forward" | "none",
-      focusLoc: determineLoc(selection.focusNode) as "prop" | "val" | "other",
-    };
-  }
+  // function selectionToState(selection: Selection): StyleStrSelection {
+  //   const determineLoc = (node: Node | null) => {
+  //     if (node === null) return "other";
+  //     const topEl = getTopEl(node) as Element | null;
+  //     if (topEl === null) return "other";
+  //     if (topEl.tagName === "B") return "prop";
+  //     else if (topEl.tagName === "EM") return "val";
+  //     return "other";
+  //   };
+  //   // console.log(determineLoc(selection.focusNode));
+  //   return {
+  //     isCollapsed: selection.isCollapsed,
+  //     focusIndex: calculateTotalOffset(
+  //       stylesEl,
+  //       selection.focusNode,
+  //       selection.focusOffset,
+  //     ),
+  //     anchorIndex: calculateTotalOffset(
+  //       stylesEl,
+  //       selection.anchorNode,
+  //       selection.anchorOffset,
+  //     ),
+  //     direction: selection.direction as "backward" | "forward" | "none",
+  //     focusLoc: determineLoc(selection.focusNode) as "prop" | "val" | "other",
+  //   };
+  // }
 
   const off1 = on(document, "selectionchange", (e) => {
     const selection = getSelection();
-    prevStyleStrSelection = styleStrSelection;
-    styleStrSelection = selection !== null ? selectionToState(selection) : null;
+    // prevStyleStrSelection = styleStrSelection;
+    // styleStrSelection = selection !== null ? selectionToState(selection) : null;
 
     prevSelection = getPrevSelection();
 
@@ -544,16 +544,16 @@
     // Update the selection info of the topmost item of the undo stack to after
     //  the insertion has happened that the new selection point could be determined
     //  (selectionchange event fires after input event), including adjustments made above.
-    if (doingEditInput) {
-      if (selection !== null)
-        undoManager.updateLatestStateSelection(selectionToState(selection));
-      // If the previous selection was a range (highlighting text), then we want to visually display that selection
-      //  in the undo history, and that requires updating the previous state to have this highlight as the selection
-      // Interestingly, if we remove this condition then for non-range selections it errors as "out of bounds" by setPosition() in restoreState()
-      if (prevStyleStrSelection !== null && !prevStyleStrSelection.isCollapsed)
-        undoManager.updatePrevStateSelection(prevStyleStrSelection);
-      doingEditInput = false;
-    }
+    // if (doingEditInput) {
+    //   if (selection !== null)
+    //     undoManager.updateLatestStateSelection(selectionToState(selection));
+    //   // If the previous selection was a range (highlighting text), then we want to visually display that selection
+    //   //  in the undo history, and that requires updating the previous state to have this highlight as the selection
+    //   // Interestingly, if we remove this condition then for non-range selections it errors as "out of bounds" by setPosition() in restoreState()
+    //   if (prevStyleStrSelection !== null && !prevStyleStrSelection.isCollapsed)
+    //     undoManager.updatePrevStateSelection(prevStyleStrSelection);
+    //   doingEditInput = false;
+    // }
   });
   onDestroy(off1);
 
@@ -641,56 +641,57 @@
       const semic = line.find((node) => node.textContent === ";") ?? null;
       selection?.setPosition(semic, 1);
       handleAutocomplete();
-    } else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
-      const newState = undoManager.undo();
-      if (newState === null) return;
-      restoreState(newState);
-    } else if ((e.ctrlKey || e.metaKey) && e.key === "y") {
-      const newState = undoManager.redo();
-      if (newState === null) return;
-      restoreState(newState);
     }
+    // else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+    //   const newState = undoManager.undo();
+    //   if (newState === null) return;
+    //   restoreState(newState);
+    // } else if ((e.ctrlKey || e.metaKey) && e.key === "y") {
+    //   const newState = undoManager.redo();
+    //   if (newState === null) return;
+    //   restoreState(newState);
+    // }
   }
 
-  function restoreState(state: CSSEditorState) {
-    console.log("🎈 Restoring state!", state);
-    // console.log(state.selection);
-    let propsList: StylesList;
-    [stylesEl.innerHTML, propsList] = parseStylesStr(state.text);
-    syncStyles(propsList);
+  // function restoreState(state: CSSEditorState) {
+  //   console.log("🎈 Restoring state!", state);
+  //   // console.log(state.selection);
+  //   let propsList: StylesList;
+  //   [stylesEl.innerHTML, propsList] = parseStylesStr(state.text);
+  //   syncStyles(propsList);
 
-    const selection = getSelection();
-    if (!state.selection || !selection) return;
+  //   const selection = getSelection();
+  //   if (!state.selection || !selection) return;
 
-    // console.log("anchor", base, baseOffset);
-    // console.log("focus", focus, focusOffset);
-    requestAnimationFrame(() => {
-      if (!state.selection) return;
-      const [base, baseOffset] = findNodeFromOffset(
-        stylesEl,
-        state.selection.anchorIndex,
-      );
-      const [focus, focusOffset] = findNodeFromOffset(
-        stylesEl,
-        state.selection.focusIndex,
-      );
+  //   // console.log("anchor", base, baseOffset);
+  //   // console.log("focus", focus, focusOffset);
+  //   requestAnimationFrame(() => {
+  //     if (!state.selection) return;
+  //     const [base, baseOffset] = findNodeFromOffset(
+  //       stylesEl,
+  //       state.selection.anchorIndex,
+  //     );
+  //     const [focus, focusOffset] = findNodeFromOffset(
+  //       stylesEl,
+  //       state.selection.focusIndex,
+  //     );
 
-      if (state.selection.isCollapsed) {
-        selection.setPosition(focus, focusOffset);
-        // selection.modify("move", "right", "character");
-      } else {
-        console.log(
-          "Setting selection range",
-          base,
-          baseOffset,
-          focus,
-          focusOffset,
-        );
-        selection.setBaseAndExtent(base, baseOffset, focus, focusOffset);
-      }
-      handleAutocomplete();
-    });
-  }
+  //     if (state.selection.isCollapsed) {
+  //       selection.setPosition(focus, focusOffset);
+  //       // selection.modify("move", "right", "character");
+  //     } else {
+  //       console.log(
+  //         "Setting selection range",
+  //         base,
+  //         baseOffset,
+  //         focus,
+  //         focusOffset,
+  //       );
+  //       selection.setBaseAndExtent(base, baseOffset, focus, focusOffset);
+  //     }
+  //     handleAutocomplete();
+  //   });
+  // }
 </script>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->

@@ -162,16 +162,20 @@ export class HistoryManager {
       )?.get(patch.forwardStart);
 
       if (mappedForwardStart !== undefined) {
-        if (patch.forwardStart !== mappedForwardStart)
-          this.log(
-            `💙 ▶▶▶ Mapped forward start. "${patch.forwardStart}" -> "${mappedForwardStart}"`,
-          );
+        this.log(
+          `💙 ▶▶▶ Mapped forward start. "${patch.forwardStart}" -> "${mappedForwardStart}"`,
+        );
         patch.forwardStart = mappedForwardStart;
       } else {
         // This means there is no place for this node in the old HTML string. The consequences
         //  of this are discussed in top-level comments of this file, in (3).
         // The conclusion is that this patch has to keep its forwardStart, which is in terms of
         //  the latest HTML string. No modification is made.
+        patch.mapForwardStart = false;
+        this.log(
+          `💙 ▶▶▶ Didn't map forward start. "${patch.forwardStart}" remains in:`,
+          patch,
+        );
         return;
       }
     });
@@ -186,10 +190,12 @@ export class HistoryManager {
       this.prevStrPosForwardMap = strPosForwardMap;
       // this.prevStrPosNodeMapKeys = Array.from(this.posNodes.keys());
       this.prevPosNodes = this.clonePosNodes();
-      this.log(
-        "Skipping adding list of patches due to HistoryStateChange flag. Skipped:",
-        patches,
-      );
+      if (this.debug)
+        console.groupCollapsed(
+          "%c Skipping adding list of patches due to HistoryStateChange flag. Skipped:",
+          "color: gray;",
+          patches,
+        );
       return [strPosForwardMap];
     }
 
@@ -198,12 +204,19 @@ export class HistoryManager {
       patches.every((patch) => patch.forwardValue === patch.backValue) &&
       this.docHistory.length !== 0
     ) {
-      this.log(
-        "Skipping adding list of patches due to patches not changing anything. Skipped",
-        patches,
-      );
+      if (this.debug)
+        console.groupCollapsed(
+          "%c Skipping adding list of patches due to patches not changing anything. Skipped",
+          "color: gray;",
+          patches,
+        );
       return [strPosForwardMap];
     }
+
+    if (this.debug)
+      console.groupCollapsed(
+        `Adding to the history stack ${patches.length} patch/es.`,
+      );
 
     // Note that if we make an edit from a previous history state, this will always make that edit
     //  a new history item (along with splicing away all history states more recent),
@@ -233,13 +246,14 @@ export class HistoryManager {
         });
       else {
         this.prevPosNodes.forEach((node, oldStringPos) => {
+          this.prevStrPosForwardMap!.set(oldStringPos, oldStringPos);
+
           const newStringPos = this.docNodes.get(node)?.stringPos;
           if (newStringPos === undefined) {
             // This refers to a node that doesn't have a place in the new HTML string; skip mapping it
             return;
           }
           resetForwardMap.set(newStringPos, oldStringPos);
-          this.prevStrPosForwardMap!.set(oldStringPos, oldStringPos);
         });
       }
 
@@ -449,11 +463,21 @@ export class HistoryManager {
     const patches = this.docHistory[this.docHistActiveIndex - 1].patches;
     for (let i = 0; i < patches.length; i++) {
       const patch = patches[i];
-      let referredNode = this.posNodes.get(patch.forwardStart);
-      // TODO: Assess whether this could result in spurious matches
-      if (!referredNode) {
-        referredNode = tempPosNodes.get(patch.forwardStart);
+
+      let referredNode: Node | undefined;
+
+      if (patch.forwardStart === -1) {
+        this.warn(
+          "Encountered forwardStart value of -1; assuming this is for adding a node at the top of the document",
+        );
+        // Set referredNode to the element containing the entire document. The add type should also already be "FirstChild"
+        referredNode = this.posNodes.get(0)?.parentNode ?? undefined;
+      } else {
+        referredNode = patch.mapForwardStart
+          ? this.posNodes.get(patch.forwardStart)
+          : tempPosNodes.get(patch.forwardStart);
       }
+
       if (!referredNode) {
         console.error(
           "posNodes:",
@@ -461,9 +485,12 @@ export class HistoryManager {
           "tempPosNodes:",
           tempPosNodes,
         );
-        throw new Error(
-          `Could not resolve forwardStart value "${patch.forwardStart}" using either posNodes nor tempPosNodes.`,
-        );
+        if (patch.forwardStart === -1)
+          throw new Error(`Could not resolve forwardStart value of -1`);
+        else
+          throw new Error(
+            `Could not resolve forwardStart value "${patch.forwardStart}" using ${patch.mapForwardStart ? "posNodes" : "tempPosNodes"}.`,
+          );
       }
 
       this.log(
@@ -520,9 +547,22 @@ export class HistoryManager {
           "Cannot undo with oldValue being null in DocPatchDom objects.",
         );
 
-      let referredNode = patch.mapBackStart
-        ? this.posNodes.get(patch.backStart)
-        : tempPosNodes.get(patch.backStart);
+      let referredNode: Node | undefined;
+
+      // If backStart is -1, then docsyncing.ts handleNodeRemove couldn't find a node in the map which preceded the node being removed.
+      //  This can happen when the node being removed is the topmost element of the document (i.e. the one at index 0)
+      if (patch.backStart === -1) {
+        this.warn(
+          "Encountered backStart value of -1; assuming this is for adding a node at the top of the document",
+        );
+        // Set referredNode to the element containing the entire document. The remove type should also already be "FirstChild"
+        referredNode = this.posNodes.get(0)?.parentNode ?? undefined;
+      } else {
+        referredNode = patch.mapBackStart
+          ? this.posNodes.get(patch.backStart)
+          : tempPosNodes.get(patch.backStart);
+      }
+
       if (!referredNode) {
         console.error(
           "posNodes:",
@@ -530,9 +570,12 @@ export class HistoryManager {
           "tempPosNodes:",
           tempPosNodes,
         );
-        throw new Error(
-          `Could not resolve backStart value "${patch.forwardStart}" using either posNodes nor tempPosNodes.`,
-        );
+        if (patch.backStart === -1)
+          throw new Error(`Could not resolve backStart value of -1`);
+        else
+          throw new Error(
+            `Could not resolve backStart value "${patch.backStart}" using ${patch.mapBackStart ? "posNodes" : "tempPosNodes"}`,
+          );
       }
 
       this.log(
@@ -569,5 +612,9 @@ export class HistoryManager {
 
   private log(message?: any, ...optionalParams: any[]) {
     if (this.debug) console.log(message, ...optionalParams);
+  }
+
+  private warn(message?: any, ...optionalParams: any[]) {
+    if (this.debug) console.warn(message, ...optionalParams);
   }
 }
