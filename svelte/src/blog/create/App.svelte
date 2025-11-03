@@ -725,7 +725,9 @@
         "🎈 docHistory: ",
         structuredClone(historyManager.docHistory),
       );
-      console.log("🎈 posNodes: ", stringPosNodeMap);
+      const posNodeMapCopy: typeof stringPosNodeMap = new Map();
+      stringPosNodeMap.forEach((val, key) => posNodeMapCopy.set(key, val));
+      console.log("🎈 posNodes: ", posNodeMapCopy);
       console.groupEnd();
     }
 

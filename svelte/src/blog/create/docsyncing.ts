@@ -419,8 +419,16 @@ function handleNodeAdd(
 
   // First we do all the index shifting- essentially "making space" for the added node before including it in docNodes
   let prevNodeStart: number = -1;
+  const isPrevNode = (candidate: DocNodeEntry, nodePos: number) => {
+    return (
+      (candidate.isEl &&
+        candidate.stringPos + candidate.startTagLen === nodePos) ||
+      candidate.stringPos + candidate.stringLen === nodePos
+    );
+  };
+
   p.docNodes.forEach((val) => {
-    if (val.stringPos > prevNodeStart && val.stringPos < startIndex)
+    if (val.stringPos < startIndex && isPrevNode(val, startIndex))
       prevNodeStart = val.stringPos;
     else if (val.stringPos >= startIndex) val.stringPos += fullString.length;
   });
@@ -592,7 +600,17 @@ function handleNodeRemove(
     mapForwardStart: true,
     type: removeType,
     forwardValue: "",
-    backValue: getNodeSourceRepresentation(node),
+    //// There is this alternative method of getting the HTML string representation of the node, that doesn't use the provided HTML string
+    // backValue: reconstructHTMLString(
+    //   node,
+    //   { docContainer: p.docContainer },
+    //   true,
+    // )[0],
+    backValue:
+      p.htmlStr?.slice(
+        nodeInfo.stringPos,
+        nodeInfo.stringPos + nodeInfo.stringLen,
+      ) ?? null,
   };
   const patch: DocPatch = { str_: strPatch, dom: domPatch };
 

@@ -616,13 +616,15 @@ export class HistoryManager {
     const tempPosNodes: Map<number, Node> = new Map();
 
     const patches = this.docHistory[this.docHistActiveIndex].patches;
+
+    if (patches.some((patch) => patch.backValue === null))
+      throw new Error(
+        "Cannot undo with backValue being null in DocPatchDom objects.",
+      );
+
     // We go through the patches in the reverse order
     for (let i = patches.length - 1; i >= 0; i--) {
       const patch = patches[i];
-      if (patch.backValue === null)
-        throw new Error(
-          "Cannot undo with oldValue being null in DocPatchDom objects.",
-        );
 
       let referredNode: Node | undefined;
 
@@ -684,16 +686,16 @@ export class HistoryManager {
             break;
           }
 
-          const newNodes = this.addNode(referredNode, patch.backValue, patch);
+          const newNodes = this.addNode(referredNode, patch.backValue!, patch);
           // We are removing the node going forwards, and so forwardStart refers to the node itself
           //  (whereas backStart refers to the node before).
           tempPosNodes.set(patch.forwardStart, newNodes[0]);
           break;
         case "attributes":
-          this.setAttributes(referredNode, patch.backValue, patch);
+          this.setAttributes(referredNode, patch.backValue!, patch);
           break;
         case "characterData":
-          this.setCharacterData(referredNode, patch.backValue);
+          this.setCharacterData(referredNode, patch.backValue!);
           break;
       }
     }
