@@ -69,6 +69,17 @@ export type HistoryStacksStore = { [id: string]: DocHistoryStack };
 // THUS, this must be the stringPos value stored by the earlier patch which modified this node; given that it
 //       couldn't be mapped to a place in the new HTML string, it has to instead be mapped to what its place *was*
 //       in the old HTML string (the HTML string from when the document was in its previous state).
+// AND IF the node can't be mapped to what its place WAS in the old HTML string,
+//        that means we must be referring to a node that was added in by one of the patches being merged into.
+//        (1) patch adding node   (2) patch modifying node   (3) NEW patch removing node
+//        Both (1) and (2) have backStart values that can't be mapped to the latest HTML string nor the base HTML string.
+//        They refer to a node that was added and then removed in the same set of patches.
+//     THUS we should map the backStart values in this case to a special value. Then, when undoing,
+//        when we come to first using the patch that removed the node to add it back in,
+//        we check if we'll be adding a node that has a place in the previous HTML string
+//        (by checking if mapForwardStart is true), and if NOT, we DON'T add the node in.
+//        Patches that later try to refer to this node we didn't add in will encounter the special value,
+//        and will skip trying to apply those patches as well.
 
 // --- 3) HANDLING THE CASE WHERE A FORWARDSTART VALUE CAN'T BE MAPPED
 // Let's say there is a patch to modify a node, and it is being merged into another set of patches. This patch
@@ -81,8 +92,25 @@ export type HistoryStacksStore = { [id: string]: DocHistoryStack };
 //  that is required for it to be able to remove the node, when going backwards. This
 // IS the position of the node in the latest HTML string.
 // THUS, this must be the stringPos value stored by the later patch which modifies the node; given that it
-//  couldn't be mapped to a place in the old HTML string, it has to instead be mapped to its place in the new
-//  HTML string. This is just the value it has before any mapping, so no mapping should be done.
+//       couldn't be mapped to a place in the old HTML string, it has to instead be mapped to its place in the new
+//       HTML string. This is just the value it has before any mapping, so no mapping should be done.
+//    THOUGH ALSO, now that this forwardStart value is in terms of the latest HTML string, when new patches
+//       are merged in these values should be mapped to keep up-to-date with the HTML string, exactly like
+//       the backStart values are in the patches being merged into.
+// AND IF the node referred to by forwardStart can't be mapped to its place in the new HTML string,
+//        that means the latest set of patches removed the node. In other words,
+//        the patch now refers to a node that has no place in neither the old HTML string nor the new HTML string.
+//        (it refers to a node that was added and then removed in the same set of patches).
+//        When these patches are actually used, we'll first encounter the patch that adds this "ephemeral node".
+//        Its backStart value up until the last moment it was able to map it (the moment before the set of patches that removes it)
+//        would be set in tempPosNodes. This is problematic though, as it's a stringPos value from an arbitrary version of the HTML string,
+//        that may interfere or override with other entries in tempPosNodes from different arbitrary HTML string versions.
+//     THUS instead, we should map these backStart values to a special value. Then, when redoing,
+//        when we come to first applying the patch that adds the node,
+//        we check if we'll be adding a node that has a place in the next HTML string
+//        (by checking if mapBackStart is true), and if NOT, we DON'T add the node in.
+//        Patches that later try to refer to this node we didn't add in will encounter the special value,
+//        and will skip trying to apply those patches as well.
 
 export class HistoryManager {
   // The most recent history state is at index 0 in this array
@@ -316,18 +344,47 @@ export class HistoryManager {
             throw new Error(
               "Got call to merge onto history stack with prevStringPosForwardUpdateMap undefined.",
             );
-          const newMappedBackStart = this.prevStrPosForwardMap.get(
+          let newMappedBackStart = this.prevStrPosForwardMap.get(
             patch.backStart,
           );
+
           if (newMappedBackStart === undefined) {
-            // prettier-ignore
-            console.error("Patch", patch, "had backStart value", patch.backStart, "not in prevStringPosForwardUpdateMap: ", this.prevStrPosForwardMap);
-            throw new Error(
-              "Failed mapping backStart value using previous stringPosForwardUpdateMap.",
+            this.warn(
+              "Setting backStart value that couldn't be mapped using the backwardMap nor the previous forwardMap to -2",
             );
+            newMappedBackStart = -2;
           }
+
           patch.backStart = newMappedBackStart;
           patch.mapBackStart = false;
+        }
+      });
+
+      // Refer to the end of 3) in the top-level comment for an explanation
+      // Essentially, we're updating all the forwardStart values that refer to the latest HTML string
+      //  along with the backStart values that refer to the latest HTML string.
+      this.docHistory[0].patches.forEach((patch) => {
+        if (patch.mapForwardStart) return;
+
+        if (patch.forwardStart === -2) {
+          this.log(
+            "Skipping mapping forwardStart to latest HTML string because forwardStart is -2",
+          );
+          return;
+        }
+
+        const mappedForwardStart = strPosBackwardMap.get(patch.forwardStart);
+        if (mappedForwardStart !== undefined) {
+          this.log(
+            `Mapping forwardStart to the latest HTML string using strPosBackwardMap: "${patch.forwardStart}" -> "${mappedForwardStart}" on patch`,
+            patch,
+          );
+          patch.forwardStart = mappedForwardStart;
+        } else {
+          this.warn(
+            `Was unable to map forwardStart to latest HTML string using strPosBackwardMap. Assuming that this is because the latest set of patches removed the node being referred to`,
+          );
+          patch.forwardStart = -2;
         }
       });
 
@@ -472,6 +529,11 @@ export class HistoryManager {
         );
         // Set referredNode to the element containing the entire document. The add type should also already be "FirstChild"
         referredNode = this.posNodes.get(0)?.parentNode ?? undefined;
+      } else if (patch.forwardStart === -2 && !patch.mapForwardStart) {
+        this.log(
+          "Encountered forwardStart of -2; skipping applying the patch.",
+        );
+        continue;
       } else {
         referredNode = patch.mapForwardStart
           ? this.posNodes.get(patch.forwardStart)
@@ -501,6 +563,15 @@ export class HistoryManager {
       switch (patch.type) {
         case "addFirstChild":
         case "addNextSibling":
+          // If mapBackStart is false, that means we'd be adding a node which has no place in the latest HTML string,
+          //  likely because it'll be removed by a later patch in the set. We must skip adding this "ephemeral node" in the first place.
+          if (!patch.mapBackStart) {
+            this.warn(
+              "Skipping adding node because mapBackStart is false, assuming this to mean that the node would just be removed by a later patch in the set.",
+            );
+            break;
+          }
+
           const newNodes = this.addNode(
             referredNode,
             patch.forwardValue,
@@ -509,6 +580,12 @@ export class HistoryManager {
           // We are adding the node going forwards, so we're removing the node going backwards,
           //  and so backStart refers to the node itself (whereas forwardStart refers to the node before).
           tempPosNodes.set(patch.backStart, newNodes[0]);
+          this.log(
+            "Adding new entry to tempPosNodes from patch",
+            patch,
+            "to node",
+            newNodes[0],
+          );
           break;
         case "removeFirstChild":
         case "removeNextSibling":
@@ -557,6 +634,11 @@ export class HistoryManager {
         );
         // Set referredNode to the element containing the entire document. The remove type should also already be "FirstChild"
         referredNode = this.posNodes.get(0)?.parentNode ?? undefined;
+      } else if (patch.backStart === -2) {
+        this.log(
+          "Encountered backStart value of -2; skipping applying the patch",
+        );
+        continue;
       } else {
         referredNode = patch.mapBackStart
           ? this.posNodes.get(patch.backStart)
@@ -592,6 +674,16 @@ export class HistoryManager {
         case "removeFirstChild":
         case "removeNextSibling":
           // --- We must ADD this node (since we are going backwards)
+
+          // If mapForwardStart is false, that means we'd be adding back in a node which has no place in the previous HTML string (which is what we're recovering),
+          //  likely because it'll be removed by a later patch in the set. We must skip adding this "ephemeral node" in the first place.
+          if (!patch.mapForwardStart) {
+            this.warn(
+              "Skipping adding node because mapForwardStart is false, assuming this to mean that the node would just be removed by a later patch in the set.",
+            );
+            break;
+          }
+
           const newNodes = this.addNode(referredNode, patch.backValue, patch);
           // We are removing the node going forwards, and so forwardStart refers to the node itself
           //  (whereas backStart refers to the node before).

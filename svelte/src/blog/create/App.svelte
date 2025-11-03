@@ -342,8 +342,11 @@
       e.target.blur();
     } else if (e.ctrlKey && e.key === "z") {
       historyManager.undo();
+      // preventDefault here stops the browser's native undo/redo in contenteditable elements
+      e.preventDefault();
     } else if (e.ctrlKey && e.key === "y") {
       historyManager.redo();
+      e.preventDefault();
     } else if (e.ctrlKey && e.key === "Q") {
       debugCreateNewHistoryItem = !debugCreateNewHistoryItem;
       console.log(
