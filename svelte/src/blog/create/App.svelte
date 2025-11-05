@@ -55,6 +55,7 @@
   import SaveChanges from "./components/SaveChanges.svelte";
   import ArrowArcLeft from "phosphor-svelte/lib/ArrowArcLeft";
   import { HistoryManager } from "./history";
+  import { type ICSSEditor } from "./editors/css/CSSEditor.svelte";
 
   // let compLibVer: string | null = $state(null);
   // let latestCompLibVer: string | null = $state(null);
@@ -284,6 +285,8 @@
     collectedMutations.push(mutation),
   );
 
+  let cssEditor: ICSSEditor | undefined = $state();
+
   let selected = $derived(
     $nodesSelection.length === 0
       ? $nodeHoverTarget
@@ -498,6 +501,8 @@
   //  5- sync the document to the database through patches to the HTML string
   //  6- update the undo stack, either adding a new state if another part of the editor asks for it,
   //      or merging into the current topmost state of the stack otherwise
+  //  7- inform the CSS editor and Attribute editor about updates (especially those that don't originate
+  //      from interacting with said editors).
   const { stop } = useMutationObserver(
     () => docEl,
     (unfilteredMutations) => {
@@ -539,6 +544,13 @@
             docEl.appendChild(div);
           }
         });
+
+        // 7) inform the CSS editor and Attribute editor about updates
+        if (mutation.type === "attributes") {
+          if (mutation.attributeName === "style")
+            cssEditor?.syncElementInlineStyles(target);
+          attributesEditor?.syncElementAttributes(target);
+        }
 
         // 2) Handle newly added nodes, making sure they aren't collapsed
         if (mutation.type === "childList") {
@@ -769,7 +781,7 @@
     style="scrollbar-color: var(--rock-100) var(--background);"
     class="row-span-2 border-r-2 border-rock-300 bg-background p-2 overflow-y-scroll relative"
   >
-    <Sidebar bind:attributesEditor />
+    <Sidebar bind:attributesEditor bind:cssEditor />
   </div>
   <div
     class="topbar flex relative border-b-2 border-rock-300 bg-rock-50 bg-opacity-85"

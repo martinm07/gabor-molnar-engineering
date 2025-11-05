@@ -5,7 +5,7 @@
     type Attribute,
     type IAttributesEditor,
   } from "./editors/attributes/AttributesEditor.svelte";
-  import CssEditor from "./editors/css/CSSEditor.svelte";
+  import CssEditor, { type ICSSEditor } from "./editors/css/CSSEditor.svelte";
   import TagNameEditor from "./editors/tag/TagNameEditor.svelte";
   import {
     nodeHoverTarget,
@@ -25,10 +25,11 @@
 
   interface Props {
     attributesEditor?: IAttributesEditor;
+    cssEditor?: ICSSEditor;
   }
-  // This variable is incorrectly classified as 'unused'
-  // This is clearly a bug in the Svelte VSCode extension, not recognizing a compnent bind:this as a usage
-  let { attributesEditor = $bindable() }: Props = $props();
+
+  let { attributesEditor = $bindable(), cssEditor = $bindable() }: Props =
+    $props();
 
   let selected = $derived(
     $nodesSelection.length === 0
@@ -92,7 +93,7 @@
   class:hidden={selected.length === 0 || mode.sidebar !== "edit"}
   class="w-full h-fit p-2 text-center mt-8"
 >
-  <CssEditor {selected} {disabled} />
+  <CssEditor {selected} {disabled} bind:this={cssEditor} />
 </div>
 <div class:hidden={selected.length === 0 || mode.sidebar !== "edit"}>
   <AttributesEditor

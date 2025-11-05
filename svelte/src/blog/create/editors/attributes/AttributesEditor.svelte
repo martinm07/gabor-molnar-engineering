@@ -9,6 +9,7 @@
       updateUsedAttribute: (value?: string | null) => void,
     ];
     changeElementInMasks(oldEl: Element, newEl: Element): void;
+    syncElementAttributes(x: Node | Node[]): void;
   }
 
   export interface Attribute {
@@ -51,6 +52,8 @@
 
   // let attributes: Attribute[] = $state([]);
   let prevAttributes: Attribute[];
+
+  let performedMutation: boolean = false;
 
   function setAttribute(el: Element, name: string, value?: string | null) {
     if (value) el.setAttribute(name, value);
@@ -164,6 +167,36 @@
       )
       .map((attr) => toAttribute(attr.nodeName, attr.nodeValue!));
     return [...finalMasked, ...finalNormal];
+  }
+
+  /**
+   * This function is pretty much only for being called in App.svelte, in the
+   *  MutationObserver whenever it sees a mutation to an element's inline styles.
+   */
+  export function syncElementAttributes(x: Node | Node[]): void {
+    const syncAttributes = (el: Element) => {
+      dataComponent.send("reset");
+      prevAttributes = attributesIntersection(selected).filter(
+        (el) => el.name !== "style" && el.name !== "contenteditable",
+      );
+      attributes = [...prevAttributes];
+    };
+
+    if (performedMutation) {
+      performedMutation = false;
+      console.log("Skipping syncElementAttributes; performedMutation is true");
+      return;
+    }
+
+    if (x instanceof Node) {
+      if (!(x instanceof Element)) return;
+      syncAttributes(x);
+    } else {
+      x.forEach((x_) => {
+        if (!(x_ instanceof Element)) return;
+        syncAttributes(x_);
+      });
+    }
   }
 
   // NOTE: The order of these 3 watch statements is important. If the validity watch triggers
@@ -295,6 +328,7 @@
         });
       }
       updateHighlight();
+      performedMutation = true;
     },
   );
 

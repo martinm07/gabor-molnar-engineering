@@ -61,8 +61,11 @@ const isInlineStyle = (ruleSpecificity: SpecificityVal) =>
   specificityGreater(ruleSpecificity, [0, Infinity, 0, 0]);
 // console.log(specificityGreater([0, 1, 0, 0], [0, Infinity, 0, 0]));
 
-export function getCSSProps(el: Element) {
-  let { matchingRules: rules } = resolveCascadeForElement(el, allRules);
+export function getCSSProps(el: Element, useStylesheets: boolean = true) {
+  let { matchingRules: rules } = resolveCascadeForElement(
+    el,
+    useStylesheets ? allRules : [],
+  );
 
   // 1) Do not consider a rule or its properties if it was inherited,
   //     or applies to every element,

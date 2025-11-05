@@ -1,4 +1,8 @@
 <script module lang="ts">
+  export interface ICSSEditor {
+    syncElementInlineStyles(x: Node | Node[]): void;
+  }
+
   /**
    * Calculates the total character offset from the start of a parent element to a given target node and offset.
    *
@@ -86,113 +90,6 @@
       return Array(...node.childNodes).flatMap((node) => getTextNodes(node));
     }
   }
-</script>
-
-<script lang="ts">
-  import MDNLinks from "./mdn_links.json";
-  import { diffChars } from "diff";
-  import { onDestroy, getContext } from "svelte";
-  import { on } from "svelte/events";
-  import { watch } from "runed";
-  import { cssStyles, autocompleteSuggestions } from "../../store.svelte";
-  import {
-    charInStrQuoted,
-    getCSSProps,
-    splitStringAtChar,
-    allowedPropNames,
-  } from "./handlecss";
-  import {
-    ClonedSelection,
-    insertAfter,
-    insertAtIndex,
-    isInputEvent,
-  } from "../../helper";
-  // import {
-  //   type CSSEditorState,
-  //   type StyleStrSelection,
-  //   UndoManager,
-  // } from "./undo.svelte";
-
-  let styles = $state("");
-  let stylesEl: HTMLElement;
-  const updateHighlight: () => void = getContext("updateHighlight");
-  const getPrevSelection: () => ClonedSelection | null =
-    getContext("getPrevSelection");
-
-  // const undoManager = new UndoManager();
-
-  let prevSelection: ClonedSelection | null = $state(null);
-
-  // let styleStrSelection: StyleStrSelection | null = null;
-  // let prevStyleStrSelection: StyleStrSelection | null = null;
-
-  interface Props {
-    selected: Element[];
-    disabled: boolean;
-  }
-  let { selected, disabled }: Props = $props();
-
-  type StylesList = [k: string, v: string][];
-
-  watch(
-    () => selected,
-    (targets) => {
-      let commonStyles: StylesList | undefined;
-      for (const target of targets) {
-        let styles_ = $cssStyles.get(target);
-        // TODO: When the styles of an element update, the updated styles will NEVER be reflected, in the editor currently.
-        //       This is because it reads the style information of the elemenet the first time it needs to display them,
-        //        then stores it in $cssStyles. If styles are updated through the editor, the updated styles are stored in
-        //        $cssStyles, so those changes will be reflected. But styles being updated OUTSIDE the editor will never
-        //        be stored in $cssStyles.
-        //       This needs to be addressed in a better way. For now, we just abandon the use of $cssStyles entirely.
-        if (!styles_ || true) {
-          const genStyles = getCSSProps(target);
-          $cssStyles.set(target, genStyles);
-          target.setAttribute(
-            "style",
-            genStyles.map((item) => item.join(":")).join(";"),
-          );
-          styles_ = genStyles;
-        }
-        commonStyles = commonStyles
-          ? stylesIntersection(commonStyles, styles_)
-          : styles_;
-      }
-      if (!commonStyles) return;
-      prevSyncedStyles = commonStyles;
-
-      const styleStr = commonStyles
-        .map((style) => `${style[0]}:${style[1]};`)
-        .join(" ");
-
-      let plainStr: string;
-      [styles, , plainStr] = parseStylesStr(styleStr);
-      if (stylesEl?.innerHTML) stylesEl.innerHTML = styles;
-
-      // undoManager.changeSelection(targets, {
-      //   text: plainStr,
-      //   selection: {
-      //     isCollapsed: true,
-      //     focusIndex: 0,
-      //     anchorIndex: 0,
-      //     direction: "none",
-      //     focusLoc: "other",
-      //   },
-      //   insertType: "other",
-      // });
-    },
-  );
-
-  // Take the intersection of styles to have the same name and value
-  function stylesIntersection(s1: StylesList, s2: StylesList): StylesList {
-    const final: StylesList = [];
-    for (const kvPair of s1) {
-      if (s2.some(([k, v]) => k === kvPair[0] && v === kvPair[1]))
-        final.push(kvPair);
-    }
-    return final;
-  }
 
   function parseStylesStr(
     inp?: HTMLElement | string,
@@ -240,6 +137,106 @@
     plainStr += ";";
 
     return [htmlStr, reflowed, plainStr];
+  }
+</script>
+
+<script lang="ts">
+  import MDNLinks from "./mdn_links.json";
+  import { diffChars } from "diff";
+  import { onDestroy, getContext } from "svelte";
+  import { on } from "svelte/events";
+  import { watch } from "runed";
+  import { cssStyles, autocompleteSuggestions } from "../../store.svelte";
+  import {
+    getCSSProps,
+    splitStringAtChar,
+    allowedPropNames,
+  } from "./handlecss";
+  import { ClonedSelection, insertAfter } from "../../helper";
+  // import {
+  //   type CSSEditorState,
+  //   type StyleStrSelection,
+  //   UndoManager,
+  // } from "./undo.svelte";
+
+  let styles = $state("");
+  let stylesEl: HTMLElement;
+  const updateHighlight: () => void = getContext("updateHighlight");
+  const getPrevSelection: () => ClonedSelection | null =
+    getContext("getPrevSelection");
+
+  // const undoManager = new UndoManager();
+
+  let prevSelection: ClonedSelection | null = $state(null);
+
+  let performedMutation: boolean = false;
+
+  // let styleStrSelection: StyleStrSelection | null = null;
+  // let prevStyleStrSelection: StyleStrSelection | null = null;
+
+  interface Props {
+    selected: Element[];
+    disabled: boolean;
+  }
+  let { selected, disabled }: Props = $props();
+
+  type StylesList = [k: string, v: string][];
+
+  watch(
+    () => selected,
+    (targets) => {
+      let commonStyles: StylesList | undefined;
+      for (const target of targets) {
+        let styles_ = $cssStyles.get(target);
+        if (!styles_) {
+          const genStyles = getCSSProps(target);
+          $cssStyles.set(target, genStyles);
+          target.setAttribute(
+            "style",
+            genStyles.map((item) => item.join(":")).join(";"),
+          );
+          styles_ = genStyles;
+        }
+        commonStyles = commonStyles
+          ? stylesIntersection(commonStyles, styles_)
+          : styles_;
+      }
+      if (!commonStyles) return;
+      prevSyncedStyles = commonStyles;
+
+      const styleStr = commonStyles
+        .map((style) => `${style[0]}:${style[1]};`)
+        .join(" ");
+
+      let plainStr: string;
+      [styles, , plainStr] = parseStylesStr(styleStr);
+      if (stylesEl?.innerHTML) {
+        stylesEl.innerHTML = styles;
+        performedMutation = true;
+      }
+
+      // undoManager.changeSelection(targets, {
+      //   text: plainStr,
+      //   selection: {
+      //     isCollapsed: true,
+      //     focusIndex: 0,
+      //     anchorIndex: 0,
+      //     direction: "none",
+      //     focusLoc: "other",
+      //   },
+      //   insertType: "other",
+      // });
+    },
+  );
+
+  // Take the intersection of styles to have the same name and value
+  function stylesIntersection(s1: StylesList, s2: StylesList): StylesList {
+    const final: StylesList = [];
+    for (const kvPair of s1) {
+      if (s2.some(([k, v]) => k === kvPair[0] && v === kvPair[1]))
+        final.push(kvPair);
+    }
+    return final;
   }
 
   let prevSyncedStyles: StylesList;
@@ -291,6 +288,46 @@
     updateHighlight();
   }
 
+  /**
+   * This function is pretty much only for being called in App.svelte, in the
+   *  MutationObserver whenever it sees a mutation to an element's inline styles.
+   */
+  export function syncElementInlineStyles(x: Node | Node[]): void {
+    const syncInlineStyles = (el: Element) => {
+      // NOTE: There is a lot of extra logic performed by this function (even with useStylesheets = false)
+      //        that isn't necessary. It might be worth to optimize (though at the moment this function
+      //        is called sparingly thanks to the performedMutation check, so it isn't really necessary)
+      const genStyles = getCSSProps(el, false);
+      $cssStyles.set(el, genStyles);
+
+      const styleStr = genStyles
+        .map((style) => `${style[0]}:${style[1]};`)
+        .join(" ");
+
+      // TODO: This probably won't work when multiple elements are selected,
+      //        and that's a whole other can of worms to think about.
+      updateDisplay(styleStr);
+    };
+
+    if (performedMutation) {
+      performedMutation = false;
+      console.log(
+        "Skipping syncElementInlineStyles; performedMutation is true",
+      );
+      return;
+    }
+
+    if (x instanceof Node) {
+      if (!(x instanceof Element)) return;
+      syncInlineStyles(x);
+    } else {
+      x.forEach((x_) => {
+        if (!(x_ instanceof Element)) return;
+        syncInlineStyles(x_);
+      });
+    }
+  }
+
   // IMP: Currently doing nothing (because maybe this behaviour wasn't necessary)
   function preventColonsDeletion(styleStr: string, prevStyleStr: string) {
     // const diff = diffChars(prevStyleStr, styleStr);
@@ -321,9 +358,8 @@
 
   // let doingEditInput: boolean = false;
 
-  function onInput(e_: Event) {
+  function updateDisplay(overrideTextContent?: string) {
     if (!stylesEl) return;
-    const event = e_ as InputEvent | Event;
 
     const selection = document.getSelection();
     const offset = calculateTotalOffset(
@@ -333,13 +369,14 @@
     );
 
     const styleStr = preventColonsDeletion(
-      stylesEl.textContent ?? "",
+      overrideTextContent ?? stylesEl.textContent ?? "",
       prevStyleStr,
     );
     let propsList: StylesList;
     let plainStr: string;
     [stylesEl.innerHTML, propsList, plainStr] = parseStylesStr(styleStr);
     syncStyles(propsList);
+    performedMutation = true;
 
     if (enterPressed) selection?.setPosition(stylesEl, enterPressed);
     else {
@@ -699,7 +736,7 @@
   role="application"
   bind:this={stylesEl}
   contenteditable="true"
-  oninput={onInput}
+  oninput={() => updateDisplay()}
   onbeforeinput={(e) => {
     // TODO: This was for preventColonsDeletion, which has since been removed, and thus this may no longer be necessary.
     prevStyleStr = stylesEl.textContent ?? "";
