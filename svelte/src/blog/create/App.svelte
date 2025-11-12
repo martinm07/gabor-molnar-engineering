@@ -87,7 +87,7 @@
   let compLibUpgradeInfo: CompLibUpgradeInfo | null = null;
   setContext("getCompLibUpgradeInfo", () => compLibUpgradeInfo);
 
-  function getSavedComponentLibrary(ver?: string) {
+  async function getSavedComponentLibrary(ver?: string) {
     console.log("getting saved components library");
 
     const URL = `/documents/get_component_library${typeof ver === "string" ? "?ver=" + ver : ""}`;
@@ -475,9 +475,20 @@
   let htmlStr: string;
   let collectedMutations: TempMutationRecord[] = [];
 
-  const historyManager = new HistoryManager(docNodes, stringPosNodeMap, {
-    debug: LOG_DOC_HIST,
-  });
+  const historyManager = new HistoryManager(
+    docNodes,
+    stringPosNodeMap,
+    {
+      resetSelection: () => multipleSelect?.removeSelection(),
+    },
+    {
+      debug: LOG_DOC_HIST,
+    },
+  );
+  setContext("suggestCreateNewHistoryItem", () =>
+    historyManager.suggestCreateNewHistoryItem(),
+  );
+
   // --- References to these won't stay fresh; since they're constantly being reassigned by patchMutations()
   /** For mapping what used to be the most up-to-date node string position values, to the new up-to-date locations. */
   let stringPosBackwardUpdateMap: Map<number, number> = new Map();

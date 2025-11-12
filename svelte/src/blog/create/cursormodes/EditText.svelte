@@ -6,10 +6,14 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, getContext } from "svelte";
   import { on } from "svelte/events";
   import { mode, nodeHoverTarget } from "../store.svelte";
-  import { getAllTextNodes } from "../helper";
+  import { closest, getAllTextNodes } from "../helper";
+
+  const suggestCreateNewHistoryItem: () => void = getContext(
+    "suggestCreateNewHistoryItem",
+  );
 
   interface Props {
     doc: HTMLElement;
@@ -119,7 +123,42 @@
     cursor.style.left = `${rect.x + window.scrollX}px`;
     cursor.style.height = `${rect.height}px`;
   }
+
+  // HANDLING THE CREATION OF NEW HISTORY ITEMS
+
+  let calledOnInput: boolean = false;
+
+  let lastEditType: "back" | "forward" | "other" | null = null;
+  function handleInputForHistory(e: Event) {
+    if (!(e instanceof InputEvent)) return;
+
+    let editType: typeof lastEditType;
+    if (e.inputType.startsWith("insert")) editType = "forward";
+    else if (e.inputType.startsWith("delete")) editType = "back";
+    else editType = "other";
+
+    if (lastEditType !== null && editType !== lastEditType) {
+      suggestCreateNewHistoryItem();
+    }
+    lastEditType = editType;
+
+    if (e.data === " ") suggestCreateNewHistoryItem();
+  }
 </script>
+
+<svelte:document
+  onselectionchange={() => {
+    const selection = getSelection();
+    if (!selection || !editTarget || !closest(selection.focusNode, editTarget))
+      return;
+
+    console.log("EditText selection update! 💙");
+    // Suggest new history items if the selection changed without an input event being fired
+    //  (i.e. the user is using the arrow keys, or clicking around, or making a range selection)
+    if (!calledOnInput) suggestCreateNewHistoryItem();
+    calledOnInput = false;
+  }}
+/>
 
 <svelte:window
   onmousemove={(e) => {
@@ -127,5 +166,17 @@
     mouseY = e.clientY;
   }}
 />
-<svelte:body onfocusout={onFocusOut} />
+<svelte:body
+  onfocusout={onFocusOut}
+  oninput={(e) => {
+    if (
+      editTarget &&
+      e.target instanceof Node &&
+      closest(e.target, editTarget)
+    ) {
+      calledOnInput = true;
+      handleInputForHistory(e);
+    }
+  }}
+/>
 <!-- <div class="absolute w-[2px] h-5 bg-black" bind:this={cursor}></div> -->

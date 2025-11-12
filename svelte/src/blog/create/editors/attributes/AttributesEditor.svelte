@@ -38,10 +38,15 @@
     componentNameValid,
   } from "../../components/component.svelte";
   import type { TempMutationRecord } from "../../docsyncing";
+  import { closest } from "../../helper";
 
   const updateHighlight: () => void = getContext("updateHighlight");
   const syncFakeMutation: (mutation: TempMutationRecord) => void =
     getContext("syncFakeMutation");
+
+  const suggestCreateNewHistoryItem: () => void = getContext(
+    "suggestCreateNewHistoryItem",
+  );
 
   interface Props {
     selected: Element[];
@@ -438,7 +443,45 @@
       diff: () => undefined,
     },
   });
+
+  // HANDLING THE CREATING OF NEW HISTORY ITEMS
+
+  // Used by onselectionchange to suggest new history items when there's a selection change without an input
+  //  (NOTE: the timing of events was tested that oninput does indeed get called before onselectionchange)
+  let calledOnInput: boolean = false;
+
+  let lastEditType: "back" | "forward" | "other" | null = null;
+  function handleInputForHistory(e: Event) {
+    if (!(e instanceof InputEvent)) return;
+
+    let editType: typeof lastEditType;
+    if (e.inputType.startsWith("insert")) editType = "forward";
+    else if (e.inputType.startsWith("delete")) editType = "back";
+    else editType = "other";
+
+    if (lastEditType !== null && editType !== lastEditType) {
+      suggestCreateNewHistoryItem();
+    }
+    lastEditType = editType;
+
+    if (e.data === " ") suggestCreateNewHistoryItem();
+  }
 </script>
+
+<svelte:document
+  onselectionchange={() => {
+    const selection = getSelection();
+    const attributesEl = document.querySelector(".attributes-display");
+    if (!attributesEl) throw new Error("No attributes display element found.");
+    if (!selection || !closest(selection.focusNode, attributesEl)) return;
+
+    console.log("AttributeEditor selection update! 💙");
+    // Suggest new history items if the selection changed without an input event being fired
+    //  (i.e. the user is using the arrow keys, or clicking around, or making a range selection)
+    if (!calledOnInput) suggestCreateNewHistoryItem();
+    calledOnInput = false;
+  }}
+/>
 
 <ul class="mt-10 attributes-display">
   {#each attributes as attr, i}
@@ -452,6 +495,10 @@
         bind:value={attr.name}
         placeholder="attribute"
         {disabled}
+        oninput={(e) => {
+          calledOnInput = true;
+          handleInputForHistory(e);
+        }}
       />
       <FitContentWrapTextarea
         class="resize-none text-wrap bg-steel-100 focus:outline-none max-w-[calc(100%_-_8px)] p-1 rounded box-content disabled:opacity-50 [.unsynced]:underline decoration-dotted decoration-2 decoration-blue-400 [.invalid]:text-rock-500 {attr.name ===
@@ -466,9 +513,12 @@
         bind:value={attr.value}
         placeholder="value"
         disabled={disabled && attr.name !== "data-component"}
-        oninput={(e) =>
-          attr.name === "data-component" &&
-          handleComponentAutocomplete(e.target)}
+        oninput={(e) => {
+          if (attr.name === "data-component")
+            handleComponentAutocomplete(e.target);
+          calledOnInput = true;
+          handleInputForHistory(e);
+        }}
       />
       <div
         class="inline-flex [.disabled]:opacity-50 [.disabled]:pointer-events-none"

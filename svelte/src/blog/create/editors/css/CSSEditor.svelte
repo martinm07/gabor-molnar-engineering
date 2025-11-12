@@ -142,7 +142,6 @@
 
 <script lang="ts">
   import MDNLinks from "./mdn_links.json";
-  import { diffChars } from "diff";
   import { onDestroy, getContext } from "svelte";
   import { on } from "svelte/events";
   import { watch } from "runed";
@@ -152,7 +151,7 @@
     splitStringAtChar,
     allowedPropNames,
   } from "./handlecss";
-  import { ClonedSelection, insertAfter } from "../../helper";
+  import { ClonedSelection, closest, insertAfter } from "../../helper";
   // import {
   //   type CSSEditorState,
   //   type StyleStrSelection,
@@ -165,7 +164,9 @@
   const getPrevSelection: () => ClonedSelection | null =
     getContext("getPrevSelection");
 
-  // const undoManager = new UndoManager();
+  const suggestCreateNewHistoryItem: () => void = getContext(
+    "suggestCreateNewHistoryItem",
+  );
 
   let prevSelection: ClonedSelection | null = $state(null);
 
@@ -182,31 +183,52 @@
 
   type StylesList = [k: string, v: string][];
 
+  /**
+   * Gets the intersection of all the styles on all the elements in `selection`, to only return
+   *  a style string with prop/value pairs that match on every element in `selection`.
+   * @param selection A list of Elements for which to get the intersection of styles for.
+   */
+  function getSelectionStyleStr(selection: Element[]): [string, StylesList] {
+    let commonStyles: StylesList | undefined;
+    for (const target of selection) {
+      let styles_ = $cssStyles.get(target);
+      if (!styles_) {
+        const genStyles = getCSSProps(target);
+        $cssStyles.set(target, genStyles);
+        target.setAttribute(
+          "style",
+          genStyles.map((item) => item.join(":")).join(";"),
+        );
+        styles_ = genStyles;
+      }
+      commonStyles = commonStyles
+        ? stylesIntersection(commonStyles, styles_)
+        : styles_;
+    }
+
+    if (!commonStyles) return ["", []];
+
+    const styleStr = commonStyles
+      .map((style) => `${style[0]}:${style[1]};`)
+      .join(""); // NOTE: Changed from " " to ""
+    return [styleStr, commonStyles];
+  }
+
+  // Take the intersection of styles to have the same name and value
+  function stylesIntersection(s1: StylesList, s2: StylesList): StylesList {
+    const final: StylesList = [];
+    for (const kvPair of s1) {
+      if (s2.some(([k, v]) => k === kvPair[0] && v === kvPair[1]))
+        final.push(kvPair);
+    }
+    return final;
+  }
+
   watch(
     () => selected,
     (targets) => {
-      let commonStyles: StylesList | undefined;
-      for (const target of targets) {
-        let styles_ = $cssStyles.get(target);
-        if (!styles_) {
-          const genStyles = getCSSProps(target);
-          $cssStyles.set(target, genStyles);
-          target.setAttribute(
-            "style",
-            genStyles.map((item) => item.join(":")).join(";"),
-          );
-          styles_ = genStyles;
-        }
-        commonStyles = commonStyles
-          ? stylesIntersection(commonStyles, styles_)
-          : styles_;
-      }
-      if (!commonStyles) return;
+      const [styleStr, commonStyles] = getSelectionStyleStr(targets);
       prevSyncedStyles = commonStyles;
-
-      const styleStr = commonStyles
-        .map((style) => `${style[0]}:${style[1]};`)
-        .join(" ");
 
       let plainStr: string;
       [styles, , plainStr] = parseStylesStr(styleStr);
@@ -228,16 +250,6 @@
       // });
     },
   );
-
-  // Take the intersection of styles to have the same name and value
-  function stylesIntersection(s1: StylesList, s2: StylesList): StylesList {
-    const final: StylesList = [];
-    for (const kvPair of s1) {
-      if (s2.some(([k, v]) => k === kvPair[0] && v === kvPair[1]))
-        final.push(kvPair);
-    }
-    return final;
-  }
 
   let prevSyncedStyles: StylesList;
   function syncStyles(propsList: StylesList) {
@@ -300,12 +312,7 @@
       const genStyles = getCSSProps(el, false);
       $cssStyles.set(el, genStyles);
 
-      const styleStr = genStyles
-        .map((style) => `${style[0]}:${style[1]};`)
-        .join(" ");
-
-      // TODO: This probably won't work when multiple elements are selected,
-      //        and that's a whole other can of worms to think about.
+      const [styleStr] = getSelectionStyleStr(selected);
       updateDisplay(styleStr);
     };
 
@@ -358,6 +365,11 @@
 
   // let doingEditInput: boolean = false;
 
+  // Used by onselectionchange to suggest new history items when there's a selection change without an input
+  //  (NOTE: the timing of events was tested that oninput does indeed get called before onselectionchange)
+  let calledOnInput: boolean = false;
+
+  // Called by oninput
   function updateDisplay(overrideTextContent?: string) {
     if (!stylesEl) return;
 
@@ -378,10 +390,15 @@
     syncStyles(propsList);
     performedMutation = true;
 
-    if (enterPressed) selection?.setPosition(stylesEl, enterPressed);
-    else {
-      const [node, newOffset] = findNodeFromOffset(stylesEl, offset);
-      selection?.setPosition(node, newOffset);
+    if (
+      selection?.focusNode instanceof Element &&
+      selection.focusNode.closest(".styles-display")
+    ) {
+      if (enterPressed) selection?.setPosition(stylesEl, enterPressed);
+      else {
+        const [node, newOffset] = findNodeFromOffset(stylesEl, offset);
+        selection?.setPosition(node, newOffset);
+      }
     }
     handleAutocomplete();
 
@@ -471,6 +488,9 @@
   //   };
   // }
 
+  // Somehow, it seems like using `on(document, "selectionchange", [...])` only calls selection changes after input events
+  //  on the CSSEditor...
+  // Using `<svelte:document onselectionchange={[...]}>` does the expected thing of calling after ALL selection changes.
   const off1 = on(document, "selectionchange", (e) => {
     const selection = getSelection();
     // prevStyleStrSelection = styleStrSelection;
@@ -729,14 +749,66 @@
   //     handleAutocomplete();
   //   });
   // }
+
+  let lastEditType: "back" | "forward" | "other" | null = null;
+  let lastEditLoc: "prop" | "val" | "other" | null = null;
+  function handleInputForHistory(e: Event) {
+    if (!(e instanceof InputEvent)) return;
+
+    let editType: typeof lastEditType;
+    if (e.inputType.startsWith("insert")) editType = "forward";
+    else if (e.inputType.startsWith("delete")) editType = "back";
+    else editType = "other";
+
+    if (lastEditType !== null && editType !== lastEditType) {
+      suggestCreateNewHistoryItem();
+    }
+    lastEditType = editType;
+
+    if (e.data === " ") suggestCreateNewHistoryItem();
+
+    const determineLoc = (node: Node | null): typeof lastEditLoc => {
+      if (node === null) return "other";
+      const topEl = getTopEl(node) as Element | null;
+      if (topEl === null) return "other";
+      if (topEl.tagName === "B") return "prop";
+      else if (topEl.tagName === "EM") return "val";
+      return "other";
+    };
+
+    const selection = getSelection();
+    const editLoc = determineLoc(selection?.focusNode ?? null);
+
+    if (lastEditLoc !== null && editLoc !== lastEditLoc) {
+      console.log(`CHANGED FROM WORK ON A ${lastEditLoc} TO A ${editLoc}`);
+      suggestCreateNewHistoryItem();
+    }
+    lastEditLoc = editLoc;
+  }
 </script>
+
+<svelte:document
+  onselectionchange={() => {
+    const selection = getSelection();
+    if (!selection || !closest(selection.focusNode, stylesEl)) return;
+    console.log("CSSEditor selection update! 💙");
+    // Suggest new history items if the selection changed without an input event being fired
+    //  (i.e. the user is using the arrow keys, or clicking around, or making a range selection)
+    if (!calledOnInput) suggestCreateNewHistoryItem();
+    calledOnInput = false;
+  }}
+/>
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <div
   role="application"
   bind:this={stylesEl}
   contenteditable="true"
-  oninput={() => updateDisplay()}
+  oninput={(e) => {
+    calledOnInput = true;
+    updateDisplay();
+    handleInputForHistory(e);
+  }}
   onbeforeinput={(e) => {
     // TODO: This was for preventColonsDeletion, which has since been removed, and thus this may no longer be necessary.
     prevStyleStr = stylesEl.textContent ?? "";

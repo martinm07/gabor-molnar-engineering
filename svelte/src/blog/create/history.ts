@@ -1,3 +1,4 @@
+import { decode } from "he";
 import type {
   DocNodeEntry,
   DocNodeMap,
@@ -15,6 +16,9 @@ type DocHistoryItem = {
   patches: DocPatchDom[];
   nodesSelection: number[] | null;
 } & EditorCaret;
+
+// TODO: Recovering other parts of the editor state, associating them with history state items
+//       (currently, we just reset the selection whenever we undo or redo)
 
 // The inclusion of "compName" | "compDesc" | "compTags" will also be accompied with fields for updating documents,
 //  for the future when changes to these are included as part of the history stack (by having them sync with hidden elements
@@ -41,6 +45,10 @@ type EditorCaret =
   | { focusArea: null };
 
 export type HistoryStacksStore = { [id: string]: DocHistoryStack };
+
+interface EditorHooks {
+  resetSelection: () => any;
+}
 
 // --- 1) HOW HTML STRING POSITIONS STORED BY DOM PATCHES MUST BE MAPPED
 // When a new set of patches is created, all of the stringPos values are in terms of the current (i.e. latest)
@@ -112,6 +120,8 @@ export type HistoryStacksStore = { [id: string]: DocHistoryStack };
 //        Patches that later try to refer to this node we didn't add in will encounter the special value,
 //        and will skip trying to apply those patches as well.
 
+const WAIT_NEW_HISTORY_ITEM_MS = 2000;
+
 export class HistoryManager {
   // The most recent history state is at index 0 in this array
   docHistory: DocHistoryStack = [];
@@ -125,18 +135,23 @@ export class HistoryManager {
   private prevPosNodes: ReadonlyMap<number, Node> = new Map();
   debug: boolean;
 
-  flagNewHistoryItem: boolean = false;
+  flagSuggestNewHistoryItem: boolean = false;
+  flagForceNewHistoryItem: boolean = false;
   flagHistoryStateChange: boolean = false;
+  newHistoryItemTimeout?: NodeJS.Timeout;
 
   private claimedCaretState: EditorCaret = { focusArea: null };
+  private editorHooks: EditorHooks;
 
   constructor(
     docNodes: DocNodeMap,
     stringPosNodeMap: StringPosNodeMap,
+    editorHooks: EditorHooks,
     opts?: { debug?: boolean },
   ) {
     this.docNodes = docNodes;
     this.posNodes = stringPosNodeMap;
+    this.editorHooks = editorHooks;
     this.debug = Boolean(opts?.debug);
   }
 
@@ -246,15 +261,25 @@ export class HistoryManager {
         `Adding to the history stack ${patches.length} patch/es.`,
       );
 
+    clearInterval(this.newHistoryItemTimeout);
+    this.newHistoryItemTimeout = setTimeout(() => {
+      console.log(
+        `WAITED ${WAIT_NEW_HISTORY_ITEM_MS}ms - FORCING NEW HISTORY ITEM`,
+      );
+      this.flagForceNewHistoryItem = true;
+    }, WAIT_NEW_HISTORY_ITEM_MS);
+
     // Note that if we make an edit from a previous history state, this will always make that edit
     //  a new history item (along with splicing away all history states more recent),
     //  as that seems like more intuitive behaviour.
     if (
-      this.flagNewHistoryItem ||
+      this.flagForceNewHistoryItem ||
+      this.flagSuggestNewHistoryItem ||
       this.docHistActiveIndex > 0 ||
       this.docHistory.length <= 1 // Add to the history stack if we need to create the initial state, or so that we never merge onto the initial state
     ) {
       this.log("Adding a new item onto the history stack.");
+      this.flagForceNewHistoryItem = false;
 
       if (this.docHistActiveIndex > 0) {
         this.log("Splicing newer history states from current state.");
@@ -408,13 +433,14 @@ export class HistoryManager {
   }
 
   suggestCreateNewHistoryItem() {
-    this.log("Flagged for new history item!");
-    this.flagNewHistoryItem = true;
+    if (!this.flagSuggestNewHistoryItem)
+      this.log("✨✨✨ Flagged for new history item!");
+    this.flagSuggestNewHistoryItem = true;
   }
 
   resetFlagsAndClaims() {
     this.claimedCaretState = { focusArea: null };
-    this.flagNewHistoryItem = false;
+    this.flagSuggestNewHistoryItem = false;
     this.flagHistoryStateChange = false;
   }
 
@@ -495,14 +521,17 @@ export class HistoryManager {
       referredNode.removeAttribute(referredNode.attributes[0].name);
     // Set all the attributes parsed from `value` onto referredNode
     allAttrs.forEach((attr) => {
-      referredNode.setAttribute(attr.name, attr.value);
+      referredNode.setAttribute(
+        attr.name,
+        decode(attr.value, { isAttributeValue: true }),
+      );
     });
   }
 
   private setCharacterData(referredNode: Node, value: string) {
     if (referredNode instanceof Element)
       console.warn("characterData is an element in a characterData patch.");
-    referredNode.textContent = value;
+    referredNode.textContent = decode(value);
   }
 
   redo() {
@@ -599,6 +628,8 @@ export class HistoryManager {
           break;
       }
     }
+
+    this.editorHooks.resetSelection();
 
     this.docHistActiveIndex--;
     this.flagHistoryStateChange = true;
@@ -699,6 +730,8 @@ export class HistoryManager {
           break;
       }
     }
+
+    this.editorHooks.resetSelection();
 
     this.docHistActiveIndex++;
     this.flagHistoryStateChange = true;

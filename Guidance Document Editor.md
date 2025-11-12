@@ -10,9 +10,10 @@
 
 ## Current Checklist
 
-- [ ] Full editor undo/redo functionality
-    - Create undo/redo state history from MutationObserver callbacks
-    - Associate extra editor information and have other parts of the editor suggest state grouping
+- [x] Full editor undo/redo functionality
+    - ~~Create undo/redo state history from MutationObserver callbacks~~
+    - ~~Have other parts of the editor suggest state grouping~~
+    - **POSTPONED:** Associate extra editor information
 - [ ] Prevention of illegal HTML structures
     - Determine whether mutation resulted in illegal HTML structure
     - Use undo manager to automatically go back on illegal operations and create toast popup informing the error
