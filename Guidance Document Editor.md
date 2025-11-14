@@ -34,6 +34,9 @@
     - Button on navbar that brings up little view of media files with thumbnails
     - Clicking media thumbnail copies the path to clipboard.
     - Ability to upload and delete media files
+    - Have section for published documents, with the titles displayed and clicking on them copies the URL to the clipboard
+      - With ability to sort (e.g. A-Z, Z-A, by last modified)
+      - And maybe with ability to search
 - [ ] Floating UI at cursor position activated through keyboard shortcuts for colour picking and media tray file URL insertion
 	- The colour picker should also have the option of managing a colour palette (which then needs to be saved on the document in document editor mode and as a special component in component library editor mode. Palette colours should also appear when in documents that inherit the library).
 - [ ] Node hierarchy view
@@ -71,7 +74,7 @@ At this point though, I think it is fine to call the editor complete without mac
 
 ### History Manager
 
-**Think through possibilities of other stringPos values in DOM patches getting incorrectly mapped**
+**Think through possibilities of other `stringPos` values in DOM patches getting incorrectly mapped**
 
 `backStart` values need to be mapped from OLD `stringPos` -> NEW `stringPos`
 ...for patches that are being merged into.
@@ -90,3 +93,34 @@ The reason `forwardStart` remove-type patches *SPECIFICALLY* were vulnerable to 
 The `backwardUpdateMap` is keyed in the previous version of the HTML string.
 Add-type patches always refer to a node that exists in the new HTML string. The `forwardUpdateMap` which is keyed in the new HTML string is satisfied by this. The `backwardUpdateMap` is keyed in the previous HTML string, but is only applied to the patches when they do indeed become the "previous HTML string".
 
+
+**Think through how to populate the `ephemeralNodeMap`**
+
+We have an add-type patch being processed in the old patches.
+Due to the latest set of patches it is now adding an ephemeral node (can be seen by the `backStart` value)
+We add in the `forwardStart` info to `ephemeralNodeMap` (preceding node to be used instead for patches in their forward direction)
+    Can this node itself be an ephemeral node?
+    It can be, but it will already have been adjusted for due to the order of processing the old patches from top-to-bottom
+    (we're guaranteed to start with a reference to a fresh node, and will be able to work our way down)
+    so there's no need to worry.
+We search for the remove-type patch that removes this ephemeral node in the new patches and set that `backStart` info to `ephemeralNodeMap`
+(preceding node to be used instead for patches in their BACKWARD direction)
+    Can this node itself be an ephemeral node?
+    Firstly, it IS possible for this node to be different from the one that patches should use in the forward direction;
+      if first the ephemeral node is added, then the node preceding it is deleted, then the ephemeral node is deleted,
+      the forwards direction will refer to that node which gets deleted later (and that's fine since the node won't actually be deleted yet when the patch is processed), and
+      the backwards direction will refer to whatever node precedes the deleted node (since the patch is created after the node is deleted, this will naturally happen).
+    and so indeed it SHOULD be possible for this backwards-direction node to itself be ephemeral, so
+...When we find the relevant remove-type patch, we process the `backStart` value,
+mapping it to the base HTML string if it came from `docsyncing` with `mapBackStart` set to false,
+and IF it CAN'T be mapped to the base HTML string, then the `backStart` of this remove-type patch
+refers to another ephemeral node.
+The problem is, this other ephemeral node may not be processed yet into `ephemeralNodeMap`.
+Thus, **instead of that:**
+
+We first process the new patches in the *reverse* order, mapping those than need to be mapped to the base HTML string, and separately seeing which remove-type patches are removing ephemeral nodes (through the checking of if the `forwardStart` value was able to be mapped to the base HTML string) and adding *only the `backStart` info* (no searching for the patch which adds the ephemeral node to complete the entry) to the `ephemeralNodeMap`.
+> By processing them in the reverse order, any remove-type patches whose `backStart` refers to an ephemeral node will only be processed after the remove-type patch which actually removes that ephemeral node (because there can be no references to a node after the patch that removes said node).
+
+After doing this processing on all the new patches, we can process all the old patches. There, when we encounter an add-type patches which *adds* in an ephemeral node, we *only add in the `forwardStart` info* to the `ephemeralNodeMap` (which should at this point already have the `backStart` info filled in). When we encounter other add-type patches whose `forwardStart` refers to an ephemeral node, we can use the map rest assured it'll already be filled in with the relevant info. When we encounter other remove-type patches whose `backStart` refers to an ephemeral node, we can also use the map rest assured that the `backStart` info of all the ephemeral nodes has already been filled into the map.
+
+After processing the old patches, we can process the new patches again (this time not in reverse order, though it truly shouldn't matter) for add-type patches with `forwardStart` values referring to ephemeral nodes. 

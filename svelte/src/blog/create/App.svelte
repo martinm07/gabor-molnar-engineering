@@ -478,6 +478,7 @@
   const historyManager = new HistoryManager(
     docNodes,
     stringPosNodeMap,
+    () => docEl,
     {
       resetSelection: () => multipleSelect?.removeSelection(),
     },
@@ -658,7 +659,7 @@
         });
         patchSync = true;
       } else if (patchSync && docEl) {
-        collectedMutations.push(...processMutations(mutations));
+        collectedMutations.push(...processMutations(unfilteredMutations));
       }
     },
     {

@@ -439,8 +439,9 @@ function handleNodeAdd(
       patch.dom.forwardStart >= startIndex
     )
       patch.dom.forwardStart += fullString.length;
-    if (patch.dom.backStart >= startIndex)
+    if (patch.dom.backStart >= startIndex && patch.dom.mapBackStart) {
       patch.dom.backStart += fullString.length;
+    }
   });
 
   newInfo.parentList.forEach((parent) => {
@@ -554,13 +555,42 @@ function handleNodeRemove(
   // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
   p.currentPatches?.forEach((patch) => {
     if (
-      !patch.dom.type.includes("remove") &&
+      !patch.dom.type.startsWith("remove") &&
       patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.stringLen
     )
       patch.dom.forwardStart -= nodeInfo.stringLen;
-    if (patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen)
+
+    if (
+      patch.dom.type.startsWith("remove") &&
+      patch.dom.mapBackStart &&
+      patch.dom.backStart === nodeInfo.stringPos
+    ) {
+      // Set remove-type patch mapBackStart to false, since the node this backStart refers to gets removed by this call,
+      //  and hence cannot be mapped to the latest version of the HTML string.
+      // Is it possible the backStart of this patch was already partially index-shifted to the new HTML string?
+      //  No, since all the remove calls are processed first, in the order of later nodes in the hierarchy first, going upwards.
+      //  The preceding node that a remove-type backStart refers to will always be processed to be removed immediately after adding
+      //  said remove-type patch (if said preceding node is to be processed for removal at all).
+      patch.dom.mapBackStart = false;
+    }
+
+    if (
+      patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen &&
+      patch.dom.mapBackStart
+    ) {
       patch.dom.backStart -= nodeInfo.stringLen;
+    }
   });
+
+  // If the previous node is an element, and the end position of the node-to-be-removed is BEFORE the end position of the previous node element,
+  //  that means the node-to-be-removed is a child of that element, and hence the remove type should be "removeFirstChild"
+  // Note: We determine this BEFORE index shifting the parents in case prevNode(Info) really is a parent of node(Info).
+  const removeType =
+    prevNodeInfo.isEl &&
+    nodeInfo.stringPos + nodeInfo.stringLen <
+      prevNodeInfo.stringPos + prevNodeInfo.stringLen
+      ? "removeFirstChild"
+      : "removeNextSibling";
 
   nodeInfo.parentList.forEach((parent) => {
     const parentInfo = p.docNodes.get(parent);
@@ -579,14 +609,6 @@ function handleNodeRemove(
     start: nodeInfo.stringPos,
     length: nodeInfo.stringLen,
   };
-  // If the previous node is an element, and the end position of the node-to-be-removed is BEFORE the end position of the previous node element,
-  //  that means the node-to-be-removed is a child of that element, and hence the remove type should be "removeFirstChild"
-  const removeType =
-    prevNodeInfo.isEl &&
-    nodeInfo.stringPos + nodeInfo.stringLen <
-      prevNodeInfo.stringPos + prevNodeInfo.stringLen
-      ? "removeFirstChild"
-      : "removeNextSibling";
   const domPatch: DocPatch["dom"] = {
     forwardStart: nodeInfo.stringPos,
     // Note, this is because we'd have to add this node going in the backwards direction. Thus we need reference to the node before it for the insertion location.
@@ -652,11 +674,14 @@ function handleAttributeChange(
     // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
     p.currentPatches?.forEach((patch) => {
       if (
-        !patch.dom.type.includes("remove") &&
+        !patch.dom.type.startsWith("remove") &&
         patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.stringLen
       )
         patch.dom.forwardStart += lenDiff;
-      if (patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen)
+      if (
+        patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen &&
+        patch.dom.mapBackStart
+      )
         patch.dom.backStart += lenDiff;
     });
 
@@ -734,11 +759,14 @@ function handleCharacterDataChange(
     // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
     p.currentPatches?.forEach((patch) => {
       if (
-        !patch.dom.type.includes("remove") &&
+        !patch.dom.type.startsWith("remove") &&
         patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.stringLen
       )
         patch.dom.forwardStart += lenDiff;
-      if (patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen)
+      if (
+        patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen &&
+        patch.dom.mapBackStart
+      )
         patch.dom.backStart += lenDiff;
     });
 
@@ -1001,6 +1029,28 @@ export function patchMutations(
       //       Thinking about it more, this shouldn't be necessary, but it depends on how the implementations of undo/redo are done.
       return;
     }
+
+    // It may be that a [reference to the same] node is removed and then added in a different location.
+    // Thus, we'd still see that the node can be mapped to the base HTML string, despite HistoryManager still
+    //  not considering the node that's added to be part of the base HTML string.
+    //  (It considers the node that's removed earlier to be entirely separate from this one being added).
+    // This check guarantees that nodes referred to by add-type patches are NEVER included in the new forward map.
+    // TODO: We should also be guaranteeing the child nodes that are added alongside the main node also aren't mapped.
+    //       Probably the easiest way to do this is with a new field on DocPatchDOM.
+    if (
+      patches.some(
+        (patch) =>
+          patch.dom.type.startsWith("add") &&
+          patch.dom.backStart === newStringPos,
+      )
+    ) {
+      console.log(
+        `Skipping adding patch to strPosForwardMap despite matches of node from new HTML string -> base HTML string, because of patch that adds node at position "${newStringPos}" for node`,
+        referredNode,
+      );
+      return;
+    }
+
     newStringPosForwardUpdateMap.set(newStringPos, baseStringPos);
   });
 
@@ -1014,6 +1064,28 @@ export function patchMutations(
       // The consequences of this are discussed in top-level comments inside ./history.ts, in (2)
       return;
     }
+
+    // It may be that a [reference to the same] node is removed and then added in a different location.
+    // Thus, we'd still see that the node can be mapped to the new HTML string, despite HistoryManager still
+    //  not considering the node that's removed to be part of the new HTML string.
+    //  (It considers the node that's added later to be entirely separate from this one being removed).
+    // This check guarantees that nodes referred to by remove-type patches are NEVER included in the new backward map.
+    // TODO: We should also be guaranteeing the child nodes that are removed alongside the main node also aren't mapped.
+    //       Probably the easiest way to do this is with a new field on DocPatchDOM.
+    if (
+      patches.some(
+        (patch) =>
+          patch.dom.type.startsWith("remove") &&
+          patch.dom.forwardStart === oldPos,
+      )
+    ) {
+      console.log(
+        `Skipping adding patch to strPosBackwardMap despite matches in oldPosNodes -> docNodes, because of patch that removes node at position "${oldPos}" for node`,
+        node,
+      );
+      return;
+    }
+
     newStringPosBackwardUpdateMap.set(oldPos, newPos);
   });
 

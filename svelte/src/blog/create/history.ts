@@ -1,9 +1,10 @@
 import { decode } from "he";
-import type {
-  DocNodeEntry,
-  DocNodeMap,
-  DocPatchDom,
-  StringPosNodeMap,
+import {
+  reconstructHTMLString,
+  type DocNodeEntry,
+  type DocNodeMap,
+  type DocPatchDom,
+  type StringPosNodeMap,
 } from "./docsyncing";
 import { insertAfter } from "./helper";
 import { nodesSelection } from "./store.svelte";
@@ -120,7 +121,7 @@ interface EditorHooks {
 //        Patches that later try to refer to this node we didn't add in will encounter the special value,
 //        and will skip trying to apply those patches as well.
 
-const WAIT_NEW_HISTORY_ITEM_MS = 2000;
+const WAIT_NEW_HISTORY_ITEM_MS = 5000;
 
 export class HistoryManager {
   // The most recent history state is at index 0 in this array
@@ -131,6 +132,7 @@ export class HistoryManager {
   //  cycle, when there are new mutations.
   docNodes: ReadonlyMap<Node, DocNodeEntry>;
   posNodes: ReadonlyMap<number, Node>;
+  getDocContainer: () => HTMLElement | undefined;
   private prevStrPosForwardMap?: Map<number, number>;
   private prevPosNodes: ReadonlyMap<number, Node> = new Map();
   debug: boolean;
@@ -146,11 +148,13 @@ export class HistoryManager {
   constructor(
     docNodes: DocNodeMap,
     stringPosNodeMap: StringPosNodeMap,
+    getDocContainer: () => HTMLElement | undefined,
     editorHooks: EditorHooks,
     opts?: { debug?: boolean },
   ) {
     this.docNodes = docNodes;
     this.posNodes = stringPosNodeMap;
+    this.getDocContainer = getDocContainer;
     this.editorHooks = editorHooks;
     this.debug = Boolean(opts?.debug);
   }
@@ -188,6 +192,7 @@ export class HistoryManager {
     patches: DocPatchDom[],
     forwardMap: Map<number, number>,
     prevForwardMap?: Map<number, number>,
+    startI?: number,
   ) {
     this.log(
       "💙 Mapping forwardStart vals using forwardMap:",
@@ -197,18 +202,24 @@ export class HistoryManager {
     );
     // Apply stringPosForwardUpdateMap to forwardstart values of patches
     //  (this is the same whether we're merging the patches, or creating a new history item)
-    patches.forEach((patch) => {
+    patches.forEach((patch, i_) => {
+      const i = startI === undefined ? "null" : startI + i_;
       // Patches which remove nodes are in terms of the previous HTML string
       //  (where they have a non-0 length and thus unique stringPos), so we use prevStrPosForwardMap to map them
       const mappedForwardStart = (
-        patch.type.includes("remove") ? prevForwardMap : forwardMap
+        patch.type.startsWith("remove") ? prevForwardMap : forwardMap
       )?.get(patch.forwardStart);
 
       if (mappedForwardStart !== undefined) {
         this.log(
-          `💙 ▶▶▶ Mapped forward start. "${patch.forwardStart}" -> "${mappedForwardStart}"`,
+          `💙 ▶▶▶ ${i}: Mapped forward start. "${patch.forwardStart}" -> "${mappedForwardStart}"`,
         );
         patch.forwardStart = mappedForwardStart;
+      } else if (patch.forwardStart === -1) {
+        // We don't map -1, but we also don't say it "doesn't have a place in the old HTML string",
+        //  by setting `patch.mapForwardStart = false;`
+        this.log(`💙 ▶▶▶ ${i}: Skipped forward start value of "-1"`, patch);
+        return;
       } else {
         // This means there is no place for this node in the old HTML string. The consequences
         //  of this are discussed in top-level comments of this file, in (3).
@@ -216,7 +227,7 @@ export class HistoryManager {
         //  the latest HTML string. No modification is made.
         patch.mapForwardStart = false;
         this.log(
-          `💙 ▶▶▶ Didn't map forward start. "${patch.forwardStart}" remains in:`,
+          `💙 ▶▶▶ ${i}: Didn't map forward start. "${patch.forwardStart}" remains in:`,
           patch,
         );
         return;
@@ -263,7 +274,7 @@ export class HistoryManager {
 
     clearInterval(this.newHistoryItemTimeout);
     this.newHistoryItemTimeout = setTimeout(() => {
-      console.log(
+      this.log(
         `WAITED ${WAIT_NEW_HISTORY_ITEM_MS}ms - FORCING NEW HISTORY ITEM`,
       );
       this.flagForceNewHistoryItem = true;
@@ -315,6 +326,7 @@ export class HistoryManager {
         patches,
         resetForwardMap,
         this.prevStrPosForwardMap,
+        0,
       );
 
       this.docHistory.unshift({
@@ -325,12 +337,13 @@ export class HistoryManager {
       });
       this.docHistActiveIndex = 0;
 
+      this.prevStrPosForwardMap = resetForwardMap;
       this.prevPosNodes = this.clonePosNodes();
       return [resetForwardMap];
     } else {
       this.log(
-        "Merging onto the history stack. Claimed caret state: ",
-        this.claimedCaretState,
+        "Merging onto the history stack. Merging:",
+        structuredClone(patches),
       );
 
       // Apply stringPosForwardUpdateMap to forwardStart values of the patches that we are adding to the history stack
@@ -338,10 +351,341 @@ export class HistoryManager {
         patches,
         strPosForwardMap,
         this.prevStrPosForwardMap,
+        this.docHistory[0].patches.length,
       );
 
+      // Maps "last known position" of the ephemeral node to the position of the node BEFORE it, as well as if
+      //  the ephemeral node was the first child to, or next sibling of, said node, as well as whether the reference
+      //  to said node is in the base HTML string or the new HTML string.
+
+      type EphemeralNodeForwardMapEntry = {
+        posPreceding: number;
+        addType: "nextSibling" | "firstChild";
+        mapForwardStart: boolean;
+      };
+      const ephemeralNodeForwardMap: Map<number, EphemeralNodeForwardMapEntry> =
+        new Map();
+
+      type EphemeralNodeBackMapEntry = {
+        posPreceding: number;
+        addType: "nextSibling" | "firstChild";
+        mapBackStart: boolean;
+        isEphemeral: boolean;
+      };
+      const ephemeralNodeBackMap: Map<number, EphemeralNodeBackMapEntry> =
+        new Map();
+
+      // Refer to the end of 3) in the top-level comment for an explanation
+      // Essentially, we're updating all the forwardStart values that refer to the latest HTML string
+      //  (because they couldn't be mapped to the previous version of the HTML string,
+      //   presumably because the node is added by the set of patches currently being worked on).
+      // This function is called once for every patch in the set being merged into (i.e. treating
+      //  these forwardStart values exactly as backStart values; they need to keep being updated to the latest HTML string),
+      // and ALSO once for every patch we are merging, specifically for detecting and handling ephemeral nodes
+      //  (not mapping otherwise, as of course the values are already keyed in the latest HTML string version).
+      const handleBackMappedForwardStarts = (
+        patch: DocPatchDom,
+        i: number,
+        onlyEphemerals = false,
+      ) => {
+        if (patch.mapForwardStart) return;
+
+        if (patch.forwardStart === -2) {
+          this.log(
+            `${i}: Skipping mapping forwardStart to latest HTML string because forwardStart is -2`,
+          );
+          return;
+        }
+
+        const mappedForwardStart = strPosBackwardMap.get(patch.forwardStart);
+        if (mappedForwardStart !== undefined) {
+          if (onlyEphemerals) return;
+          this.log(
+            `${i}: Mapping forwardStart to the latest HTML string using strPosBackwardMap: "${patch.forwardStart}" -> "${mappedForwardStart}" on patch`,
+            patch,
+          );
+          patch.forwardStart = mappedForwardStart;
+        } else {
+          const newForwardStart = ephemeralNodeForwardMap.get(
+            patch.forwardStart,
+          );
+          if (onlyEphemerals && newForwardStart === undefined) {
+            this.log(
+              `${i}: Skipping mapping forwardStart to latest HTML string because onlyEphemerals is true and there's no match in ephemeralNodeMap, hence this must not be about an ephemeral node`,
+            );
+            return;
+          }
+
+          this.warn(
+            `${i}: Was unable to map forwardStart ${patch.forwardStart} to latest HTML string using strPosBackwardMap. Assuming that this is because the latest set of patches removed the node being referred to. Patch:`,
+            patch,
+            "strPosBackwardMap:",
+            strPosBackwardMap,
+          );
+          if (patch.type.startsWith("add")) {
+            // This patch has a forwardStart adding a node, either as the first child of, or next sibling to, an ephemeral node.
+            // We still want to be able to add this node despite never adding the ephemeral node (because we can't).
+            // Thus, we populate a map as we process the nodes which maps the "last known index" of the ephemeral node to the
+            //  node which preceded IT (through reading the patch which adds the ephemeral node in the first place, done in handleForwardMappedBackStarts).
+
+            if (newForwardStart === undefined) {
+              console.error(
+                `${i}: forwardStart value of add-type referred to an ephemeral node, not in ephemeralNodeForwardMap:`,
+                ephemeralNodeForwardMap,
+                "patch:",
+                patch,
+              );
+              patch.forwardStart = -2;
+            } else {
+              this.log(
+                `${i}: Mapped "${patch.forwardStart}" -> "${newForwardStart.posPreceding}" and "${patch.type}" -> "${newForwardStart.addType}" and mapForwardStart "${patch.mapForwardStart}" -> "${newForwardStart.mapForwardStart}" using ephemeralNodeMap:`,
+                ephemeralNodeForwardMap,
+              );
+              patch.forwardStart = newForwardStart.posPreceding;
+
+              if (newForwardStart.addType === "nextSibling")
+                patch.type = "addNextSibling";
+              if (newForwardStart.addType === "firstChild")
+                patch.type = "addFirstChild";
+
+              patch.mapForwardStart = newForwardStart.mapForwardStart;
+            }
+          } else {
+            patch.forwardStart = -2;
+          }
+        }
+      };
+
+      const handleForwardMappedBackStarts = (patch: DocPatchDom, i: number) => {
+        // The node referred to in this patch has no place in the new HTML string.
+        // That means it was removed by a patch in the provided `patches`. That patch will
+        //  give a recovered version of this node a stringPos from the HTML string from
+        //  when the document was in its previous state.
+        // We can map to that value using the forwardUpdateMap which mapped OLD stringPos values
+        //  to the BASE stringPos values. The provided forwardUpdateMap maps NEW string Pos values; the
+        //  *previously* provided forwardUpdateMap mapped OLD stringPos values.
+        // Note this is safe (as in, a previous forwardUpdateMap will exist) because a call which merges
+        //  onto existing history stack can never be the first call of this function (the first call must
+        //  add a state, onto an empty stack).
+        // IMP: If document history is saved in a persistent storage solution, storage of
+        //       prevStringPosForwardUpdateMap may also be required.
+        if (!this.prevStrPosForwardMap)
+          throw new Error(
+            "Got call to merge onto history stack with prevStringPosForwardUpdateMap undefined.",
+          );
+        const newMappedBackStart = this.prevStrPosForwardMap.get(
+          patch.backStart,
+        );
+
+        if (newMappedBackStart === undefined) {
+          // This means the patch refers to an "ephemeral node"; a node which was added and then removed in the same set of patches.
+          this.warn(
+            `${i}: Encountered backStart value "${patch.backStart}" that couldn't be mapped to the base HTML string nor the latest HTML string; hence referring to an ephemeral node.`,
+          );
+
+          // We are looking for the first patch which initially adds in the now-ephemeral node...
+          if (patch.type.startsWith("add")) {
+            // ...so that we may use the forwardStart value to get the position of the node which preceded it,
+            // so that patches which try to add nodes by positioning relative to the ephemeral node can be
+            //  informed to use the node which precedes it instead (as the ephemeral node won't be added in in undos/redos).
+
+            // Note, there should only ever be one patch which adds in a given ephemeral node, so we shouldn't need to check
+            //  if an entry for this already exists.
+
+            // It is POSSIBLE for a node to become ephemeral WITHOUT a patch in `patches` that explicitly removes it.
+            //  Principally, this happens when the node is added as a child of an ephemeral node, and only that ephemeral node
+            //  gets removed (but that means all its children are implicitly removed as well).
+            // ephemeralNodeMap is only used on NON-EPHEMERAL nodes that are the first child of, or next sibling to, an ephemeral node,
+            //  to make sure they remove their reliance on the ephemeral node.
+            // Any nodes that are the first child of, or next sibling to, the child ephemeral node must ALSO be an ephemeral node
+            //  (since they'll have the same ephemeral parent/ancestor), and hence an entry in ephemeralNodeMap for this child node
+            //  SHOULD never be utilized, and hence it is safe to not fill anything in.
+            // TODO: We should check if any of the child nodes added by this patch are also ephemeral nodes.
+            //       If we don't, then a child node which in fact became ephemeral won't get an entry in the ephemeralNodeForwardMap,
+            //       and add-type patches which rely on the child node won't be able to be mapped.
+
+            ephemeralNodeForwardMap.set(patch.backStart, {
+              posPreceding: patch.forwardStart,
+              addType:
+                patch.type === "addFirstChild" ? "firstChild" : "nextSibling",
+              mapForwardStart: patch.mapForwardStart,
+            });
+            this.log(
+              `${i}: Set in ephemeralNodeForwardMap, "${patch.backStart}" -> `,
+              ephemeralNodeForwardMap.get(patch.backStart),
+            );
+            patch.backStart = -2;
+            patch.mapBackStart = false;
+          } else if (patch.type.startsWith("remove")) {
+            // This patch has a backStart which would try to add a node, either as the first child of, or next sibling to, an ephemeral node.
+            // We still want to be able to add this node in while undoing, and so must not rely on the ephemeral node for positioning.
+            //  Hence, we use the ephemeralNodeMap to get the position of a node we CAN rely on.
+
+            // If the node preceding the ephemeral node (which is what ephemeralNodeBackMap gives us) is itself
+            //  an ephemeral node, we need to continue the chain of feeding into the ephemeralNodeBackMap until
+            //  we get a non-ephemeral node we can use.
+            let newBackStart: EphemeralNodeBackMapEntry | undefined;
+            while (true) {
+              const nextInChain = ephemeralNodeBackMap.get(
+                newBackStart?.posPreceding ?? patch.backStart,
+              );
+              if (!nextInChain) break;
+              newBackStart = nextInChain;
+              if (!nextInChain.isEphemeral) break;
+            }
+
+            if (newBackStart === undefined) {
+              console.error(
+                `${i}: backStart value of remove-type patch (which is add-type in the reverse direction) referred to an ephemeral node, not in ephemeralNodeBackMap:`,
+                ephemeralNodeBackMap,
+                "patch:",
+                patch,
+              );
+              patch.backStart = -2;
+              patch.mapBackStart = false;
+            } else {
+              this.log(
+                `${i}: Mapped "${patch.backStart}" -> "${newBackStart.posPreceding}" and "${patch.type}" -> "${newBackStart.addType}" and mapBackStart: "${patch.mapBackStart}" -> "${newBackStart.mapBackStart}" using ephemeralNodeMap:`,
+                ephemeralNodeBackMap,
+              );
+              patch.backStart = newBackStart.posPreceding;
+
+              if (newBackStart.addType === "firstChild")
+                patch.type = "removeFirstChild";
+              if (newBackStart.addType === "nextSibling")
+                patch.type = "removeNextSibling";
+
+              patch.mapBackStart = newBackStart.mapBackStart;
+            }
+          } else {
+            patch.backStart = -2;
+            patch.mapBackStart = false;
+          }
+        } else {
+          this.log(
+            `${i}: Mapping backStart to the base HTML string using the previous strPosForwardMap: "${patch.backStart}" -> "${newMappedBackStart}" on patch`,
+            patch,
+          );
+          patch.backStart = newMappedBackStart;
+          patch.mapBackStart = false;
+        }
+      };
+
+      this.log("🔷 strPosBackwardMap:", strPosBackwardMap);
+      this.log("🔷 prevStrPosForwardMap:", this.prevStrPosForwardMap);
+
+      patches.toReversed().forEach((patch, i_) => {
+        let i = this.docHistory[0].patches.length + (patches.length - 1 - i_);
+
+        let backStartEphemeral = false;
+        if (!patch.mapBackStart) {
+          if (!this.prevStrPosForwardMap)
+            throw new Error(
+              "Got call to merge onto history stack with prevStringPosForwardUpdateMap undefined.",
+            );
+          const newMappedBackStart = this.prevStrPosForwardMap.get(
+            patch.backStart,
+          );
+          if (newMappedBackStart !== undefined) {
+            this.log(
+              `${i}: Mapping backStart to the base HTML string using the previous strPosForwardMap: "${patch.backStart}" -> "${newMappedBackStart}" on patch`,
+              patch,
+            );
+            patch.backStart = newMappedBackStart;
+          } else {
+            // backStart refers to an ephemeral node
+            // The possibilities are either 1) a characterData/attributes patch, or 2) a remove-type patch (the node being removed is not necessarily ephemeral itself)
+            this.warn(
+              `${i}: Encountered backStart value "${patch.backStart}" that couldn't be mapped to the base HTML string nor the latest HTML string; hence referring to an ephemeral node.`,
+            );
+            if (patch.type.startsWith("remove")) {
+              let newBackStart: EphemeralNodeBackMapEntry | undefined;
+              // If the node preceding the ephemeral node (which is what ephemeralNodeBackMap gives us) is itself
+              //  an ephemeral node, we need to continue the chain of feeding into the ephemeralNodeBackMap until
+              //  we get a non-ephemeral node we can use.
+              while (true) {
+                const nextInChain = ephemeralNodeBackMap.get(
+                  newBackStart?.posPreceding ?? patch.backStart,
+                );
+                if (!nextInChain) break;
+                newBackStart = nextInChain;
+                if (!nextInChain.isEphemeral) break;
+              }
+
+              // There is a legitimate possibility of there being no ephemeralNodeBackMap entry, in the following case:
+              //  A remove-type patch removing an ephemeral node, with a backStart value that refers to another ephemeral node
+              //  Before adding anything to ephemeralNodeBackMap, we try to map the backStart value. That will fail, we will
+              //  determine backStart refers to an ephemeral node, but we will find it doesn't have an entry in ephemeralNodeBackMap.
+              //  We end up not doing anything to this backStart value. Which is good for the chaining of ephemeralNodeBackMap
+              //  lookups above.
+              if (!newBackStart) {
+                if (!patch.mapForwardStart) {
+                  this.warn(
+                    "Cannot map backStart for patch which removes an ephemeral node; backStart probably refers to a different ephemeral node.",
+                  );
+                  backStartEphemeral = true;
+                } else
+                  console.error(
+                    `Expected ephemeralNodeBackMap for "${patch.backStart}" for backStart referring to an ephemeral node in a remove-type patch. Patch:`,
+                    patch,
+                    "ephemeralNodeBackMap:",
+                    ephemeralNodeBackMap,
+                  );
+              } else {
+                this.log(
+                  `${i}:  for backStart, "${patch.backStart}" -> "${newBackStart.posPreceding}" and "${patch.type}" -> "${newBackStart.addType}" and mapBackStart: "${patch.mapBackStart}" -> "${newBackStart.mapBackStart}" using ephemeralNodeBackMap:`,
+                  ephemeralNodeBackMap,
+                );
+                patch.backStart = newBackStart.posPreceding;
+
+                if (newBackStart.addType === "firstChild")
+                  patch.type = "removeFirstChild";
+                if (newBackStart.addType === "nextSibling")
+                  patch.type = "removeNextSibling";
+
+                patch.mapBackStart = newBackStart.mapBackStart;
+              }
+            } else {
+              // A characterData/attributes patch modifying the ephemeral node
+              patch.backStart = -2;
+            }
+          }
+        }
+
+        // We do this after a potential necessary mapping of a backStart value to the base HTML string,
+        //  so that the updated backStart would be inserted into the ephemeralNodeBackMap.
+        if (!patch.mapForwardStart && patch.type.startsWith("remove")) {
+          // TODO: We should check if any of the child nodes removed by this patch are also ephemeral nodes.
+          //       If we don't, then a child node which is in fact ephemeral won't get an entry in the ephemeralNodeBackMap,
+          //       and remove-type patches which rely on the child node won't be able to be mapped.
+
+          // We are removing a node which can't be mapped to the base HTML string. Hence, an ephemeral node
+          ephemeralNodeBackMap.set(patch.forwardStart, {
+            posPreceding: patch.backStart,
+            addType:
+              patch.type === "removeFirstChild" ? "firstChild" : "nextSibling",
+            mapBackStart: patch.mapBackStart,
+            isEphemeral: backStartEphemeral,
+          });
+
+          this.log(
+            `${i}: Set in ephemeralNodeBackMap, "${patch.forwardStart}" -> `,
+            ephemeralNodeBackMap.get(patch.forwardStart),
+          );
+        }
+      });
+
       // Apply stringPosBackwardUpdateMap to backStart values of the patches that are being merged into
-      this.docHistory[0].patches.forEach((patch) => {
+      this.docHistory[0].patches.forEach((patch, i) => {
+        // We interweave the handling of forwardStart and backStart values together (i.e. not splitting them into two different loops)
+        //  for the potential case that two or more nodes next to each other,
+        //  become EPHEMERAL at the same time;
+        //  we need the ephemeralNodeMap to "carry forward" the position of a non-ephemeral node
+        //  across multiple ephemeral nodes, i.e. the forwardStart value of this patch fully
+        //  resolved BEFORE we use it in adding a new entry in the ephemeralNodeMap, done below.
+        handleBackMappedForwardStarts(patch, i);
+
+        // If the patch early-returns here:
         // This patch has already failed to be mapped to a latest HTML string once, and so has
         //  been mapped to the HTML string from when the document was in its previous state.
         // stringPos values are guaranteed to be unique when they all refer to the same HTML string,
@@ -349,69 +693,30 @@ export class HistoryManager {
         //  to avoid accidental mapping of this node to an unrelated node in the new HTML string.
         if (!patch.mapBackStart) return;
 
-        const mappedBackStart = strPosBackwardMap.get(patch.backStart);
-        if (mappedBackStart !== undefined) {
-          patch.backStart = mappedBackStart;
-        } else {
-          // The node referred to in this patch has no place in the new HTML string.
-          // That means it was removed by a patch in the provided `patches`. That patch will
-          //  give a recovered version of this node a stringPos from the HTML string from
-          //  when the document was in its previous state.
-          // We can map to that value using the forwardUpdateMap which mapped OLD stringPos values
-          //  to the BASE stringPos values. The provided forwardUpdateMap maps NEW string Pos values; the
-          //  *previously* provided forwardUpdateMap mapped OLD stringPos values.
-          // Note this is safe (as in, a previous forwardUpdateMap will exist) because a call which merges
-          //  onto existing history state can never be the first call of this function (the first call must
-          //  add a state, onto an empty stack).
-          // IMP: If document history is saved in a persistent storage solution, storage of
-          //       prevStringPosForwardUpdateMap may also be required.
-          if (!this.prevStrPosForwardMap)
-            throw new Error(
-              "Got call to merge onto history stack with prevStringPosForwardUpdateMap undefined.",
-            );
-          let newMappedBackStart = this.prevStrPosForwardMap.get(
-            patch.backStart,
-          );
-
-          if (newMappedBackStart === undefined) {
-            this.warn(
-              "Setting backStart value that couldn't be mapped using the backwardMap nor the previous forwardMap to -2",
-            );
-            newMappedBackStart = -2;
-          }
-
-          patch.backStart = newMappedBackStart;
-          patch.mapBackStart = false;
-        }
-      });
-
-      // Refer to the end of 3) in the top-level comment for an explanation
-      // Essentially, we're updating all the forwardStart values that refer to the latest HTML string
-      //  along with the backStart values that refer to the latest HTML string.
-      this.docHistory[0].patches.forEach((patch) => {
-        if (patch.mapForwardStart) return;
-
-        if (patch.forwardStart === -2) {
+        if (patch.backStart === -2 || patch.backStart === -1) {
           this.log(
-            "Skipping mapping forwardStart to latest HTML string because forwardStart is -2",
+            `Skipping mapping backStart value; it is ${patch.backStart}`,
           );
           return;
         }
 
-        const mappedForwardStart = strPosBackwardMap.get(patch.forwardStart);
-        if (mappedForwardStart !== undefined) {
+        const mappedBackStart = strPosBackwardMap.get(patch.backStart);
+        if (mappedBackStart !== undefined) {
           this.log(
-            `Mapping forwardStart to the latest HTML string using strPosBackwardMap: "${patch.forwardStart}" -> "${mappedForwardStart}" on patch`,
+            `${i}: Mapping backStart to the latest HTML string using the strPosBackwardMap: "${patch.backStart}" -> "${mappedBackStart}" on patch`,
             patch,
           );
-          patch.forwardStart = mappedForwardStart;
-        } else {
-          this.warn(
-            `Was unable to map forwardStart to latest HTML string using strPosBackwardMap. Assuming that this is because the latest set of patches removed the node being referred to`,
-          );
-          patch.forwardStart = -2;
-        }
+          patch.backStart = mappedBackStart;
+        } else handleForwardMappedBackStarts(patch, i);
       });
+
+      patches.forEach((patch, i) =>
+        handleBackMappedForwardStarts(
+          patch,
+          this.docHistory[0].patches.length + i,
+          true,
+        ),
+      );
 
       this.docHistory[0].patches.push(...patches);
       // TODO: Might want to NOT override caret state if we're overriding with null.
@@ -457,7 +762,7 @@ export class HistoryManager {
 
   private removeNode(referredNode: Node, patch: DocPatchDom) {
     if (!referredNode.isConnected) {
-      console.warn(
+      this.warn(
         "The node is already removed from the DOM: ",
         referredNode,
         "by patch:",
@@ -473,10 +778,16 @@ export class HistoryManager {
     parent.removeChild(referredNode);
   }
 
-  private addNode(referredNode: Node, value: string, patch: DocPatchDom) {
+  private addNode(
+    referredNode: Node,
+    value: string,
+    stringPos: number,
+    tempPosNodes: Map<number, Node>,
+    patch: DocPatchDom,
+  ) {
     const newNodes = this.parseHTMLFragment(value);
 
-    if (newNodes.length === 0) console.warn(`Added nothing from "${value}"`);
+    if (newNodes.length === 0) this.warn(`Added nothing from "${value}"`);
 
     if (patch.type === "addFirstChild" || patch.type === "removeFirstChild") {
       if (!(referredNode instanceof Element)) {
@@ -495,13 +806,40 @@ export class HistoryManager {
       throw new Error("Unexpected value for patch.type");
     }
 
-    // TODO: How should this case be properly handled?
-    // ANSWER: This scenario should in fact be impossible! processMutations() in `docsyncing.ts`
-    //          ensures that we're only ever adding (or removing) one node at a time.
+    // TODO:
+    // If there IS more than one node being added at once, in all likelihood what happened is the HTML parser
+    //  tried to "correct" some illegal html structure, e.g. `<p><div>No block elements inside an inline container!</div>Lorem ipsum<p>`
+    // -> `<p></p><div>[...]</div>Lorem ipsum<p></p>` (3 nodes in a fragment).
+    // This is a big problem, and we simply need to disallow the editor from making these sorts of illegal modifications.
+    // Luckily, we can still use the undo/redo system to reverse illegal modifications IF we handle them ASAP,
+    //  as the illegal patches themselves should generally be able to be handled (it's only when, for example, undoing
+    //  a deletion of an inline container, after an illegal block element child was added to it, that the system fails because
+    //  of this parser).
+    // ANOTHER OPTION:
+    // AN XMLParser WITH "text/xml" SET WILL *NOT* TRY TO CORRECT ILLEGAL HTML STRUCTURE.
+    // WE CAN USE XMLParser HERE INSTEAD.
     if (newNodes.length > 1)
-      console.warn(
+      console.error(
         `ADDED MORE THAN ONE NODE AT ONCE.\ntempPosNodes WILL ONLY MAP THE PATCH'S backStart VALUE FOR THE FIRST NODE.`,
       );
+    else if (newNodes[0] instanceof Element) {
+      // We need to determine all of the child nodes that were added alongside the "main node", as further patches
+      //  may rely on their existence within tempPosNodes
+      const docContainer = this.getDocContainer();
+      if (!docContainer) throw new Error("docContainer not defined.");
+      const [_, addedDocNodes] = reconstructHTMLString(newNodes[0], {
+        docContainer,
+      });
+      addedDocNodes.forEach((nodeInfo, node) => {
+        this.log(
+          `Added to tempPosNodes, "${patch.forwardStart + nodeInfo.stringPos}" -> `,
+          node,
+        );
+        tempPosNodes.set(stringPos + nodeInfo.stringPos, node);
+      });
+    } else {
+      tempPosNodes.set(stringPos, newNodes[0]);
+    }
     return newNodes;
   }
 
@@ -530,7 +868,7 @@ export class HistoryManager {
 
   private setCharacterData(referredNode: Node, value: string) {
     if (referredNode instanceof Element)
-      console.warn("characterData is an element in a characterData patch.");
+      this.warn("characterData is an element in a characterData patch.");
     referredNode.textContent = decode(value);
   }
 
@@ -561,6 +899,14 @@ export class HistoryManager {
       } else if (patch.forwardStart === -2 && !patch.mapForwardStart) {
         this.log(
           "Encountered forwardStart of -2; skipping applying the patch.",
+        );
+        continue;
+      } else if (patch.type.startsWith("remove") && !patch.mapForwardStart) {
+        // If mapForwardStart is false, that means we'd be removing a node which had no place in the base HTML string,
+        //  likely because it was added earlier in this same set of patches. We must skip trying to remove this "ephemeral node",
+        //  since it's never going to be added in the first place.
+        this.warn(
+          "Skipping removing node because mapForwardStart is false, assuming this to mean that the node is ephemeral and won't be added in the first place.",
         );
         continue;
       } else {
@@ -601,19 +947,14 @@ export class HistoryManager {
             break;
           }
 
-          const newNodes = this.addNode(
+          this.addNode(
             referredNode,
             patch.forwardValue,
+            // We are adding the node going forwards, so we're removing the node going backwards,
+            //  and so backStart refers to the node itself (whereas forwardStart refers to the node before).
+            patch.backStart,
+            tempPosNodes,
             patch,
-          );
-          // We are adding the node going forwards, so we're removing the node going backwards,
-          //  and so backStart refers to the node itself (whereas forwardStart refers to the node before).
-          tempPosNodes.set(patch.backStart, newNodes[0]);
-          this.log(
-            "Adding new entry to tempPosNodes from patch",
-            patch,
-            "to node",
-            newNodes[0],
           );
           break;
         case "removeFirstChild":
@@ -693,8 +1034,16 @@ export class HistoryManager {
           );
       }
 
+      // "remove" | "addFirstChild" | "addNextSibling" | "attributes" | "characterData"
+      const reverseType = (val: typeof patch.type): string => {
+        if (val === "addFirstChild") return "remove";
+        if (val === "addNextSibling") return "remove";
+        if (val === "removeFirstChild") return "addFirstChild";
+        if (val === "removeNextSibling") return "addNextSibling";
+        return val;
+      };
       this.log(
-        `▶▶▶ (${i}) Undo - perform "${patch.type}" from node at "${patch.backStart}":`,
+        `▶▶▶ (${i}) Undo - perform "${reverseType(patch.type)}" from node at "${patch.backStart}":`,
         referredNode,
       );
 
@@ -717,10 +1066,15 @@ export class HistoryManager {
             break;
           }
 
-          const newNodes = this.addNode(referredNode, patch.backValue!, patch);
-          // We are removing the node going forwards, and so forwardStart refers to the node itself
-          //  (whereas backStart refers to the node before).
-          tempPosNodes.set(patch.forwardStart, newNodes[0]);
+          this.addNode(
+            referredNode,
+            patch.backValue!,
+            // We are removing the node going forwards, and so forwardStart refers to the node itself
+            //  (whereas backStart refers to the node before).
+            patch.forwardStart,
+            tempPosNodes,
+            patch,
+          );
           break;
         case "attributes":
           this.setAttributes(referredNode, patch.backValue!, patch);
