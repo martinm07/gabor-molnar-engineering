@@ -40,6 +40,8 @@ export type DocPatchDom = {
     | "characterData";
   forwardValue: string;
   backValue: string | null;
+  subPos: number[];
+  expectedLen: number;
 };
 export type DocPatch = {
   str_: DocPatchStr;
@@ -86,7 +88,7 @@ export interface TempMutationRecord {
 
 function getNodeSourceRepresentation(node: Node): string {
   const textContent = he.encode(node.textContent ?? "", {
-    useNamedReferences: true,
+    useNamedReferences: false,
   });
   switch (node.nodeType) {
     // TODO: I want to explicitly deny ELEMENT_NODE case, because we never actually use this string representation-
@@ -138,16 +140,16 @@ function getElementString(
         attr.name +
         '="' +
         he.encode(value, {
-          useNamedReferences: true,
+          useNamedReferences: false,
         }) +
         '"'
       );
     })
     .filter((strOrUndefined) => typeof strOrUndefined === "string")
     .join(" ");
-  const startingTagStr = `<${el.tagName.toLowerCase()} ${attrs}>`;
+  const startingTagStr = `<${el.tagName.toLowerCase()}${attrs.length > 0 ? " " : ""}${attrs}>`;
 
-  if (isVoidEl(el)) return [startingTagStr, null];
+  if (isVoidEl(el)) return [startingTagStr.slice(0, -1) + " />", null];
   else return [startingTagStr, `</${el.tagName.toLowerCase()}>`];
 }
 
@@ -418,7 +420,7 @@ function handleNodeAdd(
   }
 
   // First we do all the index shifting- essentially "making space" for the added node before including it in docNodes
-  let prevNodeStart: number = -1;
+  let prevNode: DocNodeEntry | undefined;
   const isPrevNode = (candidate: DocNodeEntry, nodePos: number) => {
     return (
       (candidate.isEl &&
@@ -429,7 +431,7 @@ function handleNodeAdd(
 
   p.docNodes.forEach((val) => {
     if (val.stringPos < startIndex && isPrevNode(val, startIndex))
-      prevNodeStart = val.stringPos;
+      prevNode = val;
     else if (val.stringPos >= startIndex) val.stringPos += fullString.length;
   });
   // Any provided DOM patches, plus the list of already generated patches by this function, must be index shifted.
@@ -454,8 +456,16 @@ function handleNodeAdd(
     parentInfo.stringLen += fullString.length;
   });
 
+  const subPosStarts: number[] = [];
+  const subPosEnds: number[] = [];
+
   // Now we add the entries of the map reconstructHTMLString created to docNodes
   newDocNodes.entries().forEach(([key, val]) => {
+    if (val.stringPos !== 0) {
+      subPosStarts.push(val.stringPos);
+      subPosEnds.push(val.stringPos + val.stringLen);
+    }
+
     val.stringPos += startIndex;
     // The key to avoiding this scenario (laid out in the error msg) is first processing all the remove calls
     //  in a mutation record batch. Then processing all the add calls, then processing all the attributes and characterData calls.
@@ -466,22 +476,28 @@ function handleNodeAdd(
     } else p.docNodes.set(key, val);
   });
 
+  const subPos = [...new Set([...subPosStarts, ...subPosEnds])].toSorted(
+    (a, b) => a - b,
+  );
+
   const strPatch: DocPatch["str_"] = {
     value: fullString,
     start: startIndex,
     length: 0,
   };
   const domPatch: DocPatch["dom"] = {
-    forwardStart: prevNodeStart,
+    forwardStart: prevNode?.stringPos ?? -1,
     backStart: startIndex,
     mapBackStart: true,
     mapForwardStart: true,
     type:
-      node.previousSibling && prevNodeStart !== -1
+      node.previousSibling && prevNode?.stringPos !== undefined
         ? "addNextSibling"
         : "addFirstChild",
     forwardValue: fullString,
     backValue: "",
+    subPos,
+    expectedLen: prevNode?.stringLen ?? -1,
   };
   const patch: DocPatch = { str_: strPatch, dom: domPatch };
   newPatches.push(patch);
@@ -525,6 +541,9 @@ function handleNodeRemove(
     );
   };
 
+  const subPosStarts: number[] = [];
+  const subPosEnds: number[] = [];
+
   // Also delete all the children. Cannot exactly rely on getAllChildNodes, because
   //  there may have been removals also happening that stop what is considered a child
   //  of this node by the map at this time from being an actual child now
@@ -539,6 +558,9 @@ function handleNodeRemove(
       p.docNodes.delete(key);
       if (p.debug)
         console.log("%c    Removing node", "font-style: italic;", key);
+
+      subPosStarts.push(val.stringPos - nodeInfo.stringPos);
+      subPosEnds.push(val.stringPos + val.stringLen - nodeInfo.stringPos);
       // Nodes positioned after this node in the hierarchy (like further siblings)
     } else if (val.stringPos >= nodeInfo.stringPos + nodeInfo.stringLen) {
       // It's fine to modify this entry during iteration as it doesn't affect other entries
@@ -551,6 +573,10 @@ function handleNodeRemove(
       prevNodeInfo = val;
     }
   });
+
+  const subPos = [...new Set([...subPosStarts, ...subPosEnds])].toSorted(
+    (a, b) => a - b,
+  );
 
   // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
   p.currentPatches?.forEach((patch) => {
@@ -633,6 +659,9 @@ function handleNodeRemove(
         nodeInfo.stringPos,
         nodeInfo.stringPos + nodeInfo.stringLen,
       ) ?? null,
+    subPos,
+    expectedLen:
+      prevNodeInfo.stringLen !== Infinity ? prevNodeInfo.stringLen : -1,
   };
   const patch: DocPatch = { str_: strPatch, dom: domPatch };
 
@@ -713,6 +742,8 @@ function handleAttributeChange(
         nodeInfo.stringPos,
         nodeInfo.stringPos + nodeInfo.startTagLen,
       ) ?? null,
+    subPos: [],
+    expectedLen: -1,
   };
   const patch: DocPatch = { str_: strPatch, dom: domPatch };
 
@@ -799,6 +830,8 @@ function handleCharacterDataChange(
         nodeInfo.stringPos,
         nodeInfo.stringPos + nodeInfo.stringLen,
       ) ?? null,
+    subPos: [],
+    expectedLen: -1,
   };
   const patch: DocPatch = { str_: strPatch, dom: domPatch };
 
@@ -1041,7 +1074,10 @@ export function patchMutations(
       patches.some(
         (patch) =>
           patch.dom.type.startsWith("add") &&
-          patch.dom.backStart === newStringPos,
+          (patch.dom.backStart === newStringPos ||
+            patch.dom.subPos.some(
+              (offset) => patch.dom.backStart + offset === newStringPos,
+            )),
       )
     ) {
       console.log(
@@ -1070,13 +1106,14 @@ export function patchMutations(
     //  not considering the node that's removed to be part of the new HTML string.
     //  (It considers the node that's added later to be entirely separate from this one being removed).
     // This check guarantees that nodes referred to by remove-type patches are NEVER included in the new backward map.
-    // TODO: We should also be guaranteeing the child nodes that are removed alongside the main node also aren't mapped.
-    //       Probably the easiest way to do this is with a new field on DocPatchDOM.
     if (
       patches.some(
         (patch) =>
           patch.dom.type.startsWith("remove") &&
-          patch.dom.forwardStart === oldPos,
+          (patch.dom.forwardStart === oldPos ||
+            patch.dom.subPos.some(
+              (offset) => patch.dom.forwardStart + offset === oldPos,
+            )),
       )
     ) {
       console.log(
