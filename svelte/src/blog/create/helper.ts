@@ -352,3 +352,106 @@ export function getNextElement(element: Element) {
 
   return undefined; // No next element found
 }
+
+const domParser = new DOMParser();
+
+export function parseHTMLFragment(
+  htmlStr: string,
+  useXMLParser: boolean = true,
+  hasMultipleTopEls: boolean = false,
+): Node[] {
+  // "text/html" produces a HTML document starting with a root <html> node, which is not what we want.
+  // "text/xml", meanwhile, doesn't handle bare Text nodes.
+
+  // If the htmlStr is an element, and is not being used for attributes intepreting attributes,
+  //  we use DOMParser with "text/xml" in order to AVOID CORRECTIONS TO THE STRUCTURE;
+  //  a HTML parser corrects things like block elements inside inline containers; `<p><div></div></p>` -> `<p></p><div></div><p></p>`
+  //  where an XML parser doesn't. The XML document then needs to be reinterpreted as a HTML document and everything works.
+  // IMP: XML IS STRICT AND WILL ERROR IF IT DOESN'T LIKE SOMETHING. THIS INCLUDES:
+  //  1) Void elements that dont end in " />"
+  //  2) Attributes whose values aren't quoted
+  //  3) Boolean attributes which don't have a value
+  //  4) Named references to entities e.g. "&nbsp;" (basically requires hex or numeric references)
+  //  5) Empty comments, comments with "--" inside
+  //  6) Differences in "namespaces" (more research in general has to be done here)
+  parseAsXML: if (useXMLParser) {
+    const htmlStr_ = hasMultipleTopEls ? `<div>${htmlStr}</div>` : htmlStr;
+    const parsed = domParser.parseFromString(htmlStr_, "text/xml");
+
+    // Resort to using a HTML parser if there's a paser error
+    if (parsed.getElementsByTagName("parsererror").length > 0) {
+      console.warn(
+        `Detected parsing error. Resorting to using a HTML parser instead.Tried parsing:\n${htmlStr_}`,
+      );
+      break parseAsXML;
+    }
+
+    const nodeToHTML = (node: Node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return document.createTextNode(node.textContent ?? "");
+      } else if (node.nodeType === Node.COMMENT_NODE) {
+        return document.createComment(node.textContent ?? "");
+      } else if (node.nodeType !== Node.ELEMENT_NODE) {
+        console.warn(
+          "node wasn't Text node, Comment node or Element. Not sure what to do with it:",
+          node,
+        );
+        return document.createTextNode("");
+      }
+
+      const el = node as Element;
+
+      const htmlEl = document.createElement(el.nodeName);
+
+      for (let i = 0; i < el.attributes.length; i++) {
+        const attr = el.attributes[i];
+        htmlEl.setAttribute(attr.name, attr.value);
+      }
+
+      return htmlEl;
+    };
+
+    const walker = document.createTreeWalker(
+      parsed.documentElement,
+      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT,
+    );
+
+    const rootHTML = nodeToHTML(walker.currentNode) as Element;
+    // console.log("%cstarting tree search from node", "font-style: italic", rootHTML);
+
+    const xmlToHTML = new Map<Node, Node>();
+    xmlToHTML.set(walker.currentNode, rootHTML);
+
+    let i = 0;
+    while (walker.nextNode()) {
+      const current = walker.currentNode;
+      const currentHTML = nodeToHTML(current);
+      // console.log(`%c${i}: processing`, "font-style: italic", current);
+
+      const parent = current.parentNode;
+      const parentHTML = parent ? xmlToHTML.get(parent) : null;
+
+      if (!parentHTML) {
+        console.error("Node has no parent in map:", current, xmlToHTML);
+        break;
+      }
+
+      parentHTML.appendChild(currentHTML);
+
+      if (current.nodeType === Node.ELEMENT_NODE) {
+        xmlToHTML.set(current, currentHTML);
+      }
+
+      i++;
+    }
+
+    if (hasMultipleTopEls) return Array.from(rootHTML.childNodes);
+    else return [rootHTML];
+  }
+
+  // A <template> element is efficient, because the content is inert;
+  //  scripts don't run, images don't load.
+  const template = document.createElement("template");
+  template.innerHTML = htmlStr;
+  return Array.from(template.content.childNodes);
+}

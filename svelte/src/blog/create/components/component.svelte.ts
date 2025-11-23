@@ -14,6 +14,7 @@ import {
   getNextElement,
   getNodeParents,
   getNthParent,
+  parseHTMLFragment,
 } from "../helper";
 import { fetch_, assign } from "/shared/helper";
 
@@ -179,7 +180,9 @@ export function decodeComponentStr(
 ) {
   const fragment = document.createDocumentFragment();
   const tempDiv = document.createElement("div");
-  tempDiv.innerHTML = content;
+
+  const parsed = parseHTMLFragment(content, true, true);
+  parsed.forEach((node) => tempDiv.appendChild(node));
 
   if (for_ === "component")
     getAllChildNodes(tempDiv).forEach((node) => {

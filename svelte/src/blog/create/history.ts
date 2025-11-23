@@ -1,12 +1,13 @@
 import { decode, encode } from "he";
 import {
-  reconstructHTMLString,
+  encodeHTMLText,
+  decodeHTMLText,
   type DocNodeEntry,
   type DocNodeMap,
   type DocPatchDom,
   type StringPosNodeMap,
 } from "./docsyncing";
-import { insertAfter } from "./helper";
+import { insertAfter, parseHTMLFragment } from "./helper";
 import { nodesSelection } from "./store.svelte";
 import { get } from "svelte/store";
 
@@ -56,6 +57,32 @@ type EphemeralNodeMapEntry = {
   addType: "nextSibling" | "firstChild";
   useDefaultMap: boolean;
 };
+
+// --- 0) BRIEF GLOSSARY
+// "base HTML string": Refers to the version of the HTML string from which this history item was first created
+//                     i.e. the HTML string that we try to recover when undoing using a set of patches
+//                          (which we may be merging new patches into).
+// "previous HTML string": Refers to the version of the HTML string from which the patches passed in was created.
+// "current/latest HTML string": Refers to the version of the HTML string which the patches passed in are intended
+//                        to map the previous HTML string to.
+//                        In other words, it is the HTML string representing the actual state of the document right now.
+//
+// "backStart": Field of a patch that refers (or should refer) to the string position of a node in the latest HTML string,
+//              for use when undoing (as undoing will be performed when the document is in the latest version).
+// "forwardStart": Field of a patch that refers (or should refer) to the string position of a node in the base HTML string,
+//                 for use when redoing (as redoing will be performed when the document is in the base version).
+//
+// "ephemeral node": An ephemeral node is a node which was added and removed by patches in the same set of patches,
+//                   meaning it is a node that doesn't exist in the base HTML string nor the current HTML string.
+//
+// "main node": For patches which add nodes or remove nodes (meaning they add nodes while undoing), refers to the singular primary node,
+//              which they explicitly add. In their back/forwardValue, this is the top-level element of the string
+//              e.g. in "<div>Hello <em>Mom</em>.</div>" it's the <div> element,
+//                   in "Goodbye" it's the text node "Goodbye".
+// "child node": For patches which add nodes or remove nodes (meaning they add nodes while undoing), refers to a node which is
+//               a child of the main node; a node which the patch implicitly adds,
+//               e.g. in "<div>Hello <em>Mom</em>.</div>", the child nodes are "Hello ", "<em>", "Mom", and ".",
+//                    in "Goodbye" there are no child nodes (text nodes can't have children, after all).
 
 // --- 1) HOW HTML STRING POSITIONS STORED BY DOM PATCHES MUST BE MAPPED
 // When a new set of patches is created, all of the stringPos values are in terms of the current (i.e. latest)
@@ -127,7 +154,7 @@ type EphemeralNodeMapEntry = {
 //        Patches that later try to refer to this node we didn't add in will encounter the special value,
 //        and will skip trying to apply those patches as well.
 
-const WAIT_NEW_HISTORY_ITEM_MS = 5000;
+const WAIT_NEW_HISTORY_ITEM_MS = 2000;
 
 export class HistoryManager {
   // The most recent history state is at index 0 in this array
@@ -195,10 +222,30 @@ export class HistoryManager {
     return newPosNodes;
   }
 
+  /**
+   * Handles add- and remove-type patches for any ephemeral nodes they may add or remove, either explicitly (as the main node) or implicitly (as a child node).\
+   * In the case of the main node being ephemeral, does nothing more than return a boolean `true`.\
+   * In the case of child ephemeral nodes, this function
+   * 1) Returns a map of all the new entries to add to ephemeralNodeMap
+   * 2) Returns an adjusted value of the HTML string of what this patch should add in (when undoing or redoing), with all the child ephemeral nodes spliced out
+   * 3) **MODIFIES** `subOffsets` and `subPosMapped` which are passed in, so that they no longer contain the child ephemeral nodes.
+   *
+   * @param startOffset The position (representing potentially the "last known position") of the main node in the HTML string.
+   * @param patchContents The (encoded) string of the node this patch adds (potentially an ephemeral node, or potentially CONTAINING ephemeral nodes)
+   * @param subOffsets List of offsets into `patchContents` that splits the string into all the child nodes being added (specifically into "parts" that can either be opening tags, closing tags, or text nodes)
+   * @param subPosMapped List of offsets describing how the child nodes will be mapped into another version of the HTML string (ONLY PASSED IN SO THE FUNCTION CAN MODIFY IT)
+   * @param checkMap Mapping the positions of nodes to another version version of the HTML string (either the base or latest), used to see which nodes have become ephemeral (through checking which ones CAN'T be mapped)
+   * @param childrenUseDefaultMap Boolean for setting useDefaultMap on all ephemeralNodeMap entries for children ephemeral nodes
+   * @returns Tuple containing
+   (1) a boolean of if the main node is ephemeral,
+   (2) an ephemeralNodeMap of all entries for child ephemeral nodes, and
+   (3) a new `patchContents` string with all the child ephemeral nodes spliced out.
+   */
   static handleEphemeralAddOrRemovePatch(
     startOffset: number,
     patchContents: string,
-    subPos: number[],
+    subOffsets: number[],
+    subPosMapped: number[],
     checkMap: Map<number, number>,
     childrenUseDefaultMap: boolean,
   ): [
@@ -215,16 +262,10 @@ export class HistoryManager {
     //        so that we process child nodes in the canonical document order.
     // subPos.sort((a, b) => a - b);
 
-    // Add in the 0 test offset, and filter out offsets from subPos for encasing closing tags
-    const testOffsets = [0, ...subPos].filter(
-      (startIndex, i, arr) =>
-        !isClosing(patchContents.slice(startIndex, arr[i + 1])),
-    );
-
     const getNextOffset = (offset: number): number => {
-      const i = subPos.indexOf(offset);
-      if (i === subPos.length - 1) return patchContents.length;
-      else return subPos[i + 1];
+      const i = subOffsets.indexOf(offset);
+      if (i === subOffsets.length - 1) return patchContents.length;
+      else return subOffsets[i + 1];
     };
 
     const getTotalLen = (offset_: number, str_: string) => {
@@ -243,34 +284,44 @@ export class HistoryManager {
       return totalLen;
     };
 
+    // Check if the main node is ephemeral
+    if (checkMap.get(startOffset) === undefined) {
+      return [true, ephemeralNodeMapOut, patchContents];
+    }
+
+    /** Information to remove the string representaions of child ephemeral nodes in `patchContents` */
     const spliceInfo: { start: number; len: number }[] = [];
+    /** Indices of child ephemeral nodes to remove from `subOffsets` and `subPosMapped` */
+    const spliceIndices: number[] = [];
 
-    for (const offset of testOffsets) {
+    let i = 0;
+    let prevNodeOffset = 0;
+    for (const offset of subOffsets) {
+      const isClosingTag = isClosing(
+        patchContents.slice(offset, subOffsets[i + 1]),
+      );
+
+      const isEphemeralChild = spliceInfo.some(
+        ({ start, len }) => offset >= start && offset < start + len,
+      );
+
       const testPos = offset + startOffset;
-      if (checkMap.get(testPos) === undefined) {
-        if (offset === 0) {
-          return [true, ephemeralNodeMapOut, patchContents];
-
-          // We ignore childNodes which already have a parent processed as an ephemeral node
-        } else if (
-          !spliceInfo.some(
-            ({ start, len }) => offset >= start && offset < start + len,
-          )
-        ) {
+      // Check if this offset represents a child node (not closing tag) that has become ephemeral
+      if (!isClosingTag && checkMap.get(testPos) === undefined) {
+        // We ignore childNodes which already have a parent processed as an ephemeral node
+        if (!isEphemeralChild) {
           // The offset of the previous "thing", whether that's an opening tag, closing tag, or text node
-          const prevOffset = [0, ...subPos][subPos.indexOf(offset)];
+          const prevOffset = [0, ...subOffsets][subOffsets.indexOf(offset)];
           const addType = isOpening(patchContents.slice(prevOffset, offset))
             ? "firstChild"
             : "nextSibling";
 
           // prettier-ignore
-          console.log("offset: ", offset, "prevOffset: ", prevOffset, "subPos:", subPos, "startOffset:", startOffset);
+          console.log("offset: ", offset, "prevOffset: ", prevOffset, "subPos:", subOffsets, "startOffset:", startOffset);
 
-          const prevNodeStart = testOffsets[testOffsets.indexOf(offset) - 1];
-
-          if (!ephemeralNodeMapOut.get(prevNodeStart + startOffset)) {
+          if (!ephemeralNodeMapOut.get(prevNodeOffset + startOffset)) {
             ephemeralNodeMapOut.set(testPos, {
-              posPreceding: prevNodeStart + startOffset,
+              posPreceding: prevNodeOffset + startOffset,
               addType,
               useDefaultMap: childrenUseDefaultMap,
             });
@@ -278,7 +329,7 @@ export class HistoryManager {
             // The posPreceding for this ephemeral node is itself an ephemeral node. We keep stealing the entries of successively preceding ephemeral nodes
             //  until we get one which has a posPreceding value that refers to a REAL node.
             let stolenEntry = ephemeralNodeMapOut.get(
-              prevNodeStart + startOffset,
+              prevNodeOffset + startOffset,
             )!;
             while (true) {
               const newStolenEntry = ephemeralNodeMapOut.get(
@@ -288,7 +339,7 @@ export class HistoryManager {
               stolenEntry = newStolenEntry;
             }
             // prettier-ignore
-            console.log(`STOLE EPHEMERALNODEMAP ENTRY OF PRECEDING NODE. From posProceding "${prevNodeStart + startOffset}" to "${stolenEntry.posPreceding}".`);
+            console.log(`STOLE EPHEMERALNODEMAP ENTRY OF PRECEDING NODE. From posProceding "${prevNodeOffset + startOffset}" to "${stolenEntry.posPreceding}".`);
 
             ephemeralNodeMapOut.set(testPos, stolenEntry);
           }
@@ -297,18 +348,29 @@ export class HistoryManager {
             start: offset,
             len: getTotalLen(offset, patchContents),
           });
+          spliceIndices.push(i);
         }
       }
+
+      if (!isClosingTag) prevNodeOffset = offset;
+      if (isEphemeralChild) spliceIndices.push(i);
+
+      i++;
     }
 
     // Sort from highest start index/offset first, to lowest
     spliceInfo.sort((a, b) => b.start - a.start);
-
     spliceInfo.forEach(
       ({ start, len }) =>
         (patchContents =
           patchContents.slice(0, start) + patchContents.slice(start + len)),
     );
+
+    spliceIndices.sort((a, b) => b - a);
+    spliceIndices.forEach((i) => {
+      subOffsets.splice(i, 1);
+      subPosMapped.splice(i, 1);
+    });
 
     return [false, ephemeralNodeMapOut, patchContents];
   }
@@ -421,6 +483,9 @@ export class HistoryManager {
       );
       this.flagForceNewHistoryItem = true;
     }, WAIT_NEW_HISTORY_ITEM_MS);
+
+    //// Uncomment this line for more rigorous testing of patch merging behavior/functionality.
+    // this.flagSuggestNewHistoryItem = false;
 
     // Note that if we make an edit from a previous history state, this will always make that edit
     //  a new history item (along with splicing away all history states more recent),
@@ -610,6 +675,7 @@ export class HistoryManager {
           this.log(
             `${i}: Didn't map backStart "${patch.backStart}" using the previous strPosForwardMap, becuase it had a match in prevNodeAddLocs. Assuming this to mean the node referred here is ephemeral.`,
           );
+          patch.backStart = -2;
           patch.mapBackStart = false;
           return;
         }
@@ -773,7 +839,8 @@ export class HistoryManager {
               HistoryManager.handleEphemeralAddOrRemovePatch(
                 patch.forwardStart,
                 patch.backValue,
-                patch.subPos,
+                patch.subOffsets,
+                patch.subPosMapped,
                 this.prevStrPosForwardMap,
                 // We set childrenUseDefaultMap to false because this is for adding entries to ephemeralNodeBackMap, to specify backStart values
                 //  referring to a node preceding the ephemeral node that other patches can use instead of relying on the ephemeral node.
@@ -809,6 +876,32 @@ export class HistoryManager {
                   ephemeralNodeBackMap.get(key),
                 );
               });
+            }
+
+            // After removing ephemeral child nodes, we map the offsets of any remaining childNodes to the base HTML string
+            //  using prevStrPosForwardMap.
+            for (let i_ = 0; i_ < patch.subPosMapped.length; i_++) {
+              const offset = patch.subPosMapped[i_];
+              // The -4 means this offset is for an end tag in the string e.g. "</div>"
+              if (offset === -4) continue;
+              const mappedStrPos = this.prevStrPosForwardMap.get(
+                patch.forwardStart + offset,
+              );
+              if (!mappedStrPos) {
+                console.error(
+                  `Wasn't able to map child node offset for remove-type patch to base HTML string using prevStrPosForwardMap. ${patch.forwardStart} (forwardStart) + ${offset} (offset) = "${patch.forwardStart + offset}" not in`,
+                  this.prevStrPosForwardMap,
+                  "for patch",
+                  patch,
+                );
+                continue;
+              }
+              if (offset !== mappedStrPos - patch.forwardStart)
+                this.log(
+                  `${i}: Mapped child node offset for remove-type patch to base HTML string, from "${offset}" -> "${mappedStrPos - patch.forwardStart}" (using mappedStrPos "${mappedStrPos}") on patch`,
+                  patch,
+                );
+              patch.subPosMapped[i_] = mappedStrPos - patch.forwardStart;
             }
           }
         }
@@ -850,7 +943,8 @@ export class HistoryManager {
             HistoryManager.handleEphemeralAddOrRemovePatch(
               patch.backStart,
               patch.forwardValue,
-              patch.subPos,
+              patch.subOffsets,
+              patch.subPosMapped,
               strPosBackwardMap,
               // We set childrenUseDefaultMap to false because this is for adding entries to ephemeralNodeForwardMap, to specify forwardStart values
               //  referring to a node preceding the ephemeral node that other patches can use instead of relying on the ephemeral node.
@@ -887,6 +981,32 @@ export class HistoryManager {
                 ephemeralNodeForwardMap.get(key),
               );
             });
+          }
+
+          // After removing ephemeral child nodes, we map the offsets of the remaining childNodes to the latest HTML string
+          //  using strPosBackwardMap
+          for (let i_ = 0; i_ < patch.subPosMapped.length; i_++) {
+            const offset = patch.subPosMapped[i_];
+            // The -4 means this offset is for an end tag in the string e.g. "</div>"
+            if (offset === -4) continue;
+            const mappedStrPos = strPosBackwardMap.get(
+              patch.backStart + offset,
+            );
+            if (!mappedStrPos) {
+              console.error(
+                `Wasn't able to map child node offset for add-type patch to the latest HTML string using strPosBackwardMap. ${patch.backStart} (backStart) + ${offset} (offset) = "${patch.backStart + offset}" not in`,
+                strPosBackwardMap,
+                "for patch",
+                patch,
+              );
+              continue;
+            }
+            if (offset !== mappedStrPos - patch.backStart)
+              this.log(
+                `${i}: Mapped child node offset for add-type patch to latest HTML string, from "${offset}" -> "${mappedStrPos - patch.backStart}" (using mappedStrPos "${mappedStrPos}") on patch`,
+                patch,
+              );
+            patch.subPosMapped[i_] = mappedStrPos - patch.backStart;
           }
         }
 
@@ -967,99 +1087,6 @@ export class HistoryManager {
     this.flagHistoryStateChange = false;
   }
 
-  private domParser = new DOMParser();
-
-  parseHTMLFragment(htmlStr: string, isAttributes: boolean): Node[] {
-    // "text/html" produces a HTML document starting with a root <html> node, which is not what we want.
-    // "text/xml", meanwhile, doesn't handle bare Text nodes.
-
-    // If the htmlStr is an element, and is not being used for attributes intepreting attributes,
-    //  we use DOMParser with "text/xml" in order to AVOID CORRECTIONS TO THE STRUCTURE;
-    //  a HTML parser corrects things like block elements inside inline containers; `<p><div></div></p>` -> `<p></p><div></div><p></p>`
-    //  where an XML parser doesn't. The XML document then needs to be reinterpreted as a HTML document and everything works.
-    // IMP: XML IS STRICT AND WILL ERROR IF IT DOESN'T LIKE SOMETHING. THIS INCLUDES:
-    //  1) Void elements that dont end in " />"
-    //  2) Attributes whose values aren't quoted
-    //  3) Boolean attributes which don't have a value
-    //  4) Named references to entities e.g. "&nbsp;" (basically requires hex or numeric references)
-    //  5) Empty comments, comments with "--" inside
-    //  6) Differences in "namespaces" (more research in general has to be done here)
-    if (htmlStr.startsWith("<") && !isAttributes) {
-      this.log(`Parsing "${htmlStr}".`);
-      const parsed = this.domParser.parseFromString(htmlStr, "text/xml");
-
-      const nodeToHTML = (node: Node) => {
-        if (node.nodeType === Node.TEXT_NODE) {
-          return document.createTextNode(node.textContent ?? "");
-        } else if (node.nodeType === Node.COMMENT_NODE) {
-          return document.createComment(node.textContent ?? "");
-        } else if (node.nodeType !== Node.ELEMENT_NODE) {
-          console.warn(
-            "node wasn't Text node, Comment node or Element. Not sure what to do with it:",
-            node,
-          );
-          return document.createTextNode("");
-        }
-
-        const el = node as Element;
-
-        const htmlEl = document.createElement(el.nodeName);
-
-        for (let i = 0; i < el.attributes.length; i++) {
-          const attr = el.attributes[i];
-          htmlEl.setAttribute(attr.name, attr.value);
-        }
-
-        return htmlEl;
-      };
-
-      const walker = document.createTreeWalker(
-        parsed.documentElement,
-        NodeFilter.SHOW_ELEMENT |
-          NodeFilter.SHOW_TEXT |
-          NodeFilter.SHOW_COMMENT,
-      );
-
-      const rootHTML = nodeToHTML(walker.currentNode) as Element;
-      console.log("starting tree search from node", rootHTML);
-
-      const xmlToHTML = new Map<Node, Node>();
-      xmlToHTML.set(walker.currentNode, rootHTML);
-
-      let i = 0;
-      while (walker.nextNode()) {
-        const current = walker.currentNode;
-        const currentHTML = nodeToHTML(current);
-        // this.log(`%c${i}: processing`, "font-style: italic", current);
-
-        const parent = current.parentNode;
-        const parentHTML = parent ? xmlToHTML.get(parent) : null;
-
-        if (!parentHTML) {
-          console.error("Node has no parent in map:", current, xmlToHTML);
-          break;
-        }
-
-        parentHTML.appendChild(currentHTML);
-
-        if (current.nodeType === Node.ELEMENT_NODE) {
-          xmlToHTML.set(current, currentHTML);
-        }
-
-        i++;
-      }
-
-      this.log("OUTPUT:", rootHTML);
-      return [rootHTML];
-    } else {
-      // A <template> element is efficient, because the content is inert;
-      //  scripts don't run, images don't load.
-      const template = document.createElement("template");
-      template.innerHTML = htmlStr;
-      return Array.from(template.content.childNodes);
-    }
-  }
-
   /**
    * When we add nodes back in (either as part of undo/redo) any previously separate but adjacent child Text nodes
    *  will invariably be treated as a single added Text node (they "coalesce").\
@@ -1072,43 +1099,6 @@ export class HistoryManager {
    * @param expectedLen The expected length of the node in terms of its "he encoded" string
    * @returns A tuple of both nodes that resulted from the split (the second one possibly being null).
    */
-  private handleSplittingTextNode(
-    node: Node,
-    expectedLen: number,
-  ): [node1: Node, node2: Node | null] {
-    if (expectedLen === -1) {
-      this.log(
-        "Skipping the check of if the referred node is of expected length, as expectedLen is -1",
-      );
-      return [node, null];
-    } else if (node.nodeType !== Node.TEXT_NODE) {
-      this.log(
-        "The reffered node is not a text node; skipping checking if it's the expected length",
-      );
-      return [node, null];
-    } else if (node.textContent === null) {
-      this.warn("referredNode was a TextNode, but had a textContent of null");
-      return [node, null];
-    } else if (!node.isConnected) {
-      this.warn("referredNode was not connected to the DOM");
-      return [node, null];
-    }
-
-    const checkStr = encode(node.textContent, { useNamedReferences: false });
-    if (checkStr.length !== expectedLen) {
-      this.warn(
-        "FOUND REFERRED NODE THAT'S TEXT NODE WITH UNEXPECTED LENGTH. SPLITTING IT ACCORDINGLY",
-      );
-      const secondNodeStr = decode(checkStr.slice(expectedLen));
-      const secondNode = document.createTextNode(secondNodeStr);
-      insertAfter(node, secondNode);
-      node.textContent = decode(checkStr.slice(0, expectedLen));
-
-      return [node, secondNode];
-    }
-
-    return [node, null];
-  }
 
   private removeNode(referredNode: Node, patch: DocPatchDom) {
     if (!referredNode.isConnected) {
@@ -1135,82 +1125,124 @@ export class HistoryManager {
     tempPosNodes: Map<number, Node>,
     patch: DocPatchDom,
   ) {
-    const newNodes = this.parseHTMLFragment(value, false);
+    const newNodes = parseHTMLFragment(value, value.startsWith("<"));
 
     if (newNodes.length === 0) this.warn(`Added nothing from "${value}"`);
 
-    const [newRefNode, extraNode] = this.handleSplittingTextNode(
-      referredNode,
-      patch.expectedLen,
-    );
-
     if (patch.type === "addFirstChild" || patch.type === "removeFirstChild") {
-      if (!(newRefNode instanceof Element)) {
-        console.error("referredNode:", newRefNode);
+      if (!(referredNode instanceof Element)) {
+        console.error("referredNode:", referredNode);
         throw new Error(
           "referredNode was not an element while trying to insert node as its first child.",
         );
       }
-      newNodes.toReversed().forEach((node) => newRefNode.prepend(node));
+      newNodes.toReversed().forEach((node) => referredNode.prepend(node));
     } else if (
       patch.type === "addNextSibling" ||
       patch.type === "removeNextSibling"
     ) {
-      newNodes.toReversed().forEach((node) => insertAfter(newRefNode, node));
+      newNodes.toReversed().forEach((node) => insertAfter(referredNode, node));
     } else {
       throw new Error("Unexpected value for patch.type");
     }
 
-    // TODO:
     // If there IS more than one node being added at once, in all likelihood what happened is the HTML parser
     //  tried to "correct" some illegal html structure, e.g. `<p><div>No block elements inside an inline container!</div>Lorem ipsum<p>`
     // -> `<p></p><div>[...]</div>Lorem ipsum<p></p>` (3 nodes in a fragment).
-    // This is a big problem, and we simply need to disallow the editor from making these sorts of illegal modifications.
-    // Luckily, we can still use the undo/redo system to reverse illegal modifications IF we handle them ASAP,
-    //  as the illegal patches themselves should generally be able to be handled (it's only when, for example, undoing
-    //  a deletion of an inline container, after an illegal block element child was added to it, that the system fails because
-    //  of this parser).
-    // ANOTHER OPTION:
-    // AN XMLParser WITH "text/xml" SET WILL *NOT* TRY TO CORRECT ILLEGAL HTML STRUCTURE.
-    // WE CAN USE XMLParser HERE INSTEAD.
+    // In order to avoid this problem, we try to use an XML parser instead first in parseHTMLFragment (and fall back to a HTML parser if there's a parse error).
+    // It is still problematic that the user is able to generate "illegal" HTML strings that require elaborate schemes to be interpreted as intended.
+    // Thus, for the future it is planned to detect illegal HTML structures as they are added in and warn the user of their presense.
     if (newNodes.length > 1)
       console.error(
         `ADDED MORE THAN ONE NODE AT ONCE.\ntempPosNodes WILL ONLY MAP THE PATCH'S backStart VALUE FOR THE FIRST NODE.`,
       );
-    else if (newNodes[0] instanceof Element) {
-      // We need to determine all of the child nodes that were added alongside the "main node", as further patches
-      //  may rely on their existence within tempPosNodes
-      const docContainer = this.getDocContainer();
-      if (!docContainer) throw new Error("docContainer not defined.");
-      // TODO: This can use the new logic involving subPos (in handleEphemeralAddOrRemovePatch) instead
-      const [_, addedDocNodes] = reconstructHTMLString(newNodes[0], {
-        docContainer,
-      });
-      addedDocNodes.forEach((nodeInfo, node) => {
+
+    // We need to determine all of the child nodes that were added alongside the "main node", as further patches
+    //  may rely on their existence within tempPosNodes
+    if (newNodes[0] instanceof Element) {
+      // We use `patch.subPosMapped` to find at which string positions to put child nodes into tempPosNodes,
+      //  relying on the fact that the tree walker will traverse in document order, which is the same order
+      //  that subPosMapped is in.
+      const walker = document.createTreeWalker(
+        newNodes[0],
+        NodeFilter.SHOW_ELEMENT |
+          NodeFilter.SHOW_TEXT |
+          NodeFilter.SHOW_COMMENT,
+      );
+
+      let i = 0;
+      // prettier-ignore
+      this.log("subOffsets:", patch.subOffsets, "subPosMapped:", patch.subPosMapped);
+      while (walker.nextNode()) {
+        const childNode = walker.currentNode;
+        // Skip values of -4, which represent closing tags
+        while (patch.subPosMapped.at(i) === -4) i++;
+
+        const strOffset = patch.subOffsets.at(i);
+        const mappedOffset = patch.subPosMapped.at(i);
+        if (mappedOffset === undefined || strOffset === undefined) {
+          if (mappedOffset === undefined)
+            console.error(i, "on", patch.subPosMapped, "on", newNodes[0]);
+          if (strOffset === undefined)
+            console.error(i, "on", patch.subOffsets, "on", newNodes[0]);
+          throw new Error(
+            "Mismatch between added nodes and patch subOffsets/subPosMapped.",
+          );
+        }
+
+        // Find the expected length of this node, by using the start offset of the next "thing" (start tag, end tag, text node)
+        const nextStrOffset = patch.subOffsets.at(i + 1) ?? value.length;
+        const expectedLen = nextStrOffset - strOffset;
+
+        // When we add nodes back in (either as part of undo/redo) any previously separate but adjacent child Text nodes
+        //  will invariably be treated as a single added Text node (they "coalesce").
+        // We handle the potential case of combined (coalesced) text nodes here
+        //  (also necessary to do right away so that our tree walk stays in-sync with our lists of offsets).
+        if (
+          childNode.nodeType === Node.TEXT_NODE &&
+          childNode.textContent !== null
+        ) {
+          const currentValue = encodeHTMLText(childNode.textContent);
+          if (currentValue.length > expectedLen) {
+            const firstStr = decodeHTMLText(currentValue.slice(0, expectedLen));
+            const secondStr = decodeHTMLText(currentValue.slice(expectedLen));
+
+            this.log(
+              `SPLITTING TEXT NODE AT ${stringPos + mappedOffset}, AS IT IS LONGER THAN THE EXPECTED LENGTH\n`,
+              `First node: "${firstStr.replace(/\n/g, "\\n")}"\nSecond node: "${secondStr.replace(/\n/g, "\\n")}"`,
+            );
+
+            childNode.textContent = firstStr;
+            const secondNode = document.createTextNode(secondStr);
+            // By inserting the new text node after the current text node, we guarantee the next node our walker will walk to
+            //  (and hence handle) will be the new text node (as the walker reacts dynamically to changes in the DOM).
+            insertAfter(childNode, secondNode);
+          } else if (currentValue.length < expectedLen) {
+            console.error(
+              `Length of Text node (${currentValue.length}) is somehow shorter than expected (${expectedLen})`,
+            );
+          }
+        }
+
         this.log(
-          `Added to tempPosNodes, "${patch.forwardStart + nodeInfo.stringPos}" -> `,
-          node,
+          `Added to tempPosNodes (CHILD), ${stringPos} (stringPos) + ${mappedOffset} (mappedOffset at ${i}) = "${stringPos + mappedOffset}" -> `,
+          childNode,
         );
-        tempPosNodes.set(stringPos + nodeInfo.stringPos, node);
-      });
-    } else {
-      this.log(`Added to tempPosNodes, "${stringPos}" -> `, newNodes[0]);
-      tempPosNodes.set(stringPos, newNodes[0]);
+        tempPosNodes.set(stringPos + mappedOffset, childNode);
+        i++;
+      }
+
+      patch.subPosMapped;
     }
 
-    if (extraNode) {
-      this.log(
-        `Added to tempPosNodes, "${stringPos + value.length}" -> `,
-        extraNode,
-      );
-      tempPosNodes.set(stringPos + value.length, extraNode);
-    }
+    this.log(`Added to tempPosNodes (MAIN), "${stringPos}" -> `, newNodes[0]);
+    tempPosNodes.set(stringPos, newNodes[0]);
 
     return newNodes;
   }
 
   private setAttributes(referredNode: Node, value: string, patch: DocPatchDom) {
-    const newNode = this.parseHTMLFragment(value, true).at(0);
+    const newNode = parseHTMLFragment(value, false).at(0);
     if (!newNode || !(newNode instanceof Element))
       throw new Error(`Could not parse string "${value}" as a single element.`);
     if (!(referredNode instanceof Element)) {
@@ -1227,7 +1259,7 @@ export class HistoryManager {
     allAttrs.forEach((attr) => {
       referredNode.setAttribute(
         attr.name,
-        decode(attr.value, { isAttributeValue: true }),
+        decodeHTMLText(attr.value, { isAttributeValue: true }),
       );
     });
   }
@@ -1242,9 +1274,7 @@ export class HistoryManager {
 
     let finalVal: string = value;
     if (referredNode.textContent) {
-      const encoded = encode(referredNode.textContent, {
-        useNamedReferences: false,
-      });
+      const encoded = encodeHTMLText(referredNode.textContent);
       if (encoded.length > expectedLen) {
         this.warn(
           "FOUND TEXT NODE WITH UNEXPECTED LENGTH. WILL MODIFY TEXT CONTENT ACCORDINGLY",
@@ -1257,7 +1287,7 @@ export class HistoryManager {
         );
     }
 
-    referredNode.textContent = decode(finalVal);
+    referredNode.textContent = decodeHTMLText(finalVal);
   }
 
   redo() {
@@ -1268,6 +1298,8 @@ export class HistoryManager {
       this.log("Not redoing because we're at the latest state.");
       return;
     }
+
+    this.flagHistoryStateChange = true;
 
     // const tempDocNodes: DocNodeMap = new Map();
     const tempPosNodes: Map<number, Node> = new Map();
@@ -1317,12 +1349,9 @@ export class HistoryManager {
           "tempPosNodes:",
           tempPosNodes,
         );
-        if (patch.forwardStart === -1)
-          throw new Error(`Could not resolve forwardStart value of -1`);
-        else
-          throw new Error(
-            `Could not resolve forwardStart value "${patch.forwardStart}" using ${patch.mapForwardStart ? "posNodes" : "tempPosNodes"}.`,
-          );
+        throw new Error(
+          `Could not resolve forwardStart value "${patch.forwardStart}" using ${patch.mapForwardStart ? "posNodes" : "tempPosNodes"}.`,
+        );
       }
 
       this.log(
@@ -1363,7 +1392,6 @@ export class HistoryManager {
     this.editorHooks.resetSelection();
 
     this.docHistActiveIndex--;
-    this.flagHistoryStateChange = true;
   }
 
   undo() {
@@ -1374,6 +1402,8 @@ export class HistoryManager {
       this.log("Not undoing because we're at the base state.");
       return;
     }
+
+    this.flagHistoryStateChange = true;
 
     const tempPosNodes: Map<number, Node> = new Map();
 
@@ -1431,12 +1461,9 @@ export class HistoryManager {
           "tempPosNodes:",
           tempPosNodes,
         );
-        if (patch.backStart === -1)
-          throw new Error(`Could not resolve backStart value of -1`);
-        else
-          throw new Error(
-            `Could not resolve backStart value "${patch.backStart}" using ${patch.mapBackStart ? "posNodes" : "tempPosNodes"}`,
-          );
+        throw new Error(
+          `Could not resolve backStart value "${patch.backStart}" using ${patch.mapBackStart ? "posNodes" : "tempPosNodes"}`,
+        );
       }
 
       // "remove" | "addFirstChild" | "addNextSibling" | "attributes" | "characterData"
@@ -1488,7 +1515,6 @@ export class HistoryManager {
     this.editorHooks.resetSelection();
 
     this.docHistActiveIndex++;
-    this.flagHistoryStateChange = true;
   }
 
   private log(message?: any, ...optionalParams: any[]) {

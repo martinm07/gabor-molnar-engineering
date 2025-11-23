@@ -31,6 +31,7 @@
     getAllTextNodes,
     lastChild,
     nextElementSibling,
+    parseHTMLFragment,
   } from "./helper";
   import {
     type DocNodeMap,
@@ -119,7 +120,9 @@
       .then((data) => {
         patchSync = false;
 
-        if (docEl) docEl.innerHTML = data.body;
+        const parsed = parseHTMLFragment(data.body, true, true);
+        while (docEl?.firstChild) docEl.removeChild(docEl.firstChild);
+        parsed.forEach((node) => docEl?.appendChild(node));
 
         // If we are coming back from editing components in the middle
         //  of adding a new node, then we need to recover the editor state
@@ -322,9 +325,11 @@
     } else if (e.key === "Delete" && !inTextField) {
       if ($nodesSelection.length > 0) {
         $nodesSelection.forEach((el) => el.remove());
+        historyManager.suggestCreateNewHistoryItem();
         multipleSelect?.removeSelection();
       } else if ($nodeHoverTarget) {
         $nodeHoverTarget.remove();
+        historyManager.suggestCreateNewHistoryItem();
       }
     } else if (
       e.key === "Escape" &&
@@ -344,12 +349,32 @@
     ) {
       e.target.blur();
     } else if (e.ctrlKey && e.key === "z") {
-      historyManager.undo();
-      // preventDefault here stops the browser's native undo/redo in contenteditable elements
-      e.preventDefault();
+      try {
+        historyManager.undo();
+        // preventDefault here stops the browser's native undo/redo in contenteditable elements
+        e.preventDefault();
+      } catch (e) {
+        console.error(e);
+        console.warn(
+          "Caught error while undoing. Resetting html string to before undo was attempted.",
+        );
+        const parsed = parseHTMLFragment(htmlStr, true, true);
+        while (docEl?.firstChild) docEl.removeChild(docEl.firstChild);
+        parsed.forEach((node) => docEl?.appendChild(node));
+      }
     } else if (e.ctrlKey && e.key === "y") {
-      historyManager.redo();
-      e.preventDefault();
+      try {
+        historyManager.redo();
+        e.preventDefault();
+      } catch (e) {
+        console.error(e);
+        console.warn(
+          "Caught error while redoing. Resetting html string to before redo was attempted.",
+        );
+        const parsed = parseHTMLFragment(htmlStr, true, true);
+        while (docEl?.firstChild) docEl.removeChild(docEl.firstChild);
+        parsed.forEach((node) => docEl?.appendChild(node));
+      }
     } else if (e.ctrlKey && e.key === "Q") {
       debugCreateNewHistoryItem = !debugCreateNewHistoryItem;
       console.log(
@@ -431,11 +456,6 @@
             el.insertBefore(document.createTextNode("\u00A0"), el.firstChild),
         );
       }
-    } else if (el instanceof Text) {
-      ignoreDOMMutation(
-        { node: el, type: "characterData", origin: "addNBSP3" },
-        () => (el.textContent = "\u00A0"),
-      );
     }
   }
 

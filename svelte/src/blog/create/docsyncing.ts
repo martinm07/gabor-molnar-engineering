@@ -40,8 +40,9 @@ export type DocPatchDom = {
     | "characterData";
   forwardValue: string;
   backValue: string | null;
-  subPos: number[];
-  expectedLen: number;
+  subOffsets: number[];
+  subPosMapped: number[];
+  expectedPrecedingLen: number;
 };
 export type DocPatch = {
   str_: DocPatchStr;
@@ -86,10 +87,24 @@ export interface TempMutationRecord {
 //   }
 // }
 
-function getNodeSourceRepresentation(node: Node): string {
-  const textContent = he.encode(node.textContent ?? "", {
+// encodeHTMLText and decodeHTMLText represent the "sources of truth" for encoding/decoding text for HTML strings
+//  (which needs to be done in a consistent way especially for `history.ts` which relies on matching encoded HTML string lengths).
+
+export function encodeHTMLText(text: string) {
+  return he.encode(text, {
+    // useNamedReferences is false as XML doesn't support named entities (or rather, it only supports 5 named entities, where HTML supports thousands).
     useNamedReferences: false,
   });
+}
+export function decodeHTMLText(
+  text: string,
+  opts?: { isAttributeValue?: boolean },
+) {
+  return he.decode(text, { isAttributeValue: opts?.isAttributeValue });
+}
+
+function getNodeSourceRepresentation(node: Node): string {
+  const textContent = encodeHTMLText(node.textContent ?? "");
   switch (node.nodeType) {
     // TODO: I want to explicitly deny ELEMENT_NODE case, because we never actually use this string representation-
     //        we build it up manually in the reconstructHTMLString function, and only use this function for
@@ -136,14 +151,7 @@ function getElementString(
       // This condition may be triggered when the user facing value of the attribute is it not being present on the element.
       if (value === null || value === undefined) return;
 
-      return (
-        attr.name +
-        '="' +
-        he.encode(value, {
-          useNamedReferences: false,
-        }) +
-        '"'
-      );
+      return attr.name + '="' + encodeHTMLText(value) + '"';
     })
     .filter((strOrUndefined) => typeof strOrUndefined === "string")
     .join(" ");
@@ -476,8 +484,12 @@ function handleNodeAdd(
     } else p.docNodes.set(key, val);
   });
 
-  const subPos = [...new Set([...subPosStarts, ...subPosEnds])].toSorted(
+  const subOffsets = [...new Set([...subPosStarts, ...subPosEnds])].toSorted(
     (a, b) => a - b,
+  );
+  // We initialise subPosMapped as just the offsets of the child nodes in the string, but excluding offsets for end tags
+  const subPosMapped = subOffsets.map((offset) =>
+    !subPosStarts.includes(offset) ? -4 : offset,
   );
 
   const strPatch: DocPatch["str_"] = {
@@ -496,14 +508,15 @@ function handleNodeAdd(
         : "addFirstChild",
     forwardValue: fullString,
     backValue: "",
-    subPos,
-    expectedLen: prevNode?.stringLen ?? -1,
+    subOffsets,
+    subPosMapped,
+    expectedPrecedingLen: prevNode?.stringLen ?? -1,
   };
   const patch: DocPatch = { str_: strPatch, dom: domPatch };
   newPatches.push(patch);
 
   // Apply string patch to HTML string right away
-  if (p.htmlStr) p.htmlStr = applyPatches(p.htmlStr, [patch]);
+  if (p.htmlStr !== undefined) p.htmlStr = applyPatches(p.htmlStr, [patch]);
 
   return [newPatches, calculateStartIndex(newInfo)];
 }
@@ -574,8 +587,12 @@ function handleNodeRemove(
     }
   });
 
-  const subPos = [...new Set([...subPosStarts, ...subPosEnds])].toSorted(
+  const subOffsets = [...new Set([...subPosStarts, ...subPosEnds])].toSorted(
     (a, b) => a - b,
+  );
+  // We initialise subPosMapped as just the offsets of the child nodes in the string, but excluding offsets for end tags
+  const subPosMapped = subOffsets.map((offset) =>
+    !subPosStarts.includes(offset) ? -4 : offset,
   );
 
   // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
@@ -659,14 +676,15 @@ function handleNodeRemove(
         nodeInfo.stringPos,
         nodeInfo.stringPos + nodeInfo.stringLen,
       ) ?? null,
-    subPos,
-    expectedLen:
+    subOffsets,
+    subPosMapped,
+    expectedPrecedingLen:
       prevNodeInfo.stringLen !== Infinity ? prevNodeInfo.stringLen : -1,
   };
   const patch: DocPatch = { str_: strPatch, dom: domPatch };
 
   // Apply string patch to HTML string right away
-  if (p.htmlStr) p.htmlStr = applyPatches(p.htmlStr, [patch]);
+  if (p.htmlStr !== undefined) p.htmlStr = applyPatches(p.htmlStr, [patch]);
 
   return [[patch]];
 }
@@ -704,11 +722,11 @@ function handleAttributeChange(
     p.currentPatches?.forEach((patch) => {
       if (
         !patch.dom.type.startsWith("remove") &&
-        patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.stringLen
+        patch.dom.forwardStart >= nodeInfo.stringPos + nodeInfo.startTagLen
       )
         patch.dom.forwardStart += lenDiff;
       if (
-        patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.stringLen &&
+        patch.dom.backStart >= nodeInfo.stringPos + nodeInfo.startTagLen &&
         patch.dom.mapBackStart
       )
         patch.dom.backStart += lenDiff;
@@ -742,8 +760,9 @@ function handleAttributeChange(
         nodeInfo.stringPos,
         nodeInfo.stringPos + nodeInfo.startTagLen,
       ) ?? null,
-    subPos: [],
-    expectedLen: -1,
+    subOffsets: [],
+    subPosMapped: [],
+    expectedPrecedingLen: -1,
   };
   const patch: DocPatch = { str_: strPatch, dom: domPatch };
 
@@ -752,7 +771,7 @@ function handleAttributeChange(
   if (p.debug) console.log("----Changing attributes of node", el);
 
   // Apply string patch to HTML string right away
-  if (p.htmlStr) p.htmlStr = applyPatches(p.htmlStr, [patch]);
+  if (p.htmlStr !== undefined) p.htmlStr = applyPatches(p.htmlStr, [patch]);
 
   return [[patch]];
 }
@@ -830,8 +849,9 @@ function handleCharacterDataChange(
         nodeInfo.stringPos,
         nodeInfo.stringPos + nodeInfo.stringLen,
       ) ?? null,
-    subPos: [],
-    expectedLen: -1,
+    subOffsets: [],
+    subPosMapped: [],
+    expectedPrecedingLen: -1,
   };
   const patch: DocPatch = { str_: strPatch, dom: domPatch };
 
@@ -839,7 +859,7 @@ function handleCharacterDataChange(
   if (p.debug) console.log("----Changing text of node", node);
 
   // Apply string patch to HTML string right away
-  if (p.htmlStr) p.htmlStr = applyPatches(p.htmlStr, [patch]);
+  if (p.htmlStr !== undefined) p.htmlStr = applyPatches(p.htmlStr, [patch]);
 
   return [[patch]];
 }
@@ -859,7 +879,7 @@ export function handleMutationRecordPatch(
   const patches: DocPatch[] = [];
 
   // prettier-ignore
-  if (!p.htmlStr) console.warn("Without providing the last derived htmlStr of the document, the DOM patches for attributes and characterData won't have an oldValue.")
+  if (p.htmlStr === undefined) console.warn("Without providing the last derived htmlStr of the document, the DOM patches for attributes and characterData won't have an oldValue.")
 
   switch (record.type) {
     case "childList":
@@ -1075,7 +1095,7 @@ export function patchMutations(
         (patch) =>
           patch.dom.type.startsWith("add") &&
           (patch.dom.backStart === newStringPos ||
-            patch.dom.subPos.some(
+            patch.dom.subOffsets.some(
               (offset) => patch.dom.backStart + offset === newStringPos,
             )),
       )
@@ -1111,7 +1131,7 @@ export function patchMutations(
         (patch) =>
           patch.dom.type.startsWith("remove") &&
           (patch.dom.forwardStart === oldPos ||
-            patch.dom.subPos.some(
+            patch.dom.subOffsets.some(
               (offset) => patch.dom.forwardStart + offset === oldPos,
             )),
       )

@@ -347,6 +347,10 @@
   const setSelection: (nodes?: Node[] | Node) => void =
     getContext("setSelection");
 
+  const suggestCreateNewHistoryItem: () => void = getContext(
+    "suggestCreateNewHistoryItem",
+  );
+
   const potentialLocations = new PotentialLocations(doc);
 
   watch(
@@ -393,6 +397,7 @@
 
       $nodeHoverTarget = span;
       setSelection();
+      suggestCreateNewHistoryItem();
     } else if ($nodesIslandSelection.length > 0) {
       const newEl = document.createElement("div");
       $nodesIslandSelection[0].parentNode?.insertBefore(
@@ -401,6 +406,7 @@
       );
       $nodesIslandSelection.forEach((node) => newEl.appendChild(node));
       setSelection(newEl);
+      suggestCreateNewHistoryItem();
     } else {
       setSelection([]);
       mode.cursor = "add";
@@ -424,6 +430,8 @@
       // We also MUST insert the element BEFORE the potential-location, as the document syncer uses the previousSibling to determine
       //  how to patch the document HTML string, and it causes an error if the previous sibling is the ignored potential-location element.
       active.before(newEl);
+
+      suggestCreateNewHistoryItem();
 
       setSelection(newEl);
       // editText();
