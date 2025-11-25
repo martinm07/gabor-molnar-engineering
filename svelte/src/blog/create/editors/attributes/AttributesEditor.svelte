@@ -60,6 +60,8 @@
 
   let performedMutation: boolean = false;
 
+  let attributesEl: HTMLElement;
+
   function setAttribute(el: Element, name: string, value?: string | null) {
     if (value) el.setAttribute(name, value);
     else el.removeAttribute(name);
@@ -174,6 +176,10 @@
     return [...finalMasked, ...finalNormal];
   }
 
+  function declareMutation() {
+    performedMutation = true;
+    requestAnimationFrame(() => (performedMutation = false));
+  }
   /**
    * This function is pretty much only for being called in App.svelte, in the
    *  MutationObserver whenever it sees a mutation to an element's inline styles.
@@ -188,8 +194,7 @@
     };
 
     if (performedMutation) {
-      performedMutation = false;
-      console.log("Skipping syncElementAttributes; performedMutation is true");
+      // console.log("Skipping syncElementAttributes; performedMutation is true");
       return;
     }
 
@@ -333,7 +338,7 @@
         });
       }
       updateHighlight();
-      performedMutation = true;
+      declareMutation();
     },
   );
 
@@ -386,6 +391,8 @@
   ) {
     const selection = getSelection();
     if (!selection || !selection.focusNode) return;
+    if (!closest(selection.focusNode, attributesEl)) return;
+
     const node = selection.focusNode;
     if (
       node instanceof HTMLTextAreaElement &&
@@ -471,11 +478,9 @@
 <svelte:document
   onselectionchange={() => {
     const selection = getSelection();
-    const attributesEl = document.querySelector(".attributes-display");
-    if (!attributesEl) throw new Error("No attributes display element found.");
     if (!selection || !closest(selection.focusNode, attributesEl)) return;
 
-    console.log("AttributeEditor selection update! 💙");
+    // console.log("AttributeEditor selection update! 💙");
     // Suggest new history items if the selection changed without an input event being fired
     //  (i.e. the user is using the arrow keys, or clicking around, or making a range selection)
     if (!calledOnInput) suggestCreateNewHistoryItem();
@@ -483,7 +488,7 @@
   }}
 />
 
-<ul class="mt-10 attributes-display">
+<ul class="mt-10 attributes-display" bind:this={attributesEl}>
   {#each attributes as attr, i}
     <li
       class:invalid={attr.name && !attr.valid}

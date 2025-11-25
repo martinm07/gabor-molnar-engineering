@@ -5,7 +5,12 @@
   } from "./cursormodes/NodeSelect.svelte";
   import EditText, { type IEditText } from "./cursormodes/EditText.svelte";
   import Sidebar from "./Sidebar.svelte";
-  import { useDebounce, useMutationObserver, watch } from "runed";
+  import {
+    PersistedState,
+    useDebounce,
+    useMutationObserver,
+    watch,
+  } from "runed";
   import { onDestroy, setContext } from "svelte";
   import {
     mode,
@@ -115,30 +120,56 @@
   watch(() => documentID, loadDocument);
   function loadDocument() {
     if (documentID === null) return;
+
+    type DocData = { body: string };
+    const loadDocBody = (data: DocData) => {
+      patchSync = false;
+
+      const parsed = parseHTMLFragment(data.body, true, true);
+      while (docEl?.firstChild) docEl.removeChild(docEl.firstChild);
+      parsed.forEach((node) => docEl?.appendChild(node));
+
+      historyManager.changeActiveDoc(`${documentID}`);
+
+      // If we are coming back from editing components in the middle
+      //  of adding a new node, then we need to recover the editor state
+      //  to the point where the user was trying to add a new node
+      request2AnimationFrames(() => {
+        if (!docEl) return;
+        const tempAdded = Array.from(docEl.querySelectorAll(".temp-added"));
+
+        // There is in fact no attempt at adding a new node, thus we return early
+        if (tempAdded.length === 0) return;
+
+        multipleSelect?.removeSelection();
+        multipleSelect?.toggleToSelection(tempAdded);
+        mode.sidebar = "addcomponent";
+      });
+    };
+
+    // For loss-of-service, where syncing wasn't able to be done with the server,
+    //  we rely on local storage in the meantime.
+    syncOffline: if (SYNC_DOC_OFFLINE) {
+      const savedInfo = offlineDocEdits.current[documentID];
+      if (!savedInfo || !savedInfo.body) {
+        console.warn(
+          "Tried loading from offline data but didn't find any. Attempting to fetch from network.",
+        );
+        break syncOffline;
+      }
+      loadDocBody({ body: savedInfo.body });
+      savedComponents.splice(
+        0,
+        savedComponents.length,
+        ...(savedInfo.comps ?? []),
+      );
+      return;
+    }
+
     fetch_(`/documents/get_document_edit?id=${documentID}`)
       .then((resp) => resp.json())
       .then((data) => {
-        patchSync = false;
-
-        const parsed = parseHTMLFragment(data.body, true, true);
-        while (docEl?.firstChild) docEl.removeChild(docEl.firstChild);
-        parsed.forEach((node) => docEl?.appendChild(node));
-
-        // If we are coming back from editing components in the middle
-        //  of adding a new node, then we need to recover the editor state
-        //  to the point where the user was trying to add a new node
-        request2AnimationFrames(() => {
-          if (!docEl) return;
-          const tempAdded = Array.from(docEl.querySelectorAll(".temp-added"));
-
-          // There is in fact no attempt at adding a new node, thus we return early
-          if (tempAdded.length === 0) return;
-
-          multipleSelect?.removeSelection();
-          multipleSelect?.toggleToSelection(tempAdded);
-          mode.sidebar = "addcomponent";
-        });
-
+        loadDocBody(data);
         const componentLibVer = data["component_lib_ver"];
         if (typeof componentLibVer !== "string")
           throw new Error(
@@ -198,11 +229,13 @@
           editMatch ?? {},
         ) as SavedComponent;
 
-        patchSync = true;
+        patchSync = false;
 
         const compBody = decodeComponentStr(compWithEdits.content, "component");
         if (docEl) docEl.innerHTML = "";
         docEl?.appendChild(compBody);
+
+        historyManager.changeActiveDoc(componentID);
 
         request2AnimationFrames(() => {
           if (!docEl) return;
@@ -485,7 +518,24 @@
 
   const LOG_PATCH_SYNC = false;
   const LOG_DOC_HIST = true;
-  const DO_PATCH_SYNC = false;
+  const DO_PATCH_SYNC = true;
+
+  // TODO:
+  // Component edits are already saved locally first (they're server synced in batch),
+  // - I would like document info to also be saved locally first,
+  //    with the potential of server syncing to be debounced.
+  // - Loading document/component info should also be first tried server-first, with local
+  //    retrieval as a fallback.
+  let SYNC_DOC_OFFLINE = false;
+  const offlineDocEdits = new PersistedState<{
+    [docID: number]: { body?: string; comps?: SavedComponent[] };
+  }>("offlineDocEdits", {});
+  const saveDocBodyOffline = (docID: number | null, body: string) => {
+    if (docID === null) return;
+    const allSavedInfo = offlineDocEdits.current;
+    if (!allSavedInfo[docID]) allSavedInfo[docID] = { body };
+    else allSavedInfo[docID].body = body;
+  };
 
   // Also consider closing tags! They will change if the tag name of an element changes.
   //  However, there is no such mutation as "changing the tag name of an element"- that simply
@@ -670,13 +720,18 @@
         // Sync this htmlStr to the database. It is of course functionally equivalent to whatever is
         //  already stored in the database, but doing this guarantees that specific HTML string matches
         //  what patches will try and modify.
-        fetch_("/documents/sync_document_full", {
-          method: "post",
-          body: JSON.stringify({
-            id: documentID,
-            body: htmlStr,
-          }),
-        });
+        if (!SYNC_DOC_OFFLINE && documentID !== null)
+          fetch_("/documents/sync_document_full", {
+            method: "post",
+            body: JSON.stringify({
+              id: documentID,
+              body: htmlStr,
+            }),
+          });
+        else if (documentID !== null) {
+          saveDocBodyOffline(documentID, htmlStr);
+          offlineDocEdits.current[documentID].comps = savedComponents;
+        }
         patchSync = true;
       } else if (patchSync && docEl) {
         collectedMutations.push(...processMutations(unfilteredMutations));
@@ -711,12 +766,10 @@
   const patchInterval = setInterval(() => {
     if (!docEl || collectedMutations.length === 0) return;
     if (documentID === null) {
-      collectedMutations = [];
       if (componentID !== null) {
         console.log("Debouncing component content edit.");
         updateCompEditContent();
       }
-      return;
     }
 
     if (LOG_PATCH_SYNC)
@@ -740,9 +793,11 @@
         {
           updateHTMLStr: htmlStr,
           debug: LOG_PATCH_SYNC,
-          disableServerSync: !DO_PATCH_SYNC,
+          disableServerSync: !DO_PATCH_SYNC || documentID === null,
         },
       );
+
+    if (SYNC_DOC_OFFLINE) saveDocBodyOffline(documentID, htmlStr);
 
     if (LOG_PATCH_SYNC) {
       const docNodesTemp: DocNodeMap = new Map();
@@ -765,10 +820,7 @@
     );
     historyManager.resetFlagsAndClaims();
     if (LOG_DOC_HIST) {
-      console.log(
-        "🎈 docHistory: ",
-        structuredClone(historyManager.docHistory),
-      );
+      console.log("🎈 docHistory: ", structuredClone(historyManager.hist));
       const posNodeMapCopy: typeof stringPosNodeMap = new Map();
       stringPosNodeMap.forEach((val, key) => posNodeMapCopy.set(key, val));
       console.log("🎈 posNodes: ", posNodeMapCopy);

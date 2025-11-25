@@ -234,7 +234,7 @@
       [styles, , plainStr] = parseStylesStr(styleStr);
       if (stylesEl?.innerHTML) {
         stylesEl.innerHTML = styles;
-        performedMutation = true;
+        declareMadeMutation();
       }
 
       // undoManager.changeSelection(targets, {
@@ -300,6 +300,10 @@
     updateHighlight();
   }
 
+  function declareMadeMutation() {
+    performedMutation = true;
+    requestAnimationFrame(() => (performedMutation = false));
+  }
   /**
    * This function is pretty much only for being called in App.svelte, in the
    *  MutationObserver whenever it sees a mutation to an element's inline styles.
@@ -313,14 +317,13 @@
       $cssStyles.set(el, genStyles);
 
       const [styleStr] = getSelectionStyleStr(selected);
-      updateDisplay(styleStr);
+      updateDisplay(styleStr, true);
     };
 
     if (performedMutation) {
-      performedMutation = false;
-      console.log(
-        "Skipping syncElementInlineStyles; performedMutation is true",
-      );
+      // console.log(
+      //   "Skipping syncElementInlineStyles; performedMutation is true",
+      // );
       return;
     }
 
@@ -370,7 +373,10 @@
   let calledOnInput: boolean = false;
 
   // Called by oninput
-  function updateDisplay(overrideTextContent?: string) {
+  function updateDisplay(
+    overrideTextContent?: string,
+    skipAutocompleteUpdate?: boolean,
+  ) {
     if (!stylesEl) return;
 
     const selection = document.getSelection();
@@ -388,7 +394,7 @@
     let plainStr: string;
     [stylesEl.innerHTML, propsList, plainStr] = parseStylesStr(styleStr);
     syncStyles(propsList);
-    performedMutation = true;
+    declareMadeMutation();
 
     if (
       selection?.focusNode instanceof Element &&
@@ -400,7 +406,7 @@
         selection?.setPosition(node, newOffset);
       }
     }
-    handleAutocomplete();
+    if (!skipAutocompleteUpdate) handleAutocomplete();
 
     // let insertType: "insert" | "delete" | "other";
     // if (isInputEvent(event) && event.inputType.startsWith("insert"))
@@ -433,7 +439,10 @@
   function handleAutocomplete() {
     const selection = getSelection();
     if (!selection || !selection.focusNode) return;
+    if (!closest(selection.focusNode, stylesEl)) return;
+
     const node = selection.focusNode;
+    console.warn("⚠⚠⚠ HANDLING AUTOCOMPLETE ON CSSEDITOR");
     if (
       (node instanceof HTMLElement && node.tagName === "B") ||
       node.parentElement?.tagName === "B"

@@ -157,9 +157,11 @@ type EphemeralNodeMapEntry = {
 const WAIT_NEW_HISTORY_ITEM_MS = 2000;
 
 export class HistoryManager {
+  allSavedHistories: Map<string, { stack: DocHistoryStack; index: number }> =
+    new Map();
+
   // The most recent history state is at index 0 in this array
-  docHistory: DocHistoryStack = [];
-  docHistActiveIndex: number = -1;
+  hist: { stack: DocHistoryStack; index: number } = { stack: [], index: -1 };
 
   // These mappings are readonly, because only docsyncing.ts should be updating them every event
   //  cycle, when there are new mutations.
@@ -191,6 +193,16 @@ export class HistoryManager {
     this.getDocContainer = getDocContainer;
     this.editorHooks = editorHooks;
     this.debug = Boolean(opts?.debug);
+  }
+
+  changeActiveDoc(id: string) {
+    let retrievedHistory = this.allSavedHistories.get(id);
+    if (!retrievedHistory) {
+      retrievedHistory = { stack: [], index: -1 };
+      this.allSavedHistories.set(id, retrievedHistory);
+    }
+    this.hist = retrievedHistory;
+    this.flagForceNewHistoryItem = true;
   }
 
   /**
@@ -460,7 +472,7 @@ export class HistoryManager {
     // Check if the patches actually change anything
     if (
       patches.every((patch) => patch.forwardValue === patch.backValue) &&
-      this.docHistory.length !== 0
+      this.hist.stack.length !== 0
     ) {
       if (this.debug)
         console.groupCollapsed(
@@ -493,15 +505,15 @@ export class HistoryManager {
     if (
       this.flagForceNewHistoryItem ||
       this.flagSuggestNewHistoryItem ||
-      this.docHistActiveIndex > 0 ||
-      this.docHistory.length <= 1 // Add to the history stack if we need to create the initial state, or so that we never merge onto the initial state
+      this.hist.index > 0 ||
+      this.hist.stack.length <= 1 // Add to the history stack if we need to create the initial state, or so that we never merge onto the initial state
     ) {
       this.log("Adding a new item onto the history stack.");
       this.flagForceNewHistoryItem = false;
 
-      if (this.docHistActiveIndex > 0) {
+      if (this.hist.index > 0) {
         this.log("Splicing newer history states from current state.");
-        this.docHistory.splice(0, this.docHistActiveIndex);
+        this.hist.stack.splice(0, this.hist.index);
       }
 
       const resetForwardMap: Map<number, number> = new Map();
@@ -510,7 +522,7 @@ export class HistoryManager {
       //  this set of patches was applied, since these are the first patches of the new history item,
       // UNLESS this is the first history item (which has no version of the HTML string "before")- the first
       //  history item gets special treatment :)
-      if (this.docHistory.length === 0)
+      if (this.hist.stack.length === 0)
         this.posNodes.forEach((_, key) => {
           resetForwardMap.set(key, key);
           this.prevStrPosForwardMap!.set(key, key);
@@ -537,13 +549,13 @@ export class HistoryManager {
         0,
       );
 
-      this.docHistory.unshift({
+      this.hist.stack.unshift({
         // We don't need to store patches in the initial history state stack item
-        patches: this.docHistory.length > 0 ? patches : [],
+        patches: this.hist.stack.length > 0 ? patches : [],
         nodesSelection: this.generateNodeSelectionState(),
         ...this.claimedCaretState,
       });
-      this.docHistActiveIndex = 0;
+      this.hist.index = 0;
 
       this.prevStrPosForwardMap = resetForwardMap;
       this.prevNodeAddLocs = patches
@@ -742,7 +754,7 @@ export class HistoryManager {
       //  handling resultant backStart ephemeral node references where they can't be mapped to the base HTML string
       // Adding entries to the ephemeralNodeBackMap using the remove-type patches which removed the ephemeral nodes
       patches.toReversed().forEach((patch, i_) => {
-        let i = this.docHistory[0].patches.length + (patches.length - 1 - i_);
+        let i = this.hist.stack[0].patches.length + (patches.length - 1 - i_);
 
         // It is possible for mapBackStart to already be false; because backStarts are created in the reverse order
         //  from which they will be executed, it is possible in remove-type patches (where backStarts are trying to add nodes in)
@@ -920,7 +932,7 @@ export class HistoryManager {
       });
 
       // Apply stringPosBackwardUpdateMap to backStart values of the patches that are being merged into
-      this.docHistory[0].patches.forEach((patch, i) => {
+      this.hist.stack[0].patches.forEach((patch, i) => {
         // We interweave the handling of forwardStart and backStart values together (i.e. not splitting them into two different loops)
         //  for the potential case that two or more nodes next to each other,
         //  become EPHEMERAL at the same time;
@@ -1047,18 +1059,18 @@ export class HistoryManager {
 
         if (patch.type.startsWith("remove") && !patch.mapForwardStart) {
           this.log(
-            `${this.docHistory[0].patches.length + i}: Encountered remove-type patch whose forwardStart couldn't be mapped to the base HTML string. Setting to -2 (considering it to refer to an ephemeral node).`,
+            `${this.hist.stack[0].patches.length + i}: Encountered remove-type patch whose forwardStart couldn't be mapped to the base HTML string. Setting to -2 (considering it to refer to an ephemeral node).`,
           );
           patch.forwardStart = -2;
         }
       });
 
-      this.docHistory[0].patches.push(...patches);
+      this.hist.stack[0].patches.push(...patches);
       // TODO: Might want to NOT override caret state if we're overriding with null.
       //       Depends on what behaviour will be more intuitive.
-      Object.assign(this.docHistory[0], this.claimedCaretState);
+      Object.assign(this.hist.stack[0], this.claimedCaretState);
 
-      this.docHistory[0].nodesSelection = this.generateNodeSelectionState();
+      this.hist.stack[0].nodesSelection = this.generateNodeSelectionState();
 
       // IMP: Make sure any earlier returns in this function have a copy of this line.
       this.prevStrPosForwardMap = strPosForwardMap;
@@ -1292,9 +1304,9 @@ export class HistoryManager {
 
   redo() {
     this.log(
-      `🎈🎈🎈 Attempting Redo! Going from index ${this.docHistActiveIndex} -> ${this.docHistActiveIndex - 1}`,
+      `🎈🎈🎈 Attempting Redo! Going from index ${this.hist.index} -> ${this.hist.index - 1}`,
     );
-    if (this.docHistActiveIndex === 0) {
+    if (this.hist.index === 0 || this.hist.index === -1) {
       this.log("Not redoing because we're at the latest state.");
       return;
     }
@@ -1304,7 +1316,7 @@ export class HistoryManager {
     // const tempDocNodes: DocNodeMap = new Map();
     const tempPosNodes: Map<number, Node> = new Map();
 
-    const patches = this.docHistory[this.docHistActiveIndex - 1].patches;
+    const patches = this.hist.stack[this.hist.index - 1].patches;
     for (let i = 0; i < patches.length; i++) {
       const patch = patches[i];
 
@@ -1391,14 +1403,17 @@ export class HistoryManager {
 
     this.editorHooks.resetSelection();
 
-    this.docHistActiveIndex--;
+    this.hist.index--;
   }
 
   undo() {
     this.log(
-      `🎈🎈🎈 Attempting Undo! Going from index ${this.docHistActiveIndex} -> ${this.docHistActiveIndex + 1}`,
+      `🎈🎈🎈 Attempting Undo! Going from index ${this.hist.index} -> ${this.hist.index + 1}`,
     );
-    if (this.docHistActiveIndex === this.docHistory.length - 1) {
+    if (
+      this.hist.index > this.hist.stack.length - 1 ||
+      this.hist.index === -1
+    ) {
       this.log("Not undoing because we're at the base state.");
       return;
     }
@@ -1407,7 +1422,7 @@ export class HistoryManager {
 
     const tempPosNodes: Map<number, Node> = new Map();
 
-    const patches = this.docHistory[this.docHistActiveIndex].patches;
+    const patches = this.hist.stack[this.hist.index].patches;
 
     if (patches.some((patch) => patch.backValue === null))
       throw new Error(
@@ -1514,7 +1529,7 @@ export class HistoryManager {
 
     this.editorHooks.resetSelection();
 
-    this.docHistActiveIndex++;
+    this.hist.index++;
   }
 
   private log(message?: any, ...optionalParams: any[]) {

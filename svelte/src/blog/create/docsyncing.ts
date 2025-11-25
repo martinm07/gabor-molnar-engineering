@@ -966,7 +966,7 @@ const isPotentialLocation = (node?: Node | null) =>
 let prevFetch: Promise<Response> | null = null;
 export function patchMutations(
   mutations: TempMutationRecord[],
-  documentID: number,
+  documentID: number | null,
   p: {
     docNodes: DocNodeMap;
     stringPosNodeMap: StringPosNodeMap;
@@ -1168,7 +1168,7 @@ export function patchMutations(
       }),
     });
 
-  if (!opts.disableServerSync && patches.length > 0) {
+  if (!opts.disableServerSync && patches.length > 0 && documentID !== null) {
     if (prevFetch === null) prevFetch = createFetch();
     else prevFetch = prevFetch.then(createFetch);
   }
