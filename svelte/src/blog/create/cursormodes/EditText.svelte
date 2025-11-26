@@ -8,7 +8,7 @@
 <script lang="ts">
   import { onDestroy, getContext } from "svelte";
   import { on } from "svelte/events";
-  import { mode, nodeHoverTarget } from "../store.svelte";
+  import { mode, selection } from "../store.svelte";
   import { closest, getAllTextNodes } from "../helper";
 
   const suggestCreateNewHistoryItem: () => void = getContext(
@@ -27,20 +27,20 @@
   let editTarget: HTMLElement | undefined;
 
   export function startEdit(e?: KeyboardEvent) {
-    if (!($nodeHoverTarget instanceof HTMLElement)) return;
+    if (!(selection.hover instanceof HTMLElement)) return;
     mode.cursor = "edit";
-    editTarget = $nodeHoverTarget;
-    $nodeHoverTarget.contentEditable = "true";
-    $nodeHoverTarget.focus();
+    editTarget = selection.hover;
+    selection.hover.contentEditable = "true";
+    selection.hover.focus();
     if (e) e.preventDefault();
 
     // Set the cursor to the mouse position
 
-    const selection = getSelection();
-    if (!selection) return;
+    const caret = getSelection();
+    if (!caret) return;
 
     if (editTarget.innerText.trim() === "") {
-      selection.selectAllChildren(editTarget);
+      caret.selectAllChildren(editTarget);
       return;
     }
 
@@ -62,7 +62,7 @@
     }
 
     if (textNode?.nodeType === Node.TEXT_NODE && offset) {
-      selection.setBaseAndExtent(textNode, offset, textNode, offset);
+      caret.setBaseAndExtent(textNode, offset, textNode, offset);
     }
   }
 
@@ -105,19 +105,19 @@
   // UNUSED (but cool)
   let cursor: HTMLElement;
   function onClick() {
-    const selection = getSelection();
+    const caret = getSelection();
     if (
-      !selection ||
-      !selection.focusNode ||
+      !caret ||
+      !caret.focusNode ||
       !(
-        selection.focusNode === selection.anchorNode &&
-        selection.focusOffset === selection.anchorOffset
+        caret.focusNode === caret.anchorNode &&
+        caret.focusOffset === caret.anchorOffset
       )
     )
       return;
     const range = document.createRange();
-    range.setStart(selection.focusNode, selection.focusOffset);
-    range.setEnd(selection.focusNode, selection.focusOffset);
+    range.setStart(caret.focusNode, caret.focusOffset);
+    range.setEnd(caret.focusNode, caret.focusOffset);
     const rect = range.getClientRects()[0];
     cursor.style.top = `${rect.y + window.scrollY}px`;
     cursor.style.left = `${rect.x + window.scrollX}px`;
@@ -148,9 +148,8 @@
 
 <svelte:document
   onselectionchange={() => {
-    const selection = getSelection();
-    if (!selection || !editTarget || !closest(selection.focusNode, editTarget))
-      return;
+    const caret = getSelection();
+    if (!caret || !editTarget || !closest(caret.focusNode, editTarget)) return;
 
     console.log("EditText selection update! 💙");
     // Suggest new history items if the selection changed without an input event being fired

@@ -8,7 +8,7 @@ import {
   type StringPosNodeMap,
 } from "./docsyncing";
 import { insertAfter, parseHTMLFragment } from "./helper";
-import { nodesSelection } from "./store.svelte";
+import { selection } from "./store.svelte";
 import { get } from "svelte/store";
 
 export type DocHistoryStack = DocHistoryItem[];
@@ -211,7 +211,7 @@ export class HistoryManager {
    *           This is a serializable identity for every node.
    */
   private generateNodeSelectionState() {
-    const newNodesSelection = get(nodesSelection)
+    const newNodesSelection = selection.selected
       .map((node) => {
         const nodePos = this.docNodes.get(node)?.stringPos;
         if (nodePos === undefined)

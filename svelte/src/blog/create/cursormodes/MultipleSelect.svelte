@@ -9,7 +9,7 @@
 <script lang="ts">
   import type { Attachment } from "svelte/attachments";
   import { watch } from "runed";
-  import { nodeHoverTarget, nodesSelection } from "../store.svelte";
+  import { selection } from "../store.svelte";
 
   let highlights: HTMLElement[] = $state([]);
   // $inspect(highlights);
@@ -27,7 +27,7 @@
   }
 
   export function updateHighlights() {
-    if ($nodesSelection.length === 0) return;
+    if (selection.selected.length === 0) return;
     const convertDOMRect = (rect: DOMRect): Rect => {
       return {
         x: rect.x,
@@ -36,14 +36,16 @@
         h: rect.height,
       };
     };
-    // const rect = $nodesSelection
+    // const rect = selection.selected
     //   .map((el) => convertDOMRect(el.getBoundingClientRect()))
     //   .reduce((p, c) => expandRect(p, c));
 
     let i = 0;
     for (const highlight of highlights) {
-      if (!$nodesSelection[i]) continue;
-      const rect = convertDOMRect($nodesSelection[i].getBoundingClientRect());
+      if (!selection.selected[i]) continue;
+      const rect = convertDOMRect(
+        selection.selected[i].getBoundingClientRect(),
+      );
       let offsetTop = 0,
         offsetLeft = 0;
       let scrollTop = 0,
@@ -65,7 +67,7 @@
   }
 
   watch(
-    () => $nodesSelection,
+    () => selection.selected,
     () => updateHighlights,
   );
 
@@ -76,11 +78,11 @@
       else if (!(nodes_ instanceof Node))
         nodes = nodes_.filter((node) => node instanceof Element);
       else return;
-    } else if ($nodeHoverTarget) nodes = [$nodeHoverTarget];
+    } else if (selection.hover) nodes = [selection.hover];
     else return;
     if (nodes.length === 0) return;
 
-    const selectionRemovals = $nodesSelection.filter((el) => {
+    const selectionRemovals = selection.selected.filter((el) => {
       if (nodes.includes(el)) {
         // Make sure to not later add nodes that were already in the selection and are now being toggled 'off'
         nodes = nodes.filter((node) => node !== el);
@@ -88,10 +90,10 @@
       } else return true;
     });
 
-    $nodesSelection = [...nodes, ...selectionRemovals];
+    selection.selected = [...nodes, ...selectionRemovals];
   }
   export function removeSelection() {
-    $nodesSelection = [];
+    selection.selected = [];
   }
 
   const spliceOnDestroy = (index: number): Attachment => {
@@ -105,13 +107,13 @@
   // There seems to be some sort of bug with using a store directly inside an {#each} loop,
   //  where under certain specific circumstances it stops updating at a 0-length array.
   //  For example, when adding a node, going to edit a component, then actually adding a node
-  //  within the component, breaks the {#each} loop when it's directly referencing $nodesSelection.
-  let selectionState = $derived($nodesSelection);
+  //  within the component, breaks the {#each} loop when it's directly referencing selection.selected.
+  // let selectionState = $derived($nodesSelection);
 </script>
 
-{#each selectionState as _, i}
+{#each selection.selected as _, i}
   <div
-    class:hidden={selectionState.length === 0}
+    class:hidden={selection.selected.length === 0}
     class="absolute ring-4 rounded ring-rock-700/50 pointer-events-none z-10"
     bind:this={highlights[i]}
     {@attach spliceOnDestroy(i)}

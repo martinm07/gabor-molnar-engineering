@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onDestroy, getContext } from "svelte";
-  import { autocompleteSuggestions, nodesSelection } from "../../store.svelte";
+  import { autocompleteSuggestions, selection } from "../../store.svelte";
   import {
     calculateTotalOffset,
     findNodeFromOffset,
@@ -43,8 +43,8 @@
       changeElementInMasks(target, replacement);
       replacements.push(replacement);
     }
-    $nodesSelection = [];
-    request2AnimationFrames(() => ($nodesSelection = replacements));
+    selection.selected = [];
+    request2AnimationFrames(() => (selection.selected = replacements));
   }
 
   function parseTagStr(str: string) {
@@ -104,11 +104,11 @@
   function onInput(e_: any) {
     const e = e_ as InputEvent;
     if (!tagEl) return;
-    const selection = document.getSelection();
+    const caret = document.getSelection();
     const offset = calculateTotalOffset(
       tagEl,
-      selection?.focusNode,
-      selection?.focusOffset,
+      caret?.focusNode,
+      caret?.focusOffset,
     );
     inputVal = tagEl.textContent ?? "";
     const parsed = parseTagStr(inputVal);
@@ -120,14 +120,14 @@
       tagEl,
       inputVal.length === 3 ? 2 : offset,
     );
-    selection?.setPosition(node, newOffset);
+    caret?.setPosition(node, newOffset);
     handleAutocomplete();
   }
 
   function handleAutocomplete() {
-    const selection = getSelection();
-    if (!selection || !selection.focusNode) return;
-    const node = selection.focusNode;
+    const caret = getSelection();
+    if (!caret || !caret.focusNode) return;
+    const node = caret.focusNode;
     if (
       (node instanceof HTMLElement && node.tagName === "SPAN") ||
       node.parentElement?.tagName === "SPAN"
@@ -147,21 +147,21 @@
   }
 
   const off = on(document, "selectionchange", () => {
-    const selection = document.getSelection();
-    if (!selection || !tagEl) return;
+    const caret = document.getSelection();
+    if (!caret || !tagEl) return;
 
     const possibilities: [Node | null, number, Node | null, number][] = [
       [
-        selection.anchorNode,
-        selection.anchorOffset,
-        selection.focusNode,
-        selection.focusOffset,
+        caret.anchorNode,
+        caret.anchorOffset,
+        caret.focusNode,
+        caret.focusOffset,
       ],
       [
-        selection.focusNode,
-        selection.focusOffset,
-        selection.anchorNode,
-        selection.anchorOffset,
+        caret.focusNode,
+        caret.focusOffset,
+        caret.anchorNode,
+        caret.anchorOffset,
       ],
     ];
 
@@ -175,19 +175,19 @@
     ] of possibilities) {
       if (focusNode && focusNode === tagEl.childNodes[0]) {
         if (anchorNode)
-          selection.setBaseAndExtent(anchorNode, anchorOffset, mainTextNode, 0);
-        else selection.setPosition(mainTextNode, 0);
+          caret.setBaseAndExtent(anchorNode, anchorOffset, mainTextNode, 0);
+        else caret.setPosition(mainTextNode, 0);
       }
       if (focusNode && focusNode === tagEl.childNodes[2]) {
         if (anchorNode)
-          selection.setBaseAndExtent(
+          caret.setBaseAndExtent(
             anchorNode,
             anchorOffset,
             mainTextNode,
             (mainTextNode.textContent?.length ?? 1) - 0,
           );
         else
-          selection.setPosition(
+          caret.setPosition(
             mainTextNode,
             (mainTextNode.textContent?.length ?? 1) - 0,
           );

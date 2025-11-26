@@ -7,7 +7,7 @@
 <script lang="ts">
   import { onDestroy } from "svelte";
   import { on } from "svelte/events";
-  import { mode, nodeHoverTarget } from "../store.svelte";
+  import { mode, selection } from "../store.svelte";
 
   interface Props {
     shiftPressed: boolean;
@@ -27,33 +27,33 @@
   // When we're not in select mode, we still want to keep track of the 'theoretical hover target'
   //  so that when we go back to select mode we can instantly be back in sync with the mouse position.
   $effect(() => {
-    if (doSelect) $nodeHoverTarget = targetOriginal;
+    if (doSelect) selection.hover = targetOriginal;
   });
 
   const off1 = on(doc, "mouseover", (e) => {
     if (!(e.target instanceof Element)) return;
     const target = e.target === doc ? undefined : e.target;
-    if (doSelect) $nodeHoverTarget = target;
+    if (doSelect) selection.hover = target;
     targetOriginal = target;
     ancestorCount = 0;
   });
   onDestroy(off1);
 
   const off2 = on(doc, "mouseleave", (e) => {
-    if (doSelect) $nodeHoverTarget = undefined;
+    if (doSelect) selection.hover = undefined;
     targetOriginal = undefined;
     ancestorCount = 0;
   });
   onDestroy(off2);
 
   $effect(() => {
-    if ($nodeHoverTarget && $nodeHoverTarget instanceof HTMLElement)
+    if (selection.hover && selection.hover instanceof HTMLElement)
       updateHighlight();
   });
 
   export function updateHighlight() {
-    if (!$nodeHoverTarget || !($nodeHoverTarget instanceof HTMLElement)) return;
-    const rect = $nodeHoverTarget.getBoundingClientRect();
+    if (!selection.hover || !(selection.hover instanceof HTMLElement)) return;
+    const rect = selection.hover.getBoundingClientRect();
 
     let offsetTop = 0,
       offsetLeft = 0;
@@ -75,25 +75,25 @@
   function onWheel(e: WheelEvent) {
     if (mode.cursor !== "select") return;
     if (shiftPressed && e.deltaY < 0) {
-      const parent = $nodeHoverTarget?.parentElement ?? undefined;
+      const parent = selection.hover?.parentElement ?? undefined;
       if (parent instanceof HTMLElement && parent.classList.contains("doc"))
         return;
-      $nodeHoverTarget = parent;
+      selection.hover = parent;
       ancestorCount++;
     } else if (shiftPressed && e.deltaY > 0) {
       let parent = targetOriginal;
       ancestorCount = Math.max(0, ancestorCount - 1);
       for (let i = 0; i < ancestorCount; i++)
         parent = parent?.parentElement ?? undefined;
-      $nodeHoverTarget = parent;
+      selection.hover = parent;
     }
   }
 </script>
 
 <svelte:window onwheel={onWheel} />
 <div
-  class:hidden={!$nodeHoverTarget || !displaySelection}
+  class:hidden={!selection.hover || !displaySelection}
   class="absolute border-8 rounded-xl border-rock-500/50 box-content -translate-x-2 -translate-y-2 pointer-events-none z-10"
-  class:border-dashed={$nodeHoverTarget?.getAttribute("data-component")}
+  class:border-dashed={selection.hover?.getAttribute("data-component")}
   bind:this={highlight}
 ></div>

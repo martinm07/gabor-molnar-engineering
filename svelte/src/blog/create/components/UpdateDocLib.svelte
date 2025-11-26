@@ -32,15 +32,7 @@
     return final;
   }
 
-  // IMP: When this component is instantiated, it is ASSUMED that we've already fetched all the relevent upgrade info in App.svelte,
-  //       so that the single call to getCompLibUpgradeInfo() will return all relevent information (i.e. this component won't react to
-  //       changes in compLibUpgradeInfo).
-
-  const getUpgradeInfo: () => CompLibUpgradeInfo = getContext(
-    "getCompLibUpgradeInfo",
-  );
-  let upgradeInfo: CompLibUpgradeInfo | null = $state(null);
-  onMount(() => (upgradeInfo = getUpgradeInfo()));
+  let upgradeInfo: CompLibUpgradeInfo | null = $derived(compLibVer.upgradeInfo);
 
   let submitStatus: "error" | "idle" | "success" | "none" = $state("none");
   let submitMsg: string = $state("");

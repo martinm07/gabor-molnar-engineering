@@ -334,7 +334,7 @@
 <script lang="ts">
   import { onDestroy, getContext } from "svelte";
   import { watch } from "runed";
-  import { mode, nodeHoverTarget, nodesIslandSelection } from "../store.svelte";
+  import { mode, selection } from "../store.svelte";
   import { type IEditText } from "./EditText.svelte";
   import { request2AnimationFrames } from "/shared/helper";
 
@@ -363,24 +363,24 @@
   // onDestroy(potentialLocations.removePotentialLocs);
 
   export function handleAddOperation() {
-    const selection = getSelection();
+    const caret = getSelection();
 
     // For wrapping text in a new node, it requires the selection be fully contained
     //  in a single text node. This condition may be arbitrarily missed if there are multiple
     //  contiguous text nodes in the DOM structure which could have been combined together
     // That is what .normalize() does.
-    selection?.focusNode?.parentElement?.normalize();
+    caret?.focusNode?.parentElement?.normalize();
 
     if (
-      selection &&
-      !selection.isCollapsed &&
-      selection.anchorNode === selection.focusNode &&
-      doc.contains(selection.anchorNode)
+      caret &&
+      !caret.isCollapsed &&
+      caret.anchorNode === caret.focusNode &&
+      doc.contains(caret.anchorNode)
     ) {
       // Wrap selection in new node
       const fragment = document.createDocumentFragment();
-      const range = selection.getRangeAt(0);
-      const node = selection.anchorNode!;
+      const range = caret.getRangeAt(0);
+      const node = caret.anchorNode!;
       const startText = document.createTextNode(
         node.textContent?.slice(0, range.startOffset) ?? "",
       );
@@ -395,16 +395,13 @@
       fragment.appendChild(endText);
       node.parentNode?.replaceChild(fragment, node);
 
-      $nodeHoverTarget = span;
+      selection.hover = span;
       setSelection();
       suggestCreateNewHistoryItem();
-    } else if ($nodesIslandSelection.length > 0) {
+    } else if (selection.island.length > 0) {
       const newEl = document.createElement("div");
-      $nodesIslandSelection[0].parentNode?.insertBefore(
-        newEl,
-        $nodesIslandSelection[0],
-      );
-      $nodesIslandSelection.forEach((node) => newEl.appendChild(node));
+      selection.island[0].parentNode?.insertBefore(newEl, selection.island[0]);
+      selection.island.forEach((node) => newEl.appendChild(node));
       setSelection(newEl);
       suggestCreateNewHistoryItem();
     } else {

@@ -129,19 +129,19 @@
       // text = text.replace(/[^a-zA-Z0-9\-_ ]/g, "");
       // console.log(text);
 
-      const selection = document.getSelection();
+      const caret = document.getSelection();
       const offset = calculateTotalOffset(
         this.editorEl,
-        selection?.focusNode,
-        selection?.focusOffset,
+        caret?.focusNode,
+        caret?.focusOffset,
       );
 
       const html = TagsEditor.parseTagsStrAsHTML(text);
       this.editorEl.innerHTML = html;
 
       const [node, newOffset] = findNodeFromOffset(this.editorEl, offset);
-      if (this.editorEl.contains(selection?.focusNode ?? null))
-        selection?.setPosition(node, newOffset);
+      if (this.editorEl.contains(caret?.focusNode ?? null))
+        caret?.setPosition(node, newOffset);
 
       if (doSync) this.syncChange();
     }
@@ -182,12 +182,12 @@
     }
 
     onSelectionChange() {
-      const selection = getSelection();
-      if (!selection || !this.editorEl) return;
+      const caret = getSelection();
+      if (!caret || !this.editorEl) return;
       const focusEl =
-        selection.focusNode instanceof Element
-          ? selection.focusNode
-          : selection.focusNode?.parentElement;
+        caret.focusNode instanceof Element
+          ? caret.focusNode
+          : caret.focusNode?.parentElement;
       if (!focusEl) return;
 
       const clearFocused = () =>
@@ -253,7 +253,7 @@
   </div>
   {#if comps.current.name !== undefined && nameState.inputVal !== comps.savedCurrent.name}
     <div class="mr-3">
-      <!-- The transition:fade is important so that the button click isn't 
+      <!-- The transition:fade is important so that the button click isn't
        registered as "not within the dropdown" hence causing it to close. -->
       <button
         transition:fade={{ duration: 100 }}
@@ -290,7 +290,7 @@
     {/if}
   </div>
   {#if comps.savedCurrent.description !== undefined && descriptionState.inputVal !== comps.savedCurrent.description}
-    <!-- The transition:fade is important so that the button click isn't 
+    <!-- The transition:fade is important so that the button click isn't
        registered as "not within the dropdown" hence causing it to close. -->
     <button
       transition:fade={{ duration: 100 }}
@@ -315,7 +315,7 @@
     class="mx-3 grow text-rock-600 font-mono outline-none flex flex-wrap"
   ></div>
   {#if comps.savedCurrent.tags !== undefined && tagsEditor.inputVal !== comps.savedCurrent.tags}
-    <!-- The transition:fade is important so that the button click isn't 
+    <!-- The transition:fade is important so that the button click isn't
        registered as "not within the dropdown" hence causing it to close. -->
     <button
       transition:fade={{ duration: 100 }}

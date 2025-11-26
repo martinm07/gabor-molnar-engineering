@@ -3,7 +3,7 @@
   import { watch } from "runed";
   import Fuse, { type FuseResult } from "fuse.js";
   import {
-    nodesSelection,
+    selection,
     mode,
     changePage,
     editorState,
@@ -202,7 +202,7 @@
       editorState.mode,
     );
     const topLevel = Array(...componentFrag.childNodes);
-    $nodesSelection[0].replaceWith(componentFrag);
+    selection.selected[0].replaceWith(componentFrag);
     setSelection(topLevel);
     mode.sidebar = "edit";
     query = "";

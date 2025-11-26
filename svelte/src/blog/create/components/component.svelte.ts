@@ -1,14 +1,13 @@
 import { get } from "svelte/store";
 import {
   savedComponents,
-  nodesSelection,
-  nodeHoverTarget,
+  selection,
   type SavedComponent,
   compLibEdits,
   editorState,
   compLibVer,
 } from "../store.svelte";
-import { reconstructHTMLString } from "../docsyncing";
+import { type DocNodeMap } from "../docsyncing";
 import {
   getAllChildNodes,
   getNextElement,
@@ -84,18 +83,12 @@ function getSiblingIndex(el: Element) {
   return index + 1;
 }
 
-export function generateCompContentStr(topEl: HTMLElement, compName: string) {
-  // The reconstructHTMLString creates the HTML string for the document, taking
-  //  into account masked attribute values, and also gives a mapping of nodes to
-  //  their indexes and lengths in the generated HTML string, which allows us to
-  //  manually insert "data-component" attributes without ever actually affecting
-  //  the DOM.
-  let [htmlStr, nodeMap] = reconstructHTMLString(
-    topEl,
-    { docContainer: topEl },
-    false,
-  );
-
+export function generateCompContentStr(
+  topEl: HTMLElement,
+  htmlStr: string,
+  nodeMap: DocNodeMap,
+  compName: string,
+) {
   // Create a list of string updates to add all the data-componet attributes to HTMLElements
   const strUpdates: { insert: string; index: number }[] = [];
   const allPartsStrings: string[] = [];
@@ -249,10 +242,13 @@ export function changeElToComp(el: Element, compName: string) {
     while (el.firstChild) newEl.appendChild(el.firstChild);
     el.replaceWith(newEl);
 
-    if (get(nodeHoverTarget) === el) nodeHoverTarget.set(newEl);
-    if (get(nodesSelection).some((item) => item === el))
-      nodesSelection.update((old) =>
-        old.map((item) => (item === el ? newEl : item)),
+    if (selection.hover === el) selection.hover = newEl;
+    if (selection.selected.some((item) => item === el))
+      // selection.selected.update((old) =>
+      //   old.map((item) => (item === el ? newEl : item)),
+      // );
+      selection.selected = selection.selected.map((item) =>
+        item === el ? newEl : item,
       );
 
     el_ = newEl;

@@ -963,10 +963,8 @@ const isPotentialLocation = (node?: Node | null) =>
   (node.classList.contains("potential-location") ||
     node.parentElement?.classList.contains("potential-location"));
 
-let prevFetch: Promise<Response> | null = null;
 export function patchMutations(
   mutations: TempMutationRecord[],
-  documentID: number | null,
   p: {
     docNodes: DocNodeMap;
     stringPosNodeMap: StringPosNodeMap;
@@ -977,7 +975,6 @@ export function patchMutations(
   opts: {
     updateHTMLStr?: string;
     debug?: boolean;
-    disableServerSync?: boolean;
   } = {},
 ): [
   patches: DocPatch[],
@@ -1152,26 +1149,6 @@ export function patchMutations(
   p.docNodes.forEach((info, node) =>
     p.stringPosNodeMap.set(info.stringPos, node),
   );
-
-  const createFetch = () =>
-    fetch_("/documents/sync_document_patch", {
-      method: "post",
-      body: JSON.stringify({
-        id: documentID,
-        patches: patches.map((patch) => {
-          return {
-            index: patch.str_.start,
-            length: patch.str_.length,
-            value: patch.str_.value,
-          };
-        }),
-      }),
-    });
-
-  if (!opts.disableServerSync && patches.length > 0 && documentID !== null) {
-    if (prevFetch === null) prevFetch = createFetch();
-    else prevFetch = prevFetch.then(createFetch);
-  }
 
   return [
     patches,

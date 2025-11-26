@@ -8,8 +8,9 @@
   import CssEditor, { type ICSSEditor } from "./editors/css/CSSEditor.svelte";
   import TagNameEditor from "./editors/tag/TagNameEditor.svelte";
   import {
-    nodeHoverTarget,
-    nodesSelection,
+    // nodeHoverTarget,
+    // nodesSelection,
+    selection,
     mode,
     compLibVer,
   } from "./store.svelte";
@@ -31,20 +32,13 @@
   let { attributesEditor = $bindable(), cssEditor = $bindable() }: Props =
     $props();
 
-  let selected = $derived(
-    $nodesSelection.length === 0
-      ? $nodeHoverTarget
-        ? [$nodeHoverTarget]
-        : []
-      : $nodesSelection,
-  );
   let disabled = $derived(
     editorState.mode === "document" &&
-      selected.some((el) => el.getAttribute("data-component")),
+      selection.main.some((el) => el.getAttribute("data-component")),
   );
 
   watch(
-    () => selected,
+    () => selection.main,
     () => {
       // It seems that we have to wait for the DOM to update with the new "highlight" elements
       //  before trying to update the highlight, hence the animation frame callback.
@@ -57,7 +51,7 @@
   //   happens when actually clicking "Create Empty Node" or clicking a component).
   //  cancel the adding of that node
   watch(
-    [() => $nodesSelection, () => mode.sidebar],
+    [() => selection.selected, () => mode.sidebar],
     (_, [prevSelection, prevSidebar]) => {
       if (
         prevSidebar === "addcomponent" &&
@@ -84,20 +78,20 @@
 
 <!-- SIDEBAR MODE: edit -->
 <div
-  class:hidden={selected.length === 0 || mode.sidebar !== "edit"}
+  class:hidden={selection.main.length === 0 || mode.sidebar !== "edit"}
   class="text-center"
 >
-  <TagNameEditor {selected} {disabled} />
+  <TagNameEditor selected={selection.main} {disabled} />
 </div>
 <div
-  class:hidden={selected.length === 0 || mode.sidebar !== "edit"}
+  class:hidden={selection.main.length === 0 || mode.sidebar !== "edit"}
   class="w-full h-fit p-2 text-center mt-8"
 >
-  <CssEditor {selected} {disabled} bind:this={cssEditor} />
+  <CssEditor selected={selection.main} {disabled} bind:this={cssEditor} />
 </div>
-<div class:hidden={selected.length === 0 || mode.sidebar !== "edit"}>
+<div class:hidden={selection.main.length === 0 || mode.sidebar !== "edit"}>
   <AttributesEditor
-    {selected}
+    selected={selection.main}
     {disabled}
     bind:this={attributesEditor}
     bind:attributes={editorAttrs}
@@ -118,7 +112,7 @@
     class="create-empty-node border-2 border-rock-400 rounded text-lg text-rock-600 px-3 py-2 bg-rock-100 shadow-inner shadow-white hover:bg-rock-200 ring-rock-200 focus:ring-4 focus:outline-none relative"
     onclick={() => {
       // There should only be one selected element, nonetheless we use forEach for reliability's sake
-      selected.forEach((el) => {
+      selection.main.forEach((el) => {
         el.classList.remove("temp-added");
         el.removeAttribute("class");
       });
@@ -133,10 +127,10 @@
       //        are on the selection could easily become outdated if there is JavaScript manipulating
       //        the document in some way. It would be a good idea to have them listen for DOM `attributes`
       //        mutations on the currently selected elements for refetches.
-      const selTemp = $nodesSelection;
-      $nodesSelection = [];
+      const selTemp = selection.selected;
+      selection.selected = [];
       requestAnimationFrame(() => {
-        $nodesSelection = selTemp;
+        selection.selected = selTemp;
       });
 
       mode.sidebar = "edit";

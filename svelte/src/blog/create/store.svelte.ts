@@ -3,6 +3,7 @@ import { on } from "svelte/events";
 import { elsListConnected } from "./helper";
 import { fetch_, assign } from "/shared/helper";
 import { PersistedState, useDebounce } from "runed";
+import type { CompLibUpgradeInfo } from "./components/component.svelte";
 
 type CursorMode = "select" | "edit" | "add" | "move" | "noselect";
 // export const cursorMode: Writable<CursorMode> = writable("select");
@@ -18,11 +19,19 @@ export const mode = new Mode();
 export const cssStyles: Writable<Map<Element, [k: string, v: string][]>> =
   writable(new Map());
 
-export const nodeHoverTarget: Writable<Element | undefined> = writable();
-export const nodesSelection: Writable<Element[]> = writable([]);
-export const nodesIslandSelection = derived(nodesSelection, (nodesSelection) =>
-  elsListConnected(nodesSelection),
-);
+class Selection {
+  hover: Element | undefined = $state();
+  selected: Element[] = $state([]);
+  island: Element[] = $derived(elsListConnected(this.selected));
+  main: Element[] = $derived(
+    this.selected.length === 0
+      ? this.hover
+        ? [this.hover]
+        : []
+      : this.selected,
+  );
+}
+export const selection = new Selection();
 
 type AutocompleteMode = "css" | "attributes" | "tag" | "component" | null;
 export const autocompleteMode: Writable<AutocompleteMode> = writable(null);
@@ -107,6 +116,8 @@ class CompLibVer {
   isVersFetched: boolean = $derived(
     this.currentVer !== null && this.latestVer !== null,
   );
+
+  upgradeInfo: CompLibUpgradeInfo | null = $state(null);
 }
 export const compLibVer = new CompLibVer();
 
@@ -238,5 +249,36 @@ export const compLibEdits = new PersistedState<CompLibEdit[]>(
   "compLibEdits",
   [],
 );
+
+interface LocalSaveDocEntry {
+  id: string;
+  lastUsed: number;
+  body: string;
+  compLibVer: string;
+}
+
+interface LocalSaveLibEntry {
+  version: string;
+  lastUsed: number;
+  comps: SavedComponent[];
+  definedTags?: string[];
+}
+
+type LocalSaveEntry = LocalSaveDocEntry | LocalSaveLibEntry;
+
+export function localSaveEntryIsDoc(
+  entry: LocalSaveEntry,
+): entry is LocalSaveDocEntry {
+  return entry.hasOwnProperty("id");
+}
+export function localSaveEntryIsLib(
+  entry: LocalSaveEntry,
+): entry is LocalSaveLibEntry {
+  return entry.hasOwnProperty("version");
+}
+
+type LocalSave = Partial<Record<string, LocalSaveEntry>>;
+// TODO: Entries from `localSave` need to be pruned when their `lastUsed` exceeds a threshold
+export const localSave = new PersistedState<LocalSave>("localSave", {});
 
 export const debounceCancellables: ReturnType<typeof useDebounce>[] = [];

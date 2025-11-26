@@ -27,7 +27,7 @@
   import FitContentWrapTextarea from "/shared/components/FitContentWrapTextarea.svelte";
   import {
     autocompleteSuggestions,
-    nodesSelection,
+    selection,
     savedComponents,
     maskedAttributes,
     type MaskAttribute,
@@ -389,11 +389,11 @@
   function handleAutocomplete(
     allAvailable: { name: string | null; url: string }[],
   ) {
-    const selection = getSelection();
-    if (!selection || !selection.focusNode) return;
-    if (!closest(selection.focusNode, attributesEl)) return;
+    const caret = getSelection();
+    if (!caret || !caret.focusNode) return;
+    if (!closest(caret.focusNode, attributesEl)) return;
 
-    const node = selection.focusNode;
+    const node = caret.focusNode;
     if (
       node instanceof HTMLTextAreaElement &&
       node.classList.contains("attrname-input")
@@ -477,8 +477,8 @@
 
 <svelte:document
   onselectionchange={() => {
-    const selection = getSelection();
-    if (!selection || !closest(selection.focusNode, attributesEl)) return;
+    const caret = getSelection();
+    if (!caret || !closest(caret.focusNode, attributesEl)) return;
 
     // console.log("AttributeEditor selection update! 💙");
     // Suggest new history items if the selection changed without an input event being fired
@@ -597,7 +597,8 @@
                     changeElToComp(el, componentVal);
                   });
                 dataComponent.send("reset");
-                $nodesSelection = $nodesSelection;
+                // TODO: Reassigning selection.selected to itself won't trigger an update (I believe), as it is state not store.
+                // $nodesSelection = $nodesSelection;
               }
             }}
           >

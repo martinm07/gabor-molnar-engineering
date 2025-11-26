@@ -2,7 +2,7 @@
   import { onDestroy, getContext } from "svelte";
   import { on } from "svelte/events";
   import { watch } from "runed";
-  import { mode, nodesIslandSelection, nodesSelection } from "../store.svelte";
+  import { mode, selection } from "../store.svelte";
   import { prevSibling, nextSibling } from "../helper";
   import { PotentialLocations, type Rect } from "./AddNode.svelte";
   import { type IAttributesEditor } from "../editors/attributes/AttributesEditor.svelte";
@@ -18,14 +18,14 @@
 
   let endPrevAttrMask: (() => void) | undefined;
   watch(
-    () => $nodesIslandSelection,
+    () => selection.island,
     () => {
       if (endPrevAttrMask) endPrevAttrMask();
-      if ($nodesIslandSelection.length > 0)
+      if (selection.island.length > 0)
         [endPrevAttrMask] = startAttributeUsage(
           "draggable",
           "true",
-          $nodesSelection,
+          selection.selected,
         );
       else endPrevAttrMask = undefined;
     },
@@ -38,14 +38,14 @@
   const off1 = on(docParent, "dragstart", (e) => {
     console.log(e.target);
     if (
-      $nodesIslandSelection.some(
+      selection.island.some(
         (el) => e.target instanceof Node && el.contains(e.target),
       )
     ) {
       mode.cursor = "move";
       potentialLocations.addPotentialLocs(
         (loc) =>
-          !$nodesIslandSelection.some(
+          !selection.island.some(
             (el) =>
               el.contains(loc) ||
               prevSibling(el) === loc ||
@@ -72,7 +72,7 @@
   const off4 = on(docParent, "drop", (e) => {
     if (mode.cursor !== "move" || !potentialLocations.activeLocation) return;
     e.preventDefault();
-    potentialLocations.activeLocation.before(...$nodesIslandSelection);
+    potentialLocations.activeLocation.before(...selection.island);
     updateHighlight();
   });
   onDestroy(off4);

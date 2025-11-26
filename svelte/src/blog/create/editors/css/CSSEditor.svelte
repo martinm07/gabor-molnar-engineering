@@ -379,11 +379,11 @@
   ) {
     if (!stylesEl) return;
 
-    const selection = document.getSelection();
+    const caret = document.getSelection();
     const offset = calculateTotalOffset(
       stylesEl,
-      selection?.focusNode,
-      selection?.focusOffset,
+      caret?.focusNode,
+      caret?.focusOffset,
     );
 
     const styleStr = preventColonsDeletion(
@@ -397,13 +397,13 @@
     declareMadeMutation();
 
     if (
-      selection?.focusNode instanceof Element &&
-      selection.focusNode.closest(".styles-display")
+      caret?.focusNode instanceof Element &&
+      caret.focusNode.closest(".styles-display")
     ) {
-      if (enterPressed) selection?.setPosition(stylesEl, enterPressed);
+      if (enterPressed) caret?.setPosition(stylesEl, enterPressed);
       else {
         const [node, newOffset] = findNodeFromOffset(stylesEl, offset);
-        selection?.setPosition(node, newOffset);
+        caret?.setPosition(node, newOffset);
       }
     }
     if (!skipAutocompleteUpdate) handleAutocomplete();
@@ -437,12 +437,11 @@
   }
 
   function handleAutocomplete() {
-    const selection = getSelection();
-    if (!selection || !selection.focusNode) return;
-    if (!closest(selection.focusNode, stylesEl)) return;
+    const caret = getSelection();
+    if (!caret || !caret.focusNode) return;
+    if (!closest(caret.focusNode, stylesEl)) return;
 
-    const node = selection.focusNode;
-    console.warn("⚠⚠⚠ HANDLING AUTOCOMPLETE ON CSSEDITOR");
+    const node = caret.focusNode;
     if (
       (node instanceof HTMLElement && node.tagName === "B") ||
       node.parentElement?.tagName === "B"
@@ -501,18 +500,18 @@
   //  on the CSSEditor...
   // Using `<svelte:document onselectionchange={[...]}>` does the expected thing of calling after ALL selection changes.
   const off1 = on(document, "selectionchange", (e) => {
-    const selection = getSelection();
+    const caret = getSelection();
     // prevStyleStrSelection = styleStrSelection;
-    // styleStrSelection = selection !== null ? selectionToState(selection) : null;
+    // styleStrSelection = caret !== null ? selectionToState(caret) : null;
 
     prevSelection = getPrevSelection();
 
     // console.log(
-    //   selection?.anchorNode,
-    //   selection?.anchorOffset,
-    //   selection?.focusNode,
-    //   selection?.focusOffset,
-    //   selection?.direction,
+    //   caret?.anchorNode,
+    //   caret?.anchorOffset,
+    //   caret?.focusNode,
+    //   caret?.focusOffset,
+    //   caret?.direction,
     // );
 
     function adjustSelection(
@@ -526,20 +525,20 @@
       let prevEl: Node | null;
       let prevOffset: number | null;
       if (selectionNode === "anchor") {
-        el = selection?.anchorNode ?? null;
-        offset = selection?.anchorOffset ?? null;
+        el = caret?.anchorNode ?? null;
+        offset = caret?.anchorOffset ?? null;
         prevEl = prevSelection?.anchorNode ?? null;
         prevOffset = prevSelection?.anchorOffset ?? null;
       } else {
-        el = selection?.focusNode ?? null;
-        offset = selection?.focusOffset ?? null;
+        el = caret?.focusNode ?? null;
+        offset = caret?.focusOffset ?? null;
         prevEl = prevSelection?.focusNode ?? null;
         prevOffset = prevSelection?.focusOffset ?? null;
       }
 
       if (!el || !stylesEl.contains(el)) return;
       const topEl = getTopEl(el) as HTMLElement;
-      if (!(selection && topEl && predicate(topEl) && offset === whenOffset))
+      if (!(caret && topEl && predicate(topEl) && offset === whenOffset))
         return;
       // If the selection is being moved within the style editor, make sure the bump
       //  would be bumping in the same direction as the movement
@@ -570,28 +569,28 @@
       if (!newFocus) return;
 
       const newOffset = bump === "prev" ? newFocus.length : 0;
-      if (selection.focusNode && selection.anchorNode) {
+      if (caret.focusNode && caret.anchorNode) {
         selectionNode === "anchor"
-          ? selection.setBaseAndExtent(
+          ? caret.setBaseAndExtent(
               newFocus,
               newOffset,
-              selection.focusNode,
-              selection.focusOffset,
+              caret.focusNode,
+              caret.focusOffset,
             )
-          : selection.setBaseAndExtent(
-              selection.anchorNode,
-              selection.anchorOffset,
+          : caret.setBaseAndExtent(
+              caret.anchorNode,
+              caret.anchorOffset,
               newFocus,
               newOffset,
             );
-      } else selection.setPosition(newFocus, newOffset);
+      } else caret.setPosition(newFocus, newOffset);
     }
 
     // console.log(
     //   insertAtIndex(
     //     "|",
-    //     selection?.focusNode?.textContent,
-    //     selection?.focusOffset,
+    //     caret?.focusNode?.textContent,
+    //     caret?.focusOffset,
     //   ),
     // );
     const anchorfocus: Array<"anchor" | "focus"> = ["anchor", "focus"];
@@ -603,16 +602,16 @@
 
     // console.log(
     //   "Selection update! 💙",
-    //   selection?.focusNode,
-    //   selection?.focusOffset,
+    //   caret?.focusNode,
+    //   caret?.focusOffset,
     // );
 
     // Update the selection info of the topmost item of the undo stack to after
     //  the insertion has happened that the new selection point could be determined
     //  (selectionchange event fires after input event), including adjustments made above.
     // if (doingEditInput) {
-    //   if (selection !== null)
-    //     undoManager.updateLatestStateSelection(selectionToState(selection));
+    //   if (caret !== null)
+    //     undoManager.updateLatestStateSelection(selectionToState(caret));
     //   // If the previous selection was a range (highlighting text), then we want to visually display that selection
     //   //  in the undo history, and that requires updating the previous state to have this highlight as the selection
     //   // Interestingly, if we remove this condition then for non-range selections it errors as "out of bounds" by setPosition() in restoreState()
@@ -632,12 +631,12 @@
   }
 
   function getSelectionLine() {
-    const selection = document.getSelection();
-    if (!selection || !stylesEl) return;
+    const caret = document.getSelection();
+    if (!caret || !stylesEl) return;
     const focusNode =
-      selection.focusNode === stylesEl
-        ? stylesEl.childNodes[selection.focusOffset]
-        : selection.focusNode;
+      caret.focusNode === stylesEl
+        ? stylesEl.childNodes[caret.focusOffset]
+        : caret.focusNode;
     const nodes = recursiveGetNodes(stylesEl).slice(1);
     let line: Node[] = [];
     let foundLine: boolean = false;
@@ -695,17 +694,17 @@
       e.preventDefault();
       const line = getSelectionLine();
       if (!line) return;
-      const selection = getSelection();
+      const caret = getSelection();
       const colon = line.find((node) => node.textContent === ":") ?? null;
-      selection?.setPosition(colon, 1);
+      caret?.setPosition(colon, 1);
       handleAutocomplete();
     } else if (e.key === ";" && stylesEl) {
       e.preventDefault();
       const line = getSelectionLine();
       if (!line) return;
-      const selection = getSelection();
+      const caret = getSelection();
       const semic = line.find((node) => node.textContent === ";") ?? null;
-      selection?.setPosition(semic, 1);
+      caret?.setPosition(semic, 1);
       handleAutocomplete();
     }
     // else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
@@ -785,8 +784,8 @@
       return "other";
     };
 
-    const selection = getSelection();
-    const editLoc = determineLoc(selection?.focusNode ?? null);
+    const caret = getSelection();
+    const editLoc = determineLoc(caret?.focusNode ?? null);
 
     if (lastEditLoc !== null && editLoc !== lastEditLoc) {
       console.log(`CHANGED FROM WORK ON A ${lastEditLoc} TO A ${editLoc}`);
@@ -798,9 +797,9 @@
 
 <svelte:document
   onselectionchange={() => {
-    const selection = getSelection();
-    if (!selection || !closest(selection.focusNode, stylesEl)) return;
-    console.log("CSSEditor selection update! 💙");
+    const caret = getSelection();
+    if (!caret || !closest(caret.focusNode, stylesEl)) return;
+    // console.log("CSSEditor selection update! 💙");
     // Suggest new history items if the selection changed without an input event being fired
     //  (i.e. the user is using the arrow keys, or clicking around, or making a range selection)
     if (!calledOnInput) suggestCreateNewHistoryItem();
