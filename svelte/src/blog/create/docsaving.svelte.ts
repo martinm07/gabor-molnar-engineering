@@ -10,12 +10,14 @@ import {
   type DocPatch,
   type StringPosNodeMap,
   type DocPatchStr,
+  generatePosNodes,
 } from "./docsyncing";
 import {
   compLibVer,
   editorState,
   localSave,
   localSaveEntryIsDoc,
+  pruneLocalSave,
 } from "./store.svelte";
 import { fetch_ } from "/shared/helper";
 
@@ -153,6 +155,8 @@ export class SaveDoc {
       false,
     );
 
+    generatePosNodes(this.docNodes, this.stringPosNodeMap);
+
     this.syncDocLocal(htmlStr);
 
     fetch_("/documents/sync_document_full", {
@@ -161,6 +165,7 @@ export class SaveDoc {
         id: documentID,
         body: htmlStr,
       }),
+      keepalive: true,
     });
 
     return htmlStr;
@@ -228,6 +233,7 @@ export class SaveDoc {
     else {
       savedInfo.lastUsed = Date.now();
       savedInfo.body = htmlStr;
+      pruneLocalSave();
     }
   }
 

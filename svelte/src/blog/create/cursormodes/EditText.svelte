@@ -151,7 +151,7 @@
     const caret = getSelection();
     if (!caret || !editTarget || !closest(caret.focusNode, editTarget)) return;
 
-    console.log("EditText selection update! 💙");
+    // console.log("EditText selection update! 💙");
     // Suggest new history items if the selection changed without an input event being fired
     //  (i.e. the user is using the arrow keys, or clicking around, or making a range selection)
     if (!calledOnInput) suggestCreateNewHistoryItem();

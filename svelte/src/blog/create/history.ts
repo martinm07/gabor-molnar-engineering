@@ -155,6 +155,7 @@ type EphemeralNodeMapEntry = {
 //        and will skip trying to apply those patches as well.
 
 const WAIT_NEW_HISTORY_ITEM_MS = 2000;
+const MAX_ITEMS_ON_STACK = 100;
 
 export class HistoryManager {
   allSavedHistories: Map<string, { stack: DocHistoryStack; index: number }> =
@@ -514,6 +515,11 @@ export class HistoryManager {
       if (this.hist.index > 0) {
         this.log("Splicing newer history states from current state.");
         this.hist.stack.splice(0, this.hist.index);
+      } else if (this.hist.stack.length === MAX_ITEMS_ON_STACK + 1) {
+        this.log(
+          `Splicing oldest history item, as we're at the max length (${MAX_ITEMS_ON_STACK})`,
+        );
+        this.hist.stack.splice(this.hist.stack.length - 2, 1);
       }
 
       const resetForwardMap: Map<number, number> = new Map();
@@ -1411,7 +1417,7 @@ export class HistoryManager {
       `🎈🎈🎈 Attempting Undo! Going from index ${this.hist.index} -> ${this.hist.index + 1}`,
     );
     if (
-      this.hist.index > this.hist.stack.length - 1 ||
+      this.hist.index >= this.hist.stack.length - 1 ||
       this.hist.index === -1
     ) {
       this.log("Not undoing because we're at the base state.");

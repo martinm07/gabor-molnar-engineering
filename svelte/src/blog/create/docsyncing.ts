@@ -1158,6 +1158,18 @@ export function patchMutations(
   ];
 }
 
+/**
+ * Modifies the passed-in stringPosNodeMap in-place, clearing all entries and then
+ *  setting a new set of entries using the passed in docNodes.
+ */
+export function generatePosNodes(
+  docNodes: DocNodeMap,
+  stringPosNodeMap: StringPosNodeMap,
+) {
+  stringPosNodeMap.forEach((_, key) => stringPosNodeMap.delete(key));
+  docNodes.forEach((info, node) => stringPosNodeMap.set(info.stringPos, node));
+}
+
 export function applyPatches(docStr: string, patches: DocPatch[]) {
   // debugger;
   for (const patch of patches) {

@@ -102,8 +102,13 @@ export function generateCompContentStr(
         .map((el) => getSiblingIndex(el))
         .join(",");
 
+      // Void elements end as "<img src='...' />", where non void elements end in "<div title='...'>"
+      const isVoidEl = htmlStr
+        .slice(info.stringPos, info.stringPos + info.startTagLen)
+        .endsWith(" />");
+
       strUpdates.push({
-        index: info.stringPos + info.startTagLen - 1, // -1 because we want to insert before the closing ">"
+        index: info.stringPos + info.startTagLen - (isVoidEl ? 3 : 1), // -1 because we want to insert before the closing ">"
         insert: ` data-component="${compName}-[${partsStr}]"`,
       });
       allPartsStrings.push(partsStr);

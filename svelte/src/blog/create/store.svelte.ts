@@ -277,8 +277,21 @@ export function localSaveEntryIsLib(
   return entry.hasOwnProperty("version");
 }
 
+// 7 days
+const MAX_LOCALSAVE_ENTRY_LIFETIME = 1000 * 60 * 60 * 24 * 7;
+
+export function pruneLocalSave() {
+  // This is a value of time in milliseconds
+  const now = Date.now();
+
+  Object.entries(localSave.current).forEach(([key, val]) => {
+    if (val && now - val.lastUsed > MAX_LOCALSAVE_ENTRY_LIFETIME) {
+      delete localSave.current[key];
+    }
+  });
+}
+
 type LocalSave = Partial<Record<string, LocalSaveEntry>>;
-// TODO: Entries from `localSave` need to be pruned when their `lastUsed` exceeds a threshold
 export const localSave = new PersistedState<LocalSave>("localSave", {});
 
 export const debounceCancellables: ReturnType<typeof useDebounce>[] = [];

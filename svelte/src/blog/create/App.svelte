@@ -40,6 +40,7 @@
   import { handleCollapsePrevention } from "./collapseprevention";
   import { loadDocument, loadComponent } from "./docloading.svelte";
   import { SaveDoc } from "./docsaving.svelte";
+  import { on } from "svelte/events";
 
   let documentID = $derived(
     editorState.mode === "document"
@@ -306,6 +307,9 @@
   });
   onDestroy(() => clearInterval(patchInterval));
   onDestroy(() => docSaver.flushServerChanges());
+  on(document, "visibilitychange", () => {
+    if (document.hidden) docSaver.flushServerChanges();
+  });
 
   let currentSelection: ClonedSelection | null = null;
   let prevSelection: ClonedSelection | null = null;
