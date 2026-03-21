@@ -875,6 +875,11 @@ def update_document_complib():
     return ""
 
 
+@bp.route("/edit/<int:id>")
+def create(id: int):
+    return render_template("blog/create.html", document_id=id)
+
+
 @bp.cli.command("create_component_lib_base")
 def create_component_lib_base():
     if (

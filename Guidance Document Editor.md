@@ -7,17 +7,15 @@
 - When adding an element in the component library editor, the current component appears in the list of what can be added for a second, before disappearing.
 - In the document editor, it is possible to insert/move elements in between the parts of a component, breaking up its structure.
 - In the document editor, there is no indication—when a component part is selected—the component it is a part of. There should be an additional outline around the overall component to make it clear to the user that this element is part of a larger, immutable unit.
-
 ## Current Checklist
 
 - [x] Full editor undo/redo functionality
     - ~~Create undo/redo state history from MutationObserver callbacks~~
     - ~~Have other parts of the editor suggest state grouping~~
     - **POSTPONED:** Associate extra editor information
-- [ ] Prevention of illegal HTML structures
-    - Determine whether mutation resulted in illegal HTML structure
-    - Use undo manager to automatically go back on illegal operations and create toast popup informing the error
-    - BONUS: Have "relaxed" and "strict" modes of HTML structure validation
+- [x] Prevention of illegal HTML structures
+    - **POSTPONED**: Determine whether mutation resulted in illegal HTML structure, and have warnings when they're detected
+    - **POSTPONED**: BONUS: Have "relaxed" and "strict" modes of HTML structure validation
 - [x] Component library editor
     - ~~URL management~~
     - ~~A back button (if coming from editing a document, make part of the URL?) and a save button for creating new library versions~~

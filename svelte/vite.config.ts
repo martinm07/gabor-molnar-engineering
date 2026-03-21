@@ -30,6 +30,7 @@ const entryPoints = {
   bloghome: resolve(root, "blog/home/index.html"),
   blogsearch: resolve(root, "blog/search/index.html"),
   blogread: resolve(root, "blog/read/index.html"),
+  blogcreate: resolve(root, "blog/create/index.html"),
 };
 
 // IMP: Want to extend output.manualChunks? Do so here!
@@ -63,7 +64,7 @@ function isMediaFile(name: string) {
   if (/vnf|bf|xfn|pfr|tfm|gdr|afm|xft|eot|txf|acfm|pk|suit|ffil|nftr|t65|euf|mcf|cha|ytf/i.test(ext)) return "font";
   if (/lwfn|f3f|fea|pft|sft/i.test(ext)) return "font";
 
-  // The custom plugin should generally be able to work for all cases (thus we could 
+  // The custom plugin should generally be able to work for all cases (thus we could
   //  always return true), however it doesn't for resolving dependent packages (e.g. svelte)
   //  because it has to do so by making a lookup in the package's package.json, and
   //  once a file is renamed by the plugin that link becomes rotten and fails.

@@ -1,20 +1,18 @@
-# The Python version should just be the same as the Python version I'm using in
-#  development. This is because it has to line up with version requirements in
-#  requirements.txt, which is generated from my development environment.
-# Hopefully in the future I can get away from this dependence using a better
-#  package manager like `uv`, or using `pylock.toml` files, or something else.
 FROM python:3.12.3
 
-## Installing git so that "py3-validate-email" can install from gitea
-## This is only necessary for "-slim" Python images
-# RUN apt-get update && apt-get install -y git \
-#     # "Clean up to keep the container small" 
-#     && apt-get clean \
-#     && rm -rf /var/lib/apt/lists/*
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# WORKDIR /app
-COPY requirements.txt .
-RUN pip install -r requirements.txt gunicorn
+# Copy dependency files first (better layer caching)
+COPY pyproject.toml .
+COPY uv.lock .
+# Install dependencies (no project itself yet)
+RUN uv sync --frozen --no-install-project
+
+# Copy the rest of the app
 COPY . .
+# Install the project itself
+RUN uv sync --frozen
+
 EXPOSE 5000
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "wsgi:app"]
+CMD ["uv", "run", "gunicorn", "-b", "0.0.0.0:5000", "wsgi:app"]

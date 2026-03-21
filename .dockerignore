@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Deprecated / local-only
+_DEPR_svelte/
+_LOCAL_*
+
+# Svelte source (keep dist/)
+svelte/
+
+# Tests
+tests/
+
+# Dev/instance data
+instance/
+
+# Config files not needed at runtime
+config/deploy.yml
+config/init.sql
+config/Deploy Info.md
+
+# Nix
+flake.nix
+flake.lock
+
+# Tooling / IDE
+pyrightconfig.json
+unibeautifyrc.yaml
+
+# Docs
+*.md
+statuscodes.md
+
+# Misc
+Dockerfile
+.dockerignore
+unibeautifyrc.yaml
