@@ -13,6 +13,7 @@ dependencies = [
     "flask-sqlalchemy>=3.1.1",
     "flask-wtf>=1.2.2",
     "fnv128a>=0.0.2",
+    "gunicorn>=25.1.0",
     "passlib>=1.7.4",
     "py3-validate-email",
     "pymysql>=1.1.1",
