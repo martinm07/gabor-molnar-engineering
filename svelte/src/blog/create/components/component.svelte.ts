@@ -115,12 +115,19 @@ export function generateCompContentStr(
     }
   });
 
+  console.log("-------------------");
+  console.log(htmlStr);
+  console.log(strUpdates);
+
   // Sort so that the biggest index is first (avoiding index shifting)
   strUpdates.sort((a, b) => b.index - a.index);
 
   strUpdates.forEach(({ index, insert }) => {
     htmlStr = htmlStr.slice(0, index) + insert + htmlStr.slice(index);
   });
+
+  console.log(htmlStr);
+  console.log("-------------------");
 
   return { content: htmlStr, parts: allPartsStrings.toSorted().join("|") };
 }

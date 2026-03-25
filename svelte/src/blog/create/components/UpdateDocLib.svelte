@@ -38,7 +38,6 @@
   let submitMsg: string = $state("");
 
   const getDocEl: () => HTMLElement = getContext("getDocEl");
-  const refreshDocument: () => void = getContext("refreshDocument");
   async function upgradeLibrarySubmit() {
     if (!upgradeInfo) {
       submitStatus = "error";
@@ -92,9 +91,6 @@
     }
 
     submitStatus = "success";
-    setTimeout(() => {
-      refreshDocument();
-    }, 1000);
   }
 </script>
 

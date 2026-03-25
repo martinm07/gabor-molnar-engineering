@@ -63,13 +63,6 @@
       });
     },
   );
-  setContext("refreshDocument", () => {
-    loadDocument({
-      multipleSelect,
-      docEl,
-      historyManager,
-    });
-  });
 
   watch(
     () => componentID,

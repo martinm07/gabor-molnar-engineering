@@ -118,7 +118,7 @@ export class SaveDoc {
       this.syncDocLocal(htmlStr);
       this.serverSyncPatchesQueue.push(...patches.map((patch) => patch.str_));
     } else if (editorState.mode === "component") {
-      this.syncCompLocal();
+      this.syncCompLocal(htmlStr);
     }
 
     this.prevDocumentType = editorState.mode;
@@ -237,7 +237,7 @@ export class SaveDoc {
     }
   }
 
-  syncCompLocal() {
+  syncCompLocal(htmlStr?: string) {
     const componentID = getComponentID();
     const docEl = this.getDocEl();
     if (componentID === null || !docEl) return;
@@ -250,19 +250,22 @@ export class SaveDoc {
     //  their indexes and lengths in the generated HTML string, which allows us to
     //  manually insert "data-component" attributes without ever actually affecting
     //  the DOM.
-    const [htmlStr, nodeMap] = reconstructHTMLString(
-      docEl,
-      {
-        docNodes: this.docNodes, // TODO: Should this be included here?
-        docContainer: docEl,
-      },
-      false,
-    );
+    let nodeMap: DocNodeMap | undefined;
+    if (htmlStr === undefined) {
+      [htmlStr, nodeMap] = reconstructHTMLString(
+        docEl,
+        {
+          docNodes: this.docNodes, // TODO: Should this be included here?
+          docContainer: docEl,
+        },
+        false,
+      );
+    }
 
     const { content, parts } = generateCompContentStr(
       docEl,
       htmlStr,
-      nodeMap,
+      nodeMap ?? this.docNodes,
       comp.name,
     );
     updateCompEdit(componentID, { content, parts });
