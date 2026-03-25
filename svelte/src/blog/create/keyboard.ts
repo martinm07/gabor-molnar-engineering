@@ -63,7 +63,7 @@ export function onKeydown(e: KeyboardEvent, p: EditorInterfaceKeyboard) {
     e.target instanceof HTMLElement
   ) {
     e.target.blur();
-  } else if (e.ctrlKey && e.key === "z") {
+  } else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
     try {
       p.historyManager?.undo();
       // preventDefault here stops the browser's native undo/redo in contenteditable elements
@@ -79,7 +79,7 @@ export function onKeydown(e: KeyboardEvent, p: EditorInterfaceKeyboard) {
         parsed.forEach((node) => p.docEl?.appendChild(node));
       }
     }
-  } else if (e.ctrlKey && e.key === "y") {
+  } else if ((e.ctrlKey || e.metaKey) && e.key === "y") {
     try {
       p.historyManager?.redo();
       e.preventDefault();

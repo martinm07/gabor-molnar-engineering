@@ -91,6 +91,53 @@
     }
   }
 
+  function recursiveGetNodes(el: Node): Node[] {
+    if (el.childNodes.length === 0) return [el];
+    return [
+      el,
+      ...Array(...el.childNodes).flatMap((node) => recursiveGetNodes(node)),
+    ];
+  }
+
+  function getSelectionLine(stylesEl: HTMLElement) {
+    const caret = document.getSelection();
+    if (!caret || !stylesEl) return;
+    const focusNode =
+      caret.focusNode === stylesEl
+        ? stylesEl.childNodes[caret.focusOffset]
+        : caret.focusNode;
+    const nodes = recursiveGetNodes(stylesEl).slice(1);
+    let line: Node[] = [];
+    let foundLine: boolean = false;
+    for (const node of nodes) {
+      if (focusNode === node) foundLine = true;
+      if (node instanceof HTMLElement && node.tagName === "BR") {
+        if (!foundLine) line = [];
+        else break;
+      }
+      line.push(node);
+    }
+    // console.log("Selection line:", line);
+    return line;
+  }
+
+  function getNodesInRange(range: StaticRange, stylesEl: HTMLElement) {
+    const nodes = recursiveGetNodes(stylesEl).slice(1);
+    const final: Node[] = [];
+    for (const node of nodes) {
+      // If this node follows the start node of the range AND precedes the end node of the range, then it's in the range
+      if (
+        range.startContainer.compareDocumentPosition(node) ===
+          Node.DOCUMENT_POSITION_FOLLOWING &&
+        range.endContainer.compareDocumentPosition(node) ===
+          Node.DOCUMENT_POSITION_PRECEDING
+      ) {
+        final.push(node);
+      }
+    }
+    return final;
+  }
+
   function parseStylesStr(
     inp?: HTMLElement | string,
   ): [string, StylesList, string] {
@@ -126,14 +173,14 @@
         : ' class="invalid"';
 
       htmlStrStatements[i] =
-        `<b${validMarkup}>${urlMarkup}${prop[0]}</b><div class="colon">:</div><em>${prop[1]}</em>`;
+        `<b${validMarkup}>${urlMarkup}${prop[0]}</b><span class="colon">:</span><em>${prop[1]}</em>`;
       plainStrStatements[i] = `${prop[0]}:${prop[1]}`;
     });
 
-    let htmlStr = htmlStrStatements.join('<div class="semic">;</div><br />');
+    let htmlStr = htmlStrStatements.join('<span class="semic">;</span><br />');
     let plainStr = plainStrStatements.join(";");
 
-    htmlStr += '<div class="semic">;</div>';
+    htmlStr += '<span class="semic">;</span>';
     plainStr += ";";
 
     return [htmlStr, reflowed, plainStr];
@@ -152,11 +199,6 @@
     allowedPropNames,
   } from "./handlecss";
   import { ClonedSelection, closest, insertAfter } from "../../helper";
-  // import {
-  //   type CSSEditorState,
-  //   type StyleStrSelection,
-  //   UndoManager,
-  // } from "./undo.svelte";
 
   let styles = $state("");
   let stylesEl: HTMLElement;
@@ -317,56 +359,135 @@
       $cssStyles.set(el, genStyles);
 
       const [styleStr] = getSelectionStyleStr(selected);
-      updateDisplay(styleStr, true);
+      updateDisplay(styleStr, true, true);
     };
 
     if (performedMutation) {
       // console.log(
       //   "Skipping syncElementInlineStyles; performedMutation is true",
+      //   x,
       // );
       return;
     }
 
+    const processed: Node[] = [];
     if (x instanceof Node) {
       if (!(x instanceof Element)) return;
       syncInlineStyles(x);
     } else {
       x.forEach((x_) => {
-        if (!(x_ instanceof Element)) return;
+        if (!(x_ instanceof Element) || processed.includes(x_)) return;
         syncInlineStyles(x_);
+        // Elements that we've already called syncInlineStyles for don't need to be processed again
+        processed.push(x_);
       });
     }
   }
 
-  // IMP: Currently doing nothing (because maybe this behaviour wasn't necessary)
-  function preventColonsDeletion(styleStr: string, prevStyleStr: string) {
-    // const diff = diffChars(prevStyleStr, styleStr);
-    // let finalStr = "";
-    // for (const change of diff) {
-    //   if (!change.removed) finalStr += change.value;
-    //   else {
-    //     const del = change.value;
-    //     let toBeAdded = [...del.matchAll(/[;:]/g)]
-    //       .map((exp) => (!charInStrQuoted(del, exp.index) ? exp[0] : ""))
-    //       .join("");
-    //     // :;: <-- margin:0;position:rela
-    //     // :;:; <-- margin:0;position:relative;disp
-    //     // ;:; <-- 0px;display:block;
-    //     // ;:;: <-- 0px;display:block;position:rela
-    //     toBeAdded = toBeAdded.replace(/(?<!^):;/g, "");
-    //     // toBeAdded will at most be 3 long
-    //     if (toBeAdded.startsWith(":;") && finalStr.at(-1) === ";")
-    //       toBeAdded = toBeAdded.slice(2);
-    //     finalStr += toBeAdded;
-    //   }
-    // }
-    // return finalStr;
-    return styleStr;
+  const removedColons: Node[] = [];
+  let removeColonsStartRangePos: number = -1;
+
+  function beforeInputFindRemovedColons(e: InputEvent) {
+    const getContainerEl = (node: Node) =>
+      node.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+
+    // Separators refer to colons and semi-colons in the style string
+    const isSeparator = (node: Node) => {
+      const containerEl = getContainerEl(node);
+      const isColonOrSemic =
+        containerEl instanceof HTMLElement &&
+        (containerEl.classList.contains("colon") ||
+          containerEl.classList.contains("semic"));
+      return isColonOrSemic;
+    };
+
+    // Reset the removedColons array
+    removedColons.splice(0);
+
+    if (e.inputType.startsWith("delete") || e.inputType.startsWith("insert")) {
+      for (const range of e.getTargetRanges()) {
+        // It is impossible for a range to remove/replace separators if it is collapsed!
+        if (range.collapsed) continue;
+
+        // Note that startContainer will always precede endOffset in the DOM order
+        //  (unlike focusNode and anchorNode in selections from getSelection())
+        // Check if the start node for the range being removed/replaced is a colon/semic
+        //  and if the offset in that start node would cause the colon/semic to indeed get removed/replaced
+        if (isSeparator(range.startContainer) && range.startOffset === 0) {
+          const containerEl = getContainerEl(range.startContainer);
+          if (!removedColons.includes(containerEl!))
+            removedColons.push(containerEl!);
+        }
+
+        getNodesInRange(range, stylesEl).forEach((node) => {
+          const containerEl = getContainerEl(node);
+          if (isSeparator(node) && !removedColons.includes(containerEl!))
+            removedColons.push(containerEl!);
+        });
+
+        // Check if the end node for the range being removed/replaced is a colon/semic,
+        //  and if the offset in that end node would cause the colon/semic to indeed get removed/replaced
+        if (isSeparator(range.endContainer) && range.endOffset === 1) {
+          const containerEl = getContainerEl(range.endContainer);
+          if (!removedColons.includes(containerEl!))
+            removedColons.push(containerEl!);
+        }
+      }
+    }
+
+    // console.log("REMOVED COLONS:", removedColons);
+    if (removedColons.length > 0) {
+      // TODO: Handle the (rare) possibility that there's more than one target range?
+      const range = e.getTargetRanges()[0];
+      // Find the position in the style string the separators should be reinserted
+      removeColonsStartRangePos = calculateTotalOffset(
+        stylesEl,
+        range.startContainer,
+        range.startOffset,
+      );
+      // If the range is getting replaced by certain text, we want to reinsert after that new text
+      const insertedText = e.data ?? e.dataTransfer?.getData("text/plain");
+      removeColonsStartRangePos += insertedText?.length ?? 0;
+    }
   }
 
-  let prevStyleStr: string;
+  function preventColonsDeletion(styleStr: string) {
+    if (removedColons.length === 0 || removeColonsStartRangePos === -1)
+      return styleStr;
+    // The "special backspace" is pressing backspace on a line that's only :; defined by onKeydown
+    // We don't want to mess with the reinsertion of ":"s and ";"s in this case.
+    if (doingSpecialBackspace) return styleStr;
 
-  // let doingEditInput: boolean = false;
+    let reinsertStr = removedColons.map((node) => node.textContent).join("");
+
+    // console.log(styleStr[removeColonsStartRangePos - 1], "   ", reinsertStr);
+
+    // We don't reinsert the :; for a line that's completely removed,
+    //  and we know that if there is a preceding semi-colon that has been removed (or a semi-colon is the first character preceding the removed range)
+    //  for a given :;, then it represents a completely removed line.
+
+    // :;   <-- margin:0;pos
+    // :;:  <-- margin:0;position:rela
+    // :;:; <-- margin:0;position:relative;disp
+
+    // ;:   <-- 0px;display:bl
+    // ;:;  <-- 0px;display:block;pos
+    // ;:;: <-- 0px;display:block;position:rela
+
+    if (styleStr[removeColonsStartRangePos - 1] === ";")
+      reinsertStr = reinsertStr.replace(/:;/g, "");
+    else reinsertStr = reinsertStr.replace(/(?<=;):;/g, "");
+
+    // console.log(
+    //   `reinsertStr: "${reinsertStr}"  removeColonsEndRangePos: ${removeColonsStartRangePos}`,
+    // );
+
+    return (
+      styleStr.slice(0, removeColonsStartRangePos) +
+      reinsertStr +
+      styleStr.slice(removeColonsStartRangePos)
+    );
+  }
 
   // Used by onselectionchange to suggest new history items when there's a selection change without an input
   //  (NOTE: the timing of events was tested that oninput does indeed get called before onselectionchange)
@@ -376,6 +497,7 @@
   function updateDisplay(
     overrideTextContent?: string,
     skipAutocompleteUpdate?: boolean,
+    skipSyncStyles?: boolean,
   ) {
     if (!stylesEl) return;
 
@@ -388,12 +510,11 @@
 
     const styleStr = preventColonsDeletion(
       overrideTextContent ?? stylesEl.textContent ?? "",
-      prevStyleStr,
     );
     let propsList: StylesList;
     let plainStr: string;
     [stylesEl.innerHTML, propsList, plainStr] = parseStylesStr(styleStr);
-    syncStyles(propsList);
+    if (!skipSyncStyles) syncStyles(propsList);
     declareMadeMutation();
 
     if (
@@ -407,31 +528,6 @@
       }
     }
     if (!skipAutocompleteUpdate) handleAutocomplete();
-
-    // let insertType: "insert" | "delete" | "other";
-    // if (isInputEvent(event) && event.inputType.startsWith("insert"))
-    //   insertType = "insert";
-    // else if (isInputEvent(event) && event.inputType.startsWith("delete"))
-    //   insertType = "delete";
-    // else insertType = "other";
-    // const newState = {
-    //   text: plainStr,
-    //   selection: styleStrSelection,
-    //   insertType,
-    // };
-
-    // undoManager.updateInitialStateSelection(styleStrSelection);
-
-    // Only set doingEditInput to true if this input event actually caused the
-    //  editor text content to change- creating a new item on the stack (or at least combining with the topmost item).
-    // if (undoManager.isTrueEdit(newState)) {
-    //   doingEditInput = true;
-    // }
-
-    // if (!undoManager.isTrueEdit(newState))
-    //   console.log("input event did not result in changed text content");
-
-    // undoManager.addEdit(newState, event);
 
     enterPressed = undefined;
   }
@@ -468,33 +564,6 @@
       ) as Text) ?? null
     );
   }
-
-  // function selectionToState(selection: Selection): StyleStrSelection {
-  //   const determineLoc = (node: Node | null) => {
-  //     if (node === null) return "other";
-  //     const topEl = getTopEl(node) as Element | null;
-  //     if (topEl === null) return "other";
-  //     if (topEl.tagName === "B") return "prop";
-  //     else if (topEl.tagName === "EM") return "val";
-  //     return "other";
-  //   };
-  //   // console.log(determineLoc(selection.focusNode));
-  //   return {
-  //     isCollapsed: selection.isCollapsed,
-  //     focusIndex: calculateTotalOffset(
-  //       stylesEl,
-  //       selection.focusNode,
-  //       selection.focusOffset,
-  //     ),
-  //     anchorIndex: calculateTotalOffset(
-  //       stylesEl,
-  //       selection.anchorNode,
-  //       selection.anchorOffset,
-  //     ),
-  //     direction: selection.direction as "backward" | "forward" | "none",
-  //     focusLoc: determineLoc(selection.focusNode) as "prop" | "val" | "other",
-  //   };
-  // }
 
   // Somehow, it seems like using `on(document, "selectionchange", [...])` only calls selection changes after input events
   //  on the CSSEditor...
@@ -605,57 +674,16 @@
     //   caret?.focusNode,
     //   caret?.focusOffset,
     // );
-
-    // Update the selection info of the topmost item of the undo stack to after
-    //  the insertion has happened that the new selection point could be determined
-    //  (selectionchange event fires after input event), including adjustments made above.
-    // if (doingEditInput) {
-    //   if (caret !== null)
-    //     undoManager.updateLatestStateSelection(selectionToState(caret));
-    //   // If the previous selection was a range (highlighting text), then we want to visually display that selection
-    //   //  in the undo history, and that requires updating the previous state to have this highlight as the selection
-    //   // Interestingly, if we remove this condition then for non-range selections it errors as "out of bounds" by setPosition() in restoreState()
-    //   if (prevStyleStrSelection !== null && !prevStyleStrSelection.isCollapsed)
-    //     undoManager.updatePrevStateSelection(prevStyleStrSelection);
-    //   doingEditInput = false;
-    // }
   });
   onDestroy(off1);
 
-  function recursiveGetNodes(el: Node): Node[] {
-    if (el.childNodes.length === 0) return [el];
-    return [
-      el,
-      ...Array(...el.childNodes).flatMap((node) => recursiveGetNodes(node)),
-    ];
-  }
-
-  function getSelectionLine() {
-    const caret = document.getSelection();
-    if (!caret || !stylesEl) return;
-    const focusNode =
-      caret.focusNode === stylesEl
-        ? stylesEl.childNodes[caret.focusOffset]
-        : caret.focusNode;
-    const nodes = recursiveGetNodes(stylesEl).slice(1);
-    let line: Node[] = [];
-    let foundLine: boolean = false;
-    for (const node of nodes) {
-      if (focusNode === node) foundLine = true;
-      if (node instanceof HTMLElement && node.tagName === "BR") {
-        if (!foundLine) line = [];
-        else break;
-      }
-      line.push(node);
-    }
-    console.log("Selection line:", line);
-    return line;
-  }
-
   let enterPressed: number | undefined;
+  let doingSpecialBackspace: boolean = false;
   function onKeydown(e: KeyboardEvent) {
+    doingSpecialBackspace = false;
+
     if (e.key === "Backspace" && stylesEl) {
-      const line = getSelectionLine();
+      const line = getSelectionLine(stylesEl);
       if (!line || !stylesEl.querySelector("br")) return;
       const text = line
         .map((node) =>
@@ -663,6 +691,7 @@
         )
         .join("");
       if (text.length <= 3 && text.includes(":") && text.includes(";")) {
+        doingSpecialBackspace = true;
         line.forEach((node) => {
           if (stylesEl && stylesEl !== node && stylesEl.contains(node))
             stylesEl?.removeChild(node);
@@ -675,7 +704,7 @@
           e.target.dispatchEvent(new Event("input", { bubbles: true }));
       }
     } else if (e.key === "Enter" && stylesEl) {
-      const line = getSelectionLine();
+      const line = getSelectionLine(stylesEl);
       if (!line) return;
       const finalNode = line.at(-1)!;
 
@@ -692,7 +721,7 @@
       enterPressed = offset + 2;
     } else if (e.key === ":" && stylesEl) {
       e.preventDefault();
-      const line = getSelectionLine();
+      const line = getSelectionLine(stylesEl);
       if (!line) return;
       const caret = getSelection();
       const colon = line.find((node) => node.textContent === ":") ?? null;
@@ -700,63 +729,14 @@
       handleAutocomplete();
     } else if (e.key === ";" && stylesEl) {
       e.preventDefault();
-      const line = getSelectionLine();
+      const line = getSelectionLine(stylesEl);
       if (!line) return;
       const caret = getSelection();
       const semic = line.find((node) => node.textContent === ";") ?? null;
       caret?.setPosition(semic, 1);
       handleAutocomplete();
     }
-    // else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
-    //   const newState = undoManager.undo();
-    //   if (newState === null) return;
-    //   restoreState(newState);
-    // } else if ((e.ctrlKey || e.metaKey) && e.key === "y") {
-    //   const newState = undoManager.redo();
-    //   if (newState === null) return;
-    //   restoreState(newState);
-    // }
   }
-
-  // function restoreState(state: CSSEditorState) {
-  //   console.log("🎈 Restoring state!", state);
-  //   // console.log(state.selection);
-  //   let propsList: StylesList;
-  //   [stylesEl.innerHTML, propsList] = parseStylesStr(state.text);
-  //   syncStyles(propsList);
-
-  //   const selection = getSelection();
-  //   if (!state.selection || !selection) return;
-
-  //   // console.log("anchor", base, baseOffset);
-  //   // console.log("focus", focus, focusOffset);
-  //   requestAnimationFrame(() => {
-  //     if (!state.selection) return;
-  //     const [base, baseOffset] = findNodeFromOffset(
-  //       stylesEl,
-  //       state.selection.anchorIndex,
-  //     );
-  //     const [focus, focusOffset] = findNodeFromOffset(
-  //       stylesEl,
-  //       state.selection.focusIndex,
-  //     );
-
-  //     if (state.selection.isCollapsed) {
-  //       selection.setPosition(focus, focusOffset);
-  //       // selection.modify("move", "right", "character");
-  //     } else {
-  //       console.log(
-  //         "Setting selection range",
-  //         base,
-  //         baseOffset,
-  //         focus,
-  //         focusOffset,
-  //       );
-  //       selection.setBaseAndExtent(base, baseOffset, focus, focusOffset);
-  //     }
-  //     handleAutocomplete();
-  //   });
-  // }
 
   let lastEditType: "back" | "forward" | "other" | null = null;
   let lastEditLoc: "prop" | "val" | "other" | null = null;
@@ -788,7 +768,7 @@
     const editLoc = determineLoc(caret?.focusNode ?? null);
 
     if (lastEditLoc !== null && editLoc !== lastEditLoc) {
-      console.log(`CHANGED FROM WORK ON A ${lastEditLoc} TO A ${editLoc}`);
+      // console.log(`CHANGED FROM WORK ON A ${lastEditLoc} TO A ${editLoc}`);
       suggestCreateNewHistoryItem();
     }
     lastEditLoc = editLoc;
@@ -812,14 +792,14 @@
   role="application"
   bind:this={stylesEl}
   contenteditable="true"
+  spellcheck="false"
   oninput={(e) => {
     calledOnInput = true;
     updateDisplay();
     handleInputForHistory(e);
   }}
   onbeforeinput={(e) => {
-    // TODO: This was for preventColonsDeletion, which has since been removed, and thus this may no longer be necessary.
-    prevStyleStr = stylesEl.textContent ?? "";
+    beforeInputFindRemovedColons(e);
   }}
   onkeydown={onKeydown}
   class="styles-display font-mono inline-block text-left text-rock-700 bg-steel-100 p-2 rounded focus:outline-none text-sm [.disabled]:opacity-50 [.disabled]:pointer-events-none"
@@ -832,12 +812,8 @@
 
 <style>
   :global(.styles-display .colon, .styles-display .semic) {
-    display: inline-block;
     margin-right: 4px;
     color: var(--rock-500);
-  }
-  :global(.styles-display .semic) {
-    display: inline-block;
   }
   :global(.styles-display b) {
     position: relative;

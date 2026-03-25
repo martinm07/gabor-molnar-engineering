@@ -139,7 +139,7 @@
   // onDestroy(() => clearInterval(stopLogInterval));
 
   const LOG_PATCH_SYNC = false;
-  const LOG_DOC_HIST = true;
+  const LOG_DOC_HIST = false;
 
   const docNodes: DocNodeMap = new Map();
   const stringPosNodeMap: StringPosNodeMap = new Map();
@@ -189,16 +189,20 @@
       // (1) and (2) and (3), essentially; prevent and clean up elements/nodes that can't be interacted with
       handleCollapsePrevention(mutations, docEl);
 
-      for (const mutation of mutations) {
-        const target = mutation.target;
+      // 4) inform the CSS editor and Attribute editor about updates
+      const styleMutationTargets = mutations
+        .filter(
+          (mutation) =>
+            mutation.type === "attributes" &&
+            mutation.attributeName === "style",
+        )
+        .map((mutation) => mutation.target);
+      const attributeMutationTargets = mutations
+        .filter((mutation) => mutation.type === "attributes")
+        .map((mutation) => mutation.target);
 
-        // 4) inform the CSS editor and Attribute editor about updates
-        if (mutation.type === "attributes") {
-          if (mutation.attributeName === "style")
-            cssEditor?.syncElementInlineStyles(target);
-          attributesEditor?.syncElementAttributes(target);
-        }
-      }
+      cssEditor?.syncElementInlineStyles(styleMutationTargets);
+      attributesEditor?.syncElementAttributes(attributeMutationTargets);
 
       // 5) collect mutations for further processing at the end of the event cycle
       // This lets us have certain expectations when creating patches, such as
@@ -206,7 +210,6 @@
       //   -> Theoretically, this should only be relevant when within this MutationObserver callback we remove the node.
       //      As otherwise, the mutations ARE grouped together.
       collectedMutations.push(...processMutations(mutations));
-      mutations[0].removedNodes;
     },
     {
       subtree: true,
