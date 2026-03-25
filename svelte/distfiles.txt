@@ -10,10 +10,10 @@ static/blog/css/home-CGM0cBH5.css
 static/blog/js/index-B-JNrTge.js
 static/blog/js/home-CdXsG1sV.js
 static/blog/js/SearchCard-qfSQHC32.js
+static/blog/js/create-Ei4AnFus.js
 static/blog/js/read-D3qzCDSe.js
 static/blog/js/watch.svelte-CgSb9DNy.js
 static/blog/js/search-t_hgwTxF.js
-static/blog/js/create-KlPh9Gb0.js
 static/blog/txt/editors/css/firefoxDefaultCSS-XfB5o21x.txt
 static/shared/css/tailwindinit-BLCUECZ8.css
 static/shared/font/SourceSansPro-It-DwNI5KAb.woff

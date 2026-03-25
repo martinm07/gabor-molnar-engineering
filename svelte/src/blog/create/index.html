@@ -17,11 +17,9 @@
           throw new Error("Jinja wasn't parsed.");
         globalThis.jinjaParsed = true;
         globalThis.urlRoot =
-          "{{ url_for(request.endpoint).split('/')[0] + '/' }}";
+          "{{ url_for(request.endpoint, id=document_or_component_id).split('/')[0] + '/' }}";
 
         globalThis.csrfToken = "{{ csrf_token() }}";
-
-        globalThis.blogcreateDocumentID = Number.parseInt("{{ document_id }}");
       } catch {}
     </script>
     <script
