@@ -5,12 +5,12 @@ blog/search/index.html
 static/blog/css/SearchCard-D63Gv-T2.css
 static/blog/css/search-tn0RQdqM.css
 static/blog/css/read-CS2pPu5R.css
-static/blog/css/create-DSb398tg.css
+static/blog/css/create-DWIucLGl.css
 static/blog/css/home-CGM0cBH5.css
 static/blog/js/index-B-JNrTge.js
 static/blog/js/home-CdXsG1sV.js
 static/blog/js/SearchCard-qfSQHC32.js
-static/blog/js/create-Ei4AnFus.js
+static/blog/js/create-Dwx_VdXm.js
 static/blog/js/read-D3qzCDSe.js
 static/blog/js/watch.svelte-CgSb9DNy.js
 static/blog/js/search-t_hgwTxF.js
