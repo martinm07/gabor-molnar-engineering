@@ -8,14 +8,14 @@ static/blog/css/read-CS2pPu5R.css
 static/blog/css/create-DWIucLGl.css
 static/blog/css/home-CGM0cBH5.css
 static/blog/js/index-B-JNrTge.js
-static/blog/js/home-CdXsG1sV.js
+static/blog/js/create-BD3cd0ec.js
+static/blog/js/read-L83PpSg2.js
 static/blog/js/SearchCard-qfSQHC32.js
-static/blog/js/create-Dwx_VdXm.js
-static/blog/js/read-D3qzCDSe.js
+static/blog/js/search-C1VfzH0g.js
+static/blog/js/home-Dwu4plF8.js
 static/blog/js/watch.svelte-CgSb9DNy.js
-static/blog/js/search-t_hgwTxF.js
 static/blog/txt/editors/css/firefoxDefaultCSS-XfB5o21x.txt
-static/shared/css/tailwindinit-BLCUECZ8.css
+static/shared/css/tailwindinit-Bmxtm184.css
 static/shared/font/SourceSansPro-It-DwNI5KAb.woff
 static/shared/font/SourceSansPro-Light-CPb8OSV_.woff
 static/shared/font/SourceSansPro-Black-BZKuPSmt.woff2
@@ -53,5 +53,5 @@ static/shared/js/key-D2Zt7nh_.js
 static/auth/css/register-C4CRoQdj.css
 static/auth/font/IndieFlower-Regular-BeflUZG4.ttf
 static/auth/img/WelcomeSign-C88G09pb.png
-static/auth/js/register-ZIJSYOrE.js
+static/auth/js/register-3eVlTi2a.js
 auth/register/index.html
