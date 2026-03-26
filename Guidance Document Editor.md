@@ -1,10 +1,10 @@
 ## Issues
 
-- There is no ability to "discard local changes" in the component library editor.
+- ~~There is no ability to "discard local changes" in the component library editor.~~
 - Some potential locations for elements are missing.
-- Potential location elements are not ignored by the component library editor (because it is utilising `reconstructHTMLString()` directly which does not handle ignoring `potential-location` elements).
-- ~~The selection highlight (still) sometimes doesn't show up (requiring a reload to restore).~~
-- When adding an element in the component library editor, the current component appears in the list of what can be added for a second, before disappearing.
+- ~~Potential location elements are not ignored by the component library editor (because it is utilising `reconstructHTMLString()` directly which does not handle ignoring `potential-location` elements).~~
+- The selection highlight (still) sometimes doesn't show up (requiring a reload to restore).
+- ~~When adding an element in the component library editor, the current component appears in the list of what can be added for a second, before disappearing.~~
 - In the document editor, it is possible to insert/move elements in between the parts of a component, breaking up its structure.
 - In the document editor, there is no indication—when a component part is selected—the component it is a part of. There should be an additional outline around the overall component to make it clear to the user that this element is part of a larger, immutable unit.
 ## Current Checklist

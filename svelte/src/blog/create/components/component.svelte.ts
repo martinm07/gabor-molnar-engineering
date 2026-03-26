@@ -476,6 +476,12 @@ export function saveLibChanges(
     });
 }
 
+export function discardLibChanges() {
+  compLibEdits.current.splice(0);
+  // Reload page so that the saved component library is refetched
+  location.reload();
+}
+
 export function upgradeDoc(
   docContainer: HTMLElement,
   newCompLib: Omit<SavedComponent, "identName">[],

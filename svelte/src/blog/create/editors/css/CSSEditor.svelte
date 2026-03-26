@@ -482,11 +482,20 @@
     //   `reinsertStr: "${reinsertStr}"  removeColonsEndRangePos: ${removeColonsStartRangePos}`,
     // );
 
-    return (
+    const newStyleStr =
       styleStr.slice(0, removeColonsStartRangePos) +
       reinsertStr +
-      styleStr.slice(removeColonsStartRangePos)
-    );
+      styleStr.slice(removeColonsStartRangePos);
+
+    // After using these variable values to prevent colons deletion, we reset them.
+    // These variables are of course reassigned the next time beforeinput is fired,
+    //  but it's not reliable that that will happen before this is called again (i.e. the input event).
+    // Most notably, when manually dispatching events in JS (which happens when accepting autocomplete
+    //  suggestions, for example), we usually dispatch an "input" event but no "beforeinput" event.
+    removedColons.splice(0);
+    removeColonsStartRangePos = -1;
+
+    return newStyleStr;
   }
 
   // Used by onselectionchange to suggest new history items when there's a selection change without an input

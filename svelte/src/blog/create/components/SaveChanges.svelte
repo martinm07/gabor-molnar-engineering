@@ -1,8 +1,9 @@
 <script lang="ts">
   import { fly } from "svelte/transition";
   import { compLibEdits, editorState } from "../store.svelte";
-  import { saveLibChanges } from "./component.svelte";
+  import { saveLibChanges, discardLibChanges } from "./component.svelte";
   import { tada } from "/shared/helper";
+  import Trash from "phosphor-svelte/lib/Trash";
 
   let showFullModal = $state(false);
   let btnTempDisabled = $state(false);
@@ -115,5 +116,17 @@
         }
       }}>{showFullModal ? "Save changes" : "Finalise changes"}</button
     >
+    {#if showFullModal}
+      <button
+        class="absolute -right-7 translate-x-full p-3 rounded-lg border-2 border-red-700 text-red-700 text-xl font-bold shadow-inner shadow-red-100 text-shadow-xs text-shadow-red-700 hover:bg-red-600 hover:text-red-50 hover:active:bg-red-700 hover:active:cursor-default focus:ring-4 ring-red-700/30 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+        type="button"
+        disabled={btnTempDisabled}
+        onclick={() => {
+          discardLibChanges();
+        }}
+      >
+        <Trash />
+      </button>
+    {/if}
   </div>
 {/if}
