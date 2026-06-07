@@ -36,12 +36,14 @@ interface SaveDocConstructor {
   getDocEl: () => HTMLElement | undefined;
   docNodes: DocNodeMap;
   stringPosNodeMap: StringPosNodeMap;
+  doServerSync?: boolean;
 }
 
 export class SaveDoc {
   serverSyncInterval: NodeJS.Timeout | undefined;
   serverSyncPatchesQueue: DocPatchStr[] = [];
   prevFetch: Promise<Response> | null = null;
+  doServerSync: boolean;
 
   prevDocumentType: typeof editorState.mode | null = null;
   prevDocumentID: typeof editorState.resourceName | null = null;
@@ -63,6 +65,7 @@ export class SaveDoc {
     this.docNodes = p.docNodes;
     this.stringPosNodeMap = p.stringPosNodeMap;
     this.makePatches = p.makePatches;
+    this.doServerSync = p.doServerSync ?? true;
   }
 
   /**
@@ -159,14 +162,15 @@ export class SaveDoc {
 
     this.syncDocLocal(htmlStr);
 
-    fetch_("/documents/sync_document_full", {
-      method: "post",
-      body: JSON.stringify({
-        id: documentID,
-        body: htmlStr,
-      }),
-      keepalive: true,
-    });
+    if (this.doServerSync)
+      fetch_("/documents/sync_document_full", {
+        method: "post",
+        body: JSON.stringify({
+          id: documentID,
+          body: htmlStr,
+        }),
+        keepalive: true,
+      });
 
     return htmlStr;
   }
@@ -178,7 +182,7 @@ export class SaveDoc {
    *        are indeed changes that need to be synced).
    */
   syncServerDocPatch(documentID: number | null) {
-    if (documentID === null) return;
+    if (documentID === null || !this.doServerSync) return;
 
     const createFetch = () => {
       const resp = fetch_("/documents/sync_document_patch", {

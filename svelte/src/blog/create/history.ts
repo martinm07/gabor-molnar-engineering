@@ -154,7 +154,7 @@ type EphemeralNodeMapEntry = {
 //        Patches that later try to refer to this node we didn't add in will encounter the special value,
 //        and will skip trying to apply those patches as well.
 
-const WAIT_NEW_HISTORY_ITEM_MS = 2000;
+const WAIT_NEW_HISTORY_ITEM_MS = 10000;
 const MAX_ITEMS_ON_STACK = 100;
 
 export class HistoryManager {
@@ -309,16 +309,17 @@ export class HistoryManager {
 
     let i = 0;
     let prevNodeOffset = 0;
-    for (const offset of subOffsets) {
-      const isClosingTag = isClosing(
-        patchContents.slice(offset, subOffsets[i + 1]),
-      );
+    for (let i = 0; i < subOffsets.length; i++) {
+      const offset = subOffsets[i];
+      const mappedOffset = subPosMapped[i];
+
+      const isClosingTag = mappedOffset === -4;
 
       const isEphemeralChild = spliceInfo.some(
         ({ start, len }) => offset >= start && offset < start + len,
       );
 
-      const testPos = offset + startOffset;
+      const testPos = mappedOffset + startOffset;
       // Check if this offset represents a child node (not closing tag) that has become ephemeral
       if (!isClosingTag && checkMap.get(testPos) === undefined) {
         // We ignore childNodes which already have a parent processed as an ephemeral node
@@ -332,7 +333,7 @@ export class HistoryManager {
           // prettier-ignore
           console.log("offset: ", offset, "prevOffset: ", prevOffset, "subPos:", subOffsets, "startOffset:", startOffset);
 
-          if (!ephemeralNodeMapOut.get(prevNodeOffset + startOffset)) {
+          if (!ephemeralNodeMapOut.get(testPos)) {
             ephemeralNodeMapOut.set(testPos, {
               posPreceding: prevNodeOffset + startOffset,
               addType,
@@ -365,7 +366,7 @@ export class HistoryManager {
         }
       }
 
-      if (!isClosingTag) prevNodeOffset = offset;
+      if (!isClosingTag) prevNodeOffset = mappedOffset;
       if (isEphemeralChild) spliceIndices.push(i);
 
       i++;
@@ -498,7 +499,7 @@ export class HistoryManager {
     }, WAIT_NEW_HISTORY_ITEM_MS);
 
     //// Uncomment this line for more rigorous testing of patch merging behavior/functionality.
-    // this.flagSuggestNewHistoryItem = false;
+    this.flagSuggestNewHistoryItem = false;
 
     // Note that if we make an edit from a previous history state, this will always make that edit
     //  a new history item (along with splicing away all history states more recent),
@@ -894,32 +895,34 @@ export class HistoryManager {
                   ephemeralNodeBackMap.get(key),
                 );
               });
-            }
 
-            // After removing ephemeral child nodes, we map the offsets of any remaining childNodes to the base HTML string
-            //  using prevStrPosForwardMap.
-            for (let i_ = 0; i_ < patch.subPosMapped.length; i_++) {
-              const offset = patch.subPosMapped[i_];
-              // The -4 means this offset is for an end tag in the string e.g. "</div>"
-              if (offset === -4) continue;
-              const mappedStrPos = this.prevStrPosForwardMap.get(
-                patch.forwardStart + offset,
-              );
-              if (!mappedStrPos) {
-                console.error(
-                  `Wasn't able to map child node offset for remove-type patch to base HTML string using prevStrPosForwardMap. ${patch.forwardStart} (forwardStart) + ${offset} (offset) = "${patch.forwardStart + offset}" not in`,
-                  this.prevStrPosForwardMap,
-                  "for patch",
-                  patch,
+              // After removing ephemeral child nodes, we map the offsets of any remaining childNodes to the base HTML string
+              //  using prevStrPosForwardMap.
+              for (let i_ = 0; i_ < patch.subPosMapped.length; i_++) {
+                const offset = patch.subPosMapped[i_];
+                // The -4 means this offset is for an end tag in the string e.g. "</div>"
+                if (offset === -4) continue;
+                const mappedStrPos = this.prevStrPosForwardMap.get(
+                  patch.forwardStart + offset,
                 );
-                continue;
+
+                if (!mappedStrPos) {
+                  console.error(
+                    `${i}: Wasn't able to map child node offset for remove-type patch to base HTML string using prevStrPosForwardMap. ${patch.forwardStart} (forwardStart) + ${offset} (offset) = "${patch.forwardStart + offset}" not in`,
+                    this.prevStrPosForwardMap,
+                    "for patch",
+                    patch,
+                  );
+                  continue;
+                }
+                if (offset !== mappedStrPos - patch.forwardStart)
+                  this.log(
+                    `${i}: Mapped child node offset for remove-type patch to base HTML string, from "${offset}" -> "${mappedStrPos - patch.forwardStart}" (using mappedStrPos "${mappedStrPos}") on patch`,
+                    patch,
+                  );
+
+                patch.subPosMapped[i_] = mappedStrPos - patch.forwardStart;
               }
-              if (offset !== mappedStrPos - patch.forwardStart)
-                this.log(
-                  `${i}: Mapped child node offset for remove-type patch to base HTML string, from "${offset}" -> "${mappedStrPos - patch.forwardStart}" (using mappedStrPos "${mappedStrPos}") on patch`,
-                  patch,
-                );
-              patch.subPosMapped[i_] = mappedStrPos - patch.forwardStart;
             }
           }
         }
@@ -946,6 +949,13 @@ export class HistoryManager {
         //  across multiple ephemeral nodes, i.e. the forwardStart value of this patch fully
         //  resolved BEFORE we use it in adding a new entry in the ephemeralNodeMap, done below.
         handleBackMappedForwardStarts(patch, i);
+
+        if (patch.backStart === -2 || patch.backStart === -1) {
+          this.log(
+            `${i}: Skipping mapping backStart value; it is ${patch.backStart}`,
+          );
+          return;
+        }
 
         // Checking a node and its children from this add-type patch, for if they still have a place in the latest HTML string
         // We are looking for the first patch which initially adds in a now-ephemeral node...
@@ -985,12 +995,15 @@ export class HistoryManager {
               useDefaultMap: patch.mapForwardStart,
             });
 
-            patch.backStart = -2;
-            patch.mapBackStart = false;
             this.log(
               `${i}: Set in ephemeralNodeForwardMap MAIN NODE, "${patch.backStart}" -> `,
               ephemeralNodeForwardMap.get(patch.backStart),
+              "\nThe new ephemeralNodeForwardMap is:",
+              structuredClone(ephemeralNodeForwardMap),
             );
+
+            patch.backStart = -2;
+            patch.mapBackStart = false;
           } else {
             newEntries.forEach((val, key) => {
               ephemeralNodeForwardMap.set(key, val);
@@ -999,32 +1012,32 @@ export class HistoryManager {
                 ephemeralNodeForwardMap.get(key),
               );
             });
-          }
 
-          // After removing ephemeral child nodes, we map the offsets of the remaining childNodes to the latest HTML string
-          //  using strPosBackwardMap
-          for (let i_ = 0; i_ < patch.subPosMapped.length; i_++) {
-            const offset = patch.subPosMapped[i_];
-            // The -4 means this offset is for an end tag in the string e.g. "</div>"
-            if (offset === -4) continue;
-            const mappedStrPos = strPosBackwardMap.get(
-              patch.backStart + offset,
-            );
-            if (!mappedStrPos) {
-              console.error(
-                `Wasn't able to map child node offset for add-type patch to the latest HTML string using strPosBackwardMap. ${patch.backStart} (backStart) + ${offset} (offset) = "${patch.backStart + offset}" not in`,
-                strPosBackwardMap,
-                "for patch",
-                patch,
+            // After removing ephemeral child nodes, we map the offsets of the remaining childNodes to the latest HTML string
+            //  using strPosBackwardMap
+            for (let i_ = 0; i_ < patch.subPosMapped.length; i_++) {
+              const offset = patch.subPosMapped[i_];
+              // The -4 means this offset is for an end tag in the string e.g. "</div>"
+              if (offset === -4) continue;
+              const mappedStrPos = strPosBackwardMap.get(
+                patch.backStart + offset,
               );
-              continue;
+              if (!mappedStrPos) {
+                console.error(
+                  `${i}: Wasn't able to map child node offset for add-type patch to the latest HTML string using strPosBackwardMap. ${patch.backStart} (backStart) + ${offset} (offset) = "${patch.backStart + offset}" not in`,
+                  strPosBackwardMap,
+                  "for patch",
+                  patch,
+                );
+                continue;
+              }
+              if (offset !== mappedStrPos - patch.backStart)
+                this.log(
+                  `${i}: Mapped child node offset for add-type patch to latest HTML string, from "${offset}" -> "${mappedStrPos - patch.backStart}" (using mappedStrPos "${mappedStrPos}") on patch`,
+                  patch,
+                );
+              patch.subPosMapped[i_] = mappedStrPos - patch.backStart;
             }
-            if (offset !== mappedStrPos - patch.backStart)
-              this.log(
-                `${i}: Mapped child node offset for add-type patch to latest HTML string, from "${offset}" -> "${mappedStrPos - patch.backStart}" (using mappedStrPos "${mappedStrPos}") on patch`,
-                patch,
-              );
-            patch.subPosMapped[i_] = mappedStrPos - patch.backStart;
           }
         }
 
@@ -1035,13 +1048,6 @@ export class HistoryManager {
         //  but not when they refer to different HTML strings, so we make sure to early-return here
         //  to avoid accidental mapping of this node to an unrelated node in the new HTML string.
         if (!patch.mapBackStart) return;
-
-        if (patch.backStart === -2 || patch.backStart === -1) {
-          this.log(
-            `Skipping mapping backStart value; it is ${patch.backStart}`,
-          );
-          return;
-        }
 
         const mappedBackStart = strPosBackwardMap.get(patch.backStart);
         if (mappedBackStart !== undefined) {
@@ -1538,11 +1544,13 @@ export class HistoryManager {
     this.hist.index++;
   }
 
-  private log(message?: any, ...optionalParams: any[]) {
-    if (this.debug) console.log(message, ...optionalParams);
+  private get log() {
+    return this.debug ? console.log.bind(console) : (..._args: unknown[]) => {};
   }
 
-  private warn(message?: any, ...optionalParams: any[]) {
-    if (this.debug) console.warn(message, ...optionalParams);
+  private get warn() {
+    return this.debug
+      ? console.warn.bind(console)
+      : (..._args: unknown[]) => {};
   }
 }

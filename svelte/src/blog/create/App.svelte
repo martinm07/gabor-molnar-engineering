@@ -139,7 +139,8 @@
   // onDestroy(() => clearInterval(stopLogInterval));
 
   const LOG_PATCH_SYNC = false;
-  const LOG_DOC_HIST = false;
+  const LOG_DOC_HIST = true;
+  const DO_SERVER_SYNC = false;
 
   const docNodes: DocNodeMap = new Map();
   const stringPosNodeMap: StringPosNodeMap = new Map();
@@ -251,6 +252,7 @@
     getDocEl: () => docEl,
     docNodes,
     stringPosNodeMap,
+    doServerSync: DO_SERVER_SYNC,
   });
 
   const patchInterval = setInterval(() => {

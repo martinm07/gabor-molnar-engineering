@@ -503,7 +503,7 @@ function handleNodeAdd(
     mapBackStart: true,
     mapForwardStart: true,
     type:
-      node.previousSibling && prevNode?.stringPos !== undefined
+      truePreviousSibling(node) && prevNode?.stringPos !== undefined
         ? "addNextSibling"
         : "addFirstChild",
     forwardValue: fullString,
@@ -962,6 +962,17 @@ const isPotentialLocation = (node?: Node | null) =>
   node instanceof HTMLElement &&
   (node.classList.contains("potential-location") ||
     node.parentElement?.classList.contains("potential-location"));
+
+const truePreviousSibling = (node?: Node | null): Node | null => {
+  if (isPotentialLocation(node))
+    throw new Error("Called truePrevSibling for a potential-location element.");
+
+  let currentNode = node?.previousSibling ?? null;
+  while (currentNode && isPotentialLocation(currentNode)) {
+    currentNode = currentNode?.previousSibling ?? null;
+  }
+  return currentNode;
+};
 
 export function patchMutations(
   mutations: TempMutationRecord[],
