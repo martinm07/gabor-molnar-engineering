@@ -114,6 +114,7 @@ export async function loadDocument(p: EditorInterfaceLoading) {
 
   // const data = await resp.json();
 
+  console.log(data["body"]);
   const parsedBody = parseHTMLFragment(data["body"], true, true);
   loadDocBody(parsedBody, p);
 

@@ -795,7 +795,8 @@ export class HistoryManager {
             if (patch.type.startsWith("remove")) {
               const newBackStart = ephemeralNodeBackMap.get(patch.backStart);
 
-              // This shouldn't legitimately happen (that is, there should always be a matching entry in ephemeralNodeBackMap).
+              // The case where the referred ephereral node hasn't been entered into the map yet
+              //  shouldn't legitimately happen (that is, there should always be a matching entry in ephemeralNodeBackMap).
               // Any patches referring to an ephemeral node must be ordered before the patch that removes the ephemeral node.
               // We process patches in the reverse order, so that the first patch that makes reference to an ephemeral node
               //  should be the patch removing it.
@@ -839,6 +840,8 @@ export class HistoryManager {
             }
           }
         }
+
+        let newSubPosMapped: number[] = Array(patch.subPosMapped.length);
 
         // We do this after a potential necessary mapping of a backStart value to the base HTML string,
         //  so that the updated backStart would be inserted into the ephemeralNodeBackMap.
@@ -915,13 +918,12 @@ export class HistoryManager {
                   );
                   continue;
                 }
-                if (offset !== mappedStrPos - patch.forwardStart)
-                  this.log(
-                    `${i}: Mapped child node offset for remove-type patch to base HTML string, from "${offset}" -> "${mappedStrPos - patch.forwardStart}" (using mappedStrPos "${mappedStrPos}") on patch`,
-                    patch,
-                  );
 
-                patch.subPosMapped[i_] = mappedStrPos - patch.forwardStart;
+                this.log(
+                  `${i} (child node ${i_}): Query at ${patch.forwardStart} + ${offset} = ${patch.forwardStart + offset} on prevStrPosForwardMap to get ${mappedStrPos}`,
+                );
+
+                newSubPosMapped[i_] = mappedStrPos;
               }
             }
           }
@@ -938,6 +940,15 @@ export class HistoryManager {
           this.prevNodeAddLocs,
           i,
         );
+
+        // this.mapForwardStartVals updates patch.forwardStart, so that on a remove-type patch it actually refers to the location of "this element" in the base HTML string,
+        //  which is why we can only update the child offsets here (and not earlier); the "newSubPosMapped" values are already in the base HTML string.
+        newSubPosMapped.forEach((newMappedVal, i_) => {
+          this.log(
+            `${i} (child node ${i_}): Mapped child node offset for remove-type patch to base HTML string. From ${patch.subPosMapped[i_]} -> ${newMappedVal} - ${patch.forwardStart} = ${newMappedVal - patch.forwardStart}`,
+          );
+          patch.subPosMapped[i_] = newMappedVal - patch.forwardStart;
+        });
       });
 
       // Apply stringPosBackwardUpdateMap to backStart values of the patches that are being merged into
@@ -956,6 +967,8 @@ export class HistoryManager {
           );
           return;
         }
+
+        let newSubPosMapped: number[] = Array(patch.subPosMapped.length);
 
         // Checking a node and its children from this add-type patch, for if they still have a place in the latest HTML string
         // We are looking for the first patch which initially adds in a now-ephemeral node...
@@ -1022,6 +1035,7 @@ export class HistoryManager {
               const mappedStrPos = strPosBackwardMap.get(
                 patch.backStart + offset,
               );
+
               if (!mappedStrPos) {
                 console.error(
                   `${i}: Wasn't able to map child node offset for add-type patch to the latest HTML string using strPosBackwardMap. ${patch.backStart} (backStart) + ${offset} (offset) = "${patch.backStart + offset}" not in`,
@@ -1031,12 +1045,12 @@ export class HistoryManager {
                 );
                 continue;
               }
-              if (offset !== mappedStrPos - patch.backStart)
-                this.log(
-                  `${i}: Mapped child node offset for add-type patch to latest HTML string, from "${offset}" -> "${mappedStrPos - patch.backStart}" (using mappedStrPos "${mappedStrPos}") on patch`,
-                  patch,
-                );
-              patch.subPosMapped[i_] = mappedStrPos - patch.backStart;
+
+              this.log(
+                `${i} (child node ${i_}): Query at ${patch.backStart} + ${offset} = ${patch.backStart + offset} on strPosBackwardMap to get ${mappedStrPos}`,
+              );
+
+              newSubPosMapped[i_] = mappedStrPos;
             }
           }
         }
@@ -1057,6 +1071,15 @@ export class HistoryManager {
           );
           patch.backStart = mappedBackStart;
         } else handleForwardMappedBackStarts(patch, i);
+
+        // backStart doesn't actually refer to the latest HTML string until this point,
+        //  which is why we can only update the child node offsets here (and not earlier)
+        newSubPosMapped.forEach((newMappedVal, i_) => {
+          this.log(
+            `${i} (child node ${i_}): Mapped child node offset for add-type patch to latest HTML string. From ${patch.subPosMapped[i_]} -> ${newMappedVal} - ${patch.backStart} = ${newMappedVal - patch.backStart}`,
+          );
+          patch.subPosMapped[i_] = newMappedVal - patch.backStart; // backStart refers to THIS node on an add-type patch
+        });
       });
 
       patches.forEach((patch, i) => {
