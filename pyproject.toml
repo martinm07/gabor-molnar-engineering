@@ -30,5 +30,6 @@ py3-validate-email = { git = "https://git.ksol.io/karolyi/py3-validate-email", r
 dev = [
     "docker>=7.1.0",
     "mysql-connector-python>=9.4.0",
+    "pip-system-certs>=5.3",
     "pytest-mock>=3.14.1",
 ]
