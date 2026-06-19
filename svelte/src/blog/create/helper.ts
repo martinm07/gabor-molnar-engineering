@@ -60,7 +60,6 @@ export function getScrollParent(
   for (
     let parent: Element | null = element;
     (parent = parent.parentElement);
-
   ) {
     style = getComputedStyle(parent);
     if (excludeStaticParent && style.position === "static") continue;
@@ -205,6 +204,10 @@ export class ClonedSelection implements Selection {
     throw new Error("Not implemented");
   }
 
+  getComposedRanges(options?: GetComposedRangesOptions): StaticRange[] {
+    throw new Error("Not implemented");
+  }
+
   toString(): string {
     return this.ranges.map((range) => range.toString()).join("");
   }
@@ -280,6 +283,14 @@ export function closest(
     currentNode = currentNode.parentNode;
   }
   return found;
+}
+
+export function closestClass(
+  node: Node | null | undefined,
+  searchClass: string,
+) {
+  if (node instanceof Element) return node.closest(`.${searchClass}`);
+  else return node?.parentElement?.closest(`.${searchClass}`) ?? null;
 }
 
 /**

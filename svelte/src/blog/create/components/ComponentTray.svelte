@@ -5,11 +5,10 @@
   import {
     selection,
     mode,
-    changePage,
-    editorState,
     compLibVer,
     type SavedComponent,
   } from "../store.svelte";
+  import { changePage, editorState } from "../url.svelte";
   import { isElementVisible } from "../helper";
   import {
     decodeComponentStr,
@@ -18,7 +17,7 @@
     updateCompRemove,
     updateCompRestore,
   } from "./component.svelte";
-  import ArrowsCounterClockwise from "phosphor-svelte/lib/ArrowsCounterClockwise";
+  import ArrowsCounterClockwise from "phosphor-svelte/lib/ArrowsCounterClockwiseIcon";
 
   const setSelection: (nodes?: Node[] | Node) => void =
     getContext("setSelection");
@@ -342,7 +341,7 @@
         ? selectComponentAdd(i)
         : editorState.mode === "component" && selectComponentEdit(comp);
     }}
-    class="component-search-result flex my-1 p-1 rounded-lg [.active]:bg-rock-100 hover:bg-rock-100 has-[.inner-btn:hover]:!bg-background focus:bg-rock-100 cursor-pointer scroll-mt-16 scroll-mb-4"
+    class="component-search-result flex my-1 p-1 rounded-lg [.active]:bg-rock-100 hover:bg-rock-100 has-[.inner-btn:hover]:bg-background! focus:bg-rock-100 cursor-pointer scroll-mt-16 scroll-mb-4"
     class:!cursor-default={editorState.mode === "document" &&
       mode.sidebar === "viewcomponent"}
   >
@@ -352,7 +351,7 @@
       <div class="text-sm mt-1 w-full">
         {#each comp.tags?.split(",") ?? [] as tag}
           <span
-            class="bg-steel-100 border-[1px] border-steel-200 rounded px-0.5 m-0.5 inline-block"
+            class="bg-steel-100 border border-steel-200 rounded px-0.5 m-0.5 inline-block"
             >{@html tag}</span
           >
         {/each}

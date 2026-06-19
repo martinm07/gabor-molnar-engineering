@@ -69,16 +69,21 @@
     el: Element | undefined,
     offset: number,
   ): [node: Text, offset: number] {
-    if (!el) return [Object.create(Text), 0];
+    if (!el) return [document.createTextNode(""), 0];
     const textNodes = getTextNodes(el);
     let remainingOffset = offset;
-    let currentNode: Text = Object.create(Text);
+    let currentNode: Text = document.createTextNode("");
+    let found: boolean = false;
     for (const textNode of textNodes) {
       currentNode = textNode;
-      if (textNode.length >= remainingOffset) break;
-      else remainingOffset -= textNode.length;
+      if (textNode.length >= remainingOffset) {
+        found = true;
+        break;
+      } else remainingOffset -= textNode.length;
     }
-    return [currentNode, remainingOffset];
+
+    if (found) return [currentNode, remainingOffset];
+    else return [currentNode, currentNode.length];
   }
 
   const isTextNode = (node: Node): node is Text =>

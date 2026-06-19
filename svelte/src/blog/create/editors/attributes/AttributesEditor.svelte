@@ -31,8 +31,8 @@
     savedComponents,
     maskedAttributes,
     type MaskAttribute,
-    editorState,
   } from "../../store.svelte";
+  import { editorState } from "../../url.svelte";
   import {
     changeElToComp,
     componentNameValid,
@@ -493,10 +493,10 @@
     <li
       class:invalid={attr.name && !attr.valid}
       class:disabled={disabled && attr.name !== "data-component"}
-      class="group font-mono text-rock-700 text-sm text-balance text-center pb-2 mb-2 border-b-[1px] border-rock-300 last-of-type:border-0"
+      class="group font-mono text-rock-700 text-sm text-balance text-center pb-2 mb-2 border-b border-rock-300 last-of-type:border-0"
     >
       <FitContentWrapTextarea
-        class="attrname-input resize-none text-wrap bg-steel-100 font-bold focus:outline-none max-w-[calc(100%_-_8px)] p-1 rounded box-content group-[.invalid]:text-rock-500 group-[.invalid]:underline decoration-wavy decoration-red-700 disabled:opacity-50"
+        class="attrname-input resize-none text-wrap bg-steel-100 font-bold focus:outline-none max-w-[calc(100%-8px)] p-1 rounded box-content group-[.invalid]:text-rock-500 group-[.invalid]:underline decoration-wavy decoration-red-700 disabled:opacity-50"
         bind:value={attr.name}
         placeholder="attribute"
         {disabled}
@@ -506,7 +506,7 @@
         }}
       />
       <FitContentWrapTextarea
-        class="resize-none text-wrap bg-steel-100 focus:outline-none max-w-[calc(100%_-_8px)] p-1 rounded box-content disabled:opacity-50 [.unsynced]:underline decoration-dotted decoration-2 decoration-blue-400 [.invalid]:text-rock-500 {attr.name ===
+        class="resize-none text-wrap bg-steel-100 focus:outline-none max-w-[calc(100%-8px)] p-1 rounded box-content disabled:opacity-50 [.unsynced]:underline decoration-dotted decoration-2 decoration-blue-400 [.invalid]:text-rock-500 {attr.name ===
           'data-component' && dataComponent.current.includes('diff')
           ? 'unsynced'
           : ''} {attr.name === 'data-component' &&
@@ -619,7 +619,7 @@
   {/each}
 </ul>
 <div
-  class="h-[1px] w-full bg-rock-300 text-center [.disabled]:pointer-events-none [.disabled]:opacity-50"
+  class="h-px w-full bg-rock-300 text-center [.disabled]:pointer-events-none [.disabled]:opacity-50"
   class:disabled
 >
   <button

@@ -14,11 +14,11 @@ import {
 } from "./docsyncing";
 import {
   compLibVer,
-  editorState,
   localSave,
   localSaveEntryIsDoc,
   pruneLocalSave,
 } from "./store.svelte";
+import { editorState } from "./url.svelte";
 import { fetch_ } from "/shared/helper";
 
 const getDocumentID = () =>

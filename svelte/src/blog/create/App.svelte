@@ -12,9 +12,8 @@
     selection,
     autocompleteMode,
     type SavedComponent,
-    editorState,
-    changePage,
   } from "./store.svelte";
+  import { editorState, changePage } from "./url.svelte";
   import AddNode, { type IAddNode } from "./cursormodes/AddNode.svelte";
   import MultipleSelect, {
     type IMultipleSelect,
@@ -33,7 +32,7 @@
   import Autocomplete from "./editors/Autocomplete.svelte";
   import Topbar from "./Topbar.svelte";
   import SaveChanges from "./components/SaveChanges.svelte";
-  import ArrowArcLeft from "phosphor-svelte/lib/ArrowArcLeft";
+  import ArrowArcLeft from "phosphor-svelte/lib/ArrowArcLeftIcon";
   import { HistoryManager } from "./history";
   import { type ICSSEditor } from "./editors/css/CSSEditor.svelte";
   import { onKeydown } from "./keyboard";
@@ -41,6 +40,7 @@
   import { loadDocument, loadComponent } from "./docloading.svelte";
   import { SaveDoc } from "./docsaving.svelte";
   import { on } from "svelte/events";
+  import DocMeta, { type IDocMeta } from "./DocMeta.svelte";
 
   let documentID = $derived(
     editorState.mode === "document"
@@ -83,6 +83,7 @@
   let nodeSelect: INodeSelect | undefined = $state();
   let multipleSelect: IMultipleSelect | undefined = $state();
   let addNode: IAddNode | undefined = $state();
+  let docMeta: IDocMeta | undefined = $state();
 
   setContext("resetHoverTarget", () => (selection.hover = undefined));
   setContext("updateHighlight", () => {
@@ -205,6 +206,10 @@
       cssEditor?.syncElementInlineStyles(styleMutationTargets);
       attributesEditor?.syncElementAttributes(attributeMutationTargets);
 
+      setTimeout(() => {
+        docMeta?.informMetaUpdate(mutations);
+      });
+
       // 5) collect mutations for further processing at the end of the event cycle
       // This lets us have certain expectations when creating patches, such as
       //  "if we encounter an element not connected to the DOM, then some mutation in the provided set removes it"
@@ -303,6 +308,7 @@
 
     collectedMutations = [];
   });
+
   onDestroy(() => clearInterval(patchInterval));
   onDestroy(() => docSaver.flushServerChanges());
   on(document, "visibilitychange", () => {
@@ -357,14 +363,15 @@
     class="flex row-span-2 col-span-1 justify-center relative z-0 overflow-auto"
   >
     {#if docEl}
-      <EditText bind:this={editText} doc={docEl} />
-      <NodeSelect {shiftPressed} doc={docEl} bind:this={nodeSelect} />
+      <EditText bind:this={editText} {docEl} />
+      <NodeSelect {shiftPressed} {docEl} bind:this={nodeSelect} />
       <MultipleSelect bind:this={multipleSelect} />
-      <AddNode doc={docEl} bind:this={addNode} />
-      <MoveNodes doc={docEl} />
+      <AddNode {docEl} bind:this={addNode} />
+      <MoveNodes {docEl} />
     {/if}
 
     <div class="doc w-3/4 max-w-[600px]" bind:this={docEl}>
+      <DocMeta {docEl} bind:this={docMeta} />
       Loading document...
     </div>
   </div>

@@ -215,6 +215,7 @@
   class="tagname-display bg-steel-100 p-2 rounded font-mono text-lg font-bold text-rock-700 focus:outline-none [.disabled]:opacity-50 [.disabled]:pointer-events-none"
   aria-disabled={disabled}
   role="textbox"
+  spellcheck="false"
   class:disabled
   tabindex={disabled ? -1 : 0}
 >

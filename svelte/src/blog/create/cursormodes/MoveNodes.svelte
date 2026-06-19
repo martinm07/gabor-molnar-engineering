@@ -12,9 +12,9 @@
   const updateHighlight: () => void = getContext("updateHighlight");
 
   interface Props {
-    doc: HTMLElement;
+    docEl: HTMLElement;
   }
-  let { doc }: Props = $props();
+  let { docEl }: Props = $props();
 
   let endPrevAttrMask: (() => void) | undefined;
   watch(
@@ -31,9 +31,9 @@
     },
   );
 
-  const potentialLocations = new PotentialLocations(doc);
+  const potentialLocations = new PotentialLocations(docEl);
   // onDestroy(potentialLocations.removePotentialLocs);
-  const docParent = doc.parentElement!;
+  const docParent = docEl.parentElement!;
 
   const off1 = on(docParent, "dragstart", (e) => {
     console.log(e.target);

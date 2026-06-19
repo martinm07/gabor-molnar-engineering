@@ -16,7 +16,7 @@
   } from "./store.svelte";
   import { watch } from "runed";
   import { request2AnimationFrames } from "/shared/helper";
-  import { editorState } from "./store.svelte";
+  import { editorState } from "./url.svelte";
   import UpdateDocLib from "./components/UpdateDocLib.svelte";
 
   const updateHighlight: () => void = getContext("updateHighlight");

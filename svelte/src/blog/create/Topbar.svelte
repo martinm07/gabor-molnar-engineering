@@ -1,32 +1,37 @@
 <script lang="ts">
   import { circInOut } from "svelte/easing";
-  import { compLibVer, editorState, mode } from "./store.svelte";
+  import { compLibVer, mode } from "./store.svelte";
+  import { editorState } from "./url.svelte";
   import ComponentMetaEdit from "./components/ComponentMetaEdit.svelte";
-  import TreeView from "phosphor-svelte/lib/TreeView";
-  import SquaresFour from "phosphor-svelte/lib/SquaresFour";
+  import TreeView from "phosphor-svelte/lib/TreeViewIcon";
+  import SquaresFour from "phosphor-svelte/lib/SquaresFourIcon";
+  import ListIcon from "phosphor-svelte/lib/ListIcon";
+  import XIcon from "phosphor-svelte/lib/XIcon";
+  import DocMetaEdit from "./DocMetaEdit.svelte";
 
   // interface Props {
-  //   compLibVerCurrent: string | null;
-  //   compLibVerLatest: string | null;
   // }
 
-  // let { compLibVerCurrent, compLibVerLatest }: Props = $props();
+  // let {  }: Props = $props();
 
-  type DropdownState = "libver" | "compmetaedit" | "none";
+  type DropdownState = "docmetaedit" | "compmetaedit" | "none";
   let dropdown: DropdownState = $state("none");
 
   function dropdownExpandTransition(
     node: HTMLElement,
-    params: { endHeight: number; duration?: number; expandAmount?: number },
+    params: { duration?: number; expandAmount?: number },
   ) {
+    // The element exists at this time, which is why this works
+    const height = node.getBoundingClientRect().height;
+
     return {
       delay: 0,
       duration: params.duration ?? 150,
       easing: circInOut,
       css: (t: number, u: number) => {
-        const startHeight = params.endHeight - (params.expandAmount ?? 100);
+        const startHeight = height - (params.expandAmount ?? 100);
         return `
-          height: ${startHeight * u + params.endHeight * t}px;
+          height: ${startHeight * u + height * t}px;
           opacity: ${t};
         `;
       },
@@ -36,7 +41,8 @@
 
 <svelte:body
   onclick={(e) => {
-    if (!(e.target instanceof HTMLElement && e.target.closest(".topbar")))
+    // Note, <svg> is NOT considered a HTMLElement, but is considered an Element
+    if (!(e.target instanceof Element && e.target.closest(".topbar")))
       dropdown = "none";
   }}
 />
@@ -48,7 +54,7 @@
 
 <div class="p-1.5 bg-rock-100/70 border-r-2 border-rock-300 flex">
   <button
-    class="complib-btn relative aspect-square rounded hover:bg-rock-200/70 h-full flex items-center justify-center text-2xl text-rock-800 [.active]:border-[1px] border-rock-300 [.active]:bg-background [.active]:hover:bg-rock-200/70 mr-0.5"
+    class="complib-btn relative aspect-square rounded hover:bg-rock-200/70 h-full flex items-center justify-center text-2xl text-rock-800 [.active]:border border-rock-300 [.active]:bg-background [.active]:hover:bg-rock-200/70 mr-0.5"
     aria-label="View component library"
     class:active={mode.sidebar === "viewcomponent"}
     class:warn={compLibVer.isVersFetched && !compLibVer.isLibUpToDate}
@@ -58,7 +64,7 @@
     }}><SquaresFour /></button
   >
   <button
-    class="aspect-square rounded hover:bg-rock-200/70 h-full flex items-center justify-center text-2xl text-rock-800 [.active]:border-[1px] border-rock-300 [.active]:bg-background [.active]:hover:bg-rock-200/70"
+    class="aspect-square rounded hover:bg-rock-200/70 h-full flex items-center justify-center text-2xl text-rock-800 [.active]:border border-rock-300 [.active]:bg-background [.active]:hover:bg-rock-200/70"
     aria-label="View node hierarchy"
     class:active={mode.sidebar === "viewer"}
     onclick={() => {
@@ -77,32 +83,32 @@
       onclick={() => {
         if (dropdown === "compmetaedit") dropdown = "none";
         else dropdown = "compmetaedit";
-      }}><ion-icon name="options"></ion-icon></button
+      }}><ListIcon /></button
     >
-  {/if}
-  <!-- {#if compLibVer.isVersFetched && !compLibVer.isLibUpToDate}
+  {:else if editorState.mode === "document"}
     <button
-      class="aspect-square bg-white m-1.5 rounded text-yellow-400 flex items-center justify-center text-3xl cursor-pointer hover:bg-rock-50 hover:border-2 hover:text-yellow-500 border-rock-300"
-      class:bg-rock-50={dropdown === "libver"}
-      aria-label="Outdated component library version"
+      class="aspect-square m-1.5 rounded flex items-center justify-center text-3xl text-rock-700 hover:bg-rock-100 cursor-pointer"
+      class:bg-rock-100={dropdown === "docmetaedit"}
+      aria-label="Configure component metadata"
       onclick={() => {
-        if (dropdown === "libver") dropdown = "none";
-        else dropdown = "libver";
+        if (dropdown === "docmetaedit") dropdown = "none";
+        else dropdown = "docmetaedit";
       }}
     >
-      <ion-icon name="alert"></ion-icon>
+      <ListIcon class={dropdown === "docmetaedit" ? "hidden" : ""} />
+      <XIcon class={dropdown === "docmetaedit" ? "" : "hidden"} />
     </button>
-  {/if} -->
+  {/if}
 </div>
 
 {#if dropdown !== "none"}
   <div
-    transition:dropdownExpandTransition={{ endHeight: 288 }}
-    class="absolute w-[90%] left-[5%] h-72 bg-background/95 z-10 top-12 border-2 border-t-0 rounded-b-lg border-rock-300 overflow-y-scroll"
+    transition:dropdownExpandTransition={{ expandAmount: 500, duration: 100 }}
+    class="absolute w-[96%] left-[2%] h-[calc(100vh-4rem)] bg-white z-10 top-12 border-2 border-t-0 rounded-b-lg border-rock-300 overflow-y-scroll shadow-[0_30px_5px_20px_var(--background-50)]"
   >
-    {#if dropdown === "libver"}
-      <div class="h-screen"></div>
-      Boo
+    {#if dropdown === "docmetaedit"}
+      <!-- <div class="h-screen"></div> -->
+      <DocMetaEdit />
     {:else if dropdown === "compmetaedit"}
       <ComponentMetaEdit />
     {/if}
@@ -114,7 +120,7 @@
 
   .complib-btn.warn::after {
     content: "!";
-    @apply absolute -right-[3px] -bottom-[3px] bg-rock-100/70 text-yellow-500 font-bold text-3xl leading-[0.9];
+    @apply absolute right-[-3px] bottom-[-3px] bg-rock-100/70 text-yellow-500 font-bold text-3xl leading-[0.9];
   }
   .complib-btn.warn.active::after {
     @apply bg-background;

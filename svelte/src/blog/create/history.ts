@@ -7,7 +7,7 @@ import {
   type DocPatchDom,
   type StringPosNodeMap,
 } from "./docsyncing";
-import { insertAfter, parseHTMLFragment } from "./helper";
+import { closestClass, insertAfter, parseHTMLFragment } from "./helper";
 import { selection } from "./store.svelte";
 import { get } from "svelte/store";
 
@@ -154,7 +154,7 @@ type EphemeralNodeMapEntry = {
 //        Patches that later try to refer to this node we didn't add in will encounter the special value,
 //        and will skip trying to apply those patches as well.
 
-const WAIT_NEW_HISTORY_ITEM_MS = 10000;
+const WAIT_NEW_HISTORY_ITEM_MS = 2000;
 const MAX_ITEMS_ON_STACK = 100;
 
 export class HistoryManager {
@@ -498,8 +498,8 @@ export class HistoryManager {
       this.flagForceNewHistoryItem = true;
     }, WAIT_NEW_HISTORY_ITEM_MS);
 
-    //// Uncomment this line for more rigorous testing of patch merging behavior/functionality.
-    this.flagSuggestNewHistoryItem = false;
+    //// IMP: Uncomment this line for more rigorous testing of patch merging behavior/functionality.
+    // this.flagSuggestNewHistoryItem = false;
 
     // Note that if we make an edit from a previous history state, this will always make that edit
     //  a new history item (along with splicing away all history states more recent),
@@ -1377,7 +1377,25 @@ export class HistoryManager {
           `${i}: Encountered forwardStart value of -1; assuming this is for adding a node at the top of the document`,
         );
         // Set referredNode to the element containing the entire document. The add type should also already be "FirstChild"
-        referredNode = this.posNodes.get(0)?.parentNode ?? undefined;
+        // referredNode = this.posNodes.get(0)?.parentNode ?? undefined;
+        const docEl = this.getDocContainer();
+        if (docEl) {
+          // We expect elements with the "not-body" class at the top of the document
+          //  (these are hidden elements, usually describing metadata of some sort).
+          // When adding an element at the "start" of the document, it should be after these elements.
+          let notBodyEl: Element | undefined;
+          for (const child of docEl.children) {
+            const isNotBody = Boolean(closestClass(child, "not-body"));
+            if (!isNotBody) break;
+            notBodyEl = child;
+          }
+          if (notBodyEl) {
+            patch.type = "addNextSibling";
+            referredNode = notBodyEl;
+          } else {
+            referredNode = docEl;
+          }
+        }
       } else if (patch.forwardStart === -2 && !patch.mapForwardStart) {
         this.log(
           `${i}: Encountered forwardStart of -2; skipping applying the patch.`,
@@ -1492,7 +1510,25 @@ export class HistoryManager {
           `${i}: Encountered backStart value of -1; assuming this is for adding a node at the top of the document`,
         );
         // Set referredNode to the element containing the entire document. The remove type should also already be "FirstChild"
-        referredNode = this.posNodes.get(0)?.parentNode ?? undefined;
+        // referredNode = this.posNodes.get(0)?.parentNode ?? undefined;
+        const docEl = this.getDocContainer();
+        if (docEl) {
+          // We expect elements with the "not-body" class at the top of the document
+          //  (these are hidden elements, usually describing metadata of some sort).
+          // When adding an element at the "start" of the document, it should be after these elements.
+          let notBodyEl: Element | undefined;
+          for (const child of docEl.children) {
+            const isNotBody = Boolean(closestClass(child, "not-body"));
+            if (!isNotBody) break;
+            notBodyEl = child;
+          }
+          if (notBodyEl) {
+            patch.type = "removeNextSibling";
+            referredNode = notBodyEl;
+          } else {
+            referredNode = docEl;
+          }
+        }
       } else if (patch.backStart === -2) {
         this.log(
           `${i}: Encountered backStart value of -2; skipping applying the patch`,

@@ -1,4 +1,4 @@
-import { getNodeParents } from "./helper";
+import { closestClass, getNodeParents } from "./helper";
 import { maskedAttributes } from "./store.svelte";
 import { fetch_ } from "/shared/helper";
 import he from "he";
@@ -186,7 +186,14 @@ export function reconstructHTMLString(
   }
   const voidEls: Set<Node> = new Set();
 
-  const walker = document.createTreeWalker(startNode, NodeFilter.SHOW_ALL);
+  const walker = document.createTreeWalker(
+    startNode,
+    NodeFilter.SHOW_ALL,
+    (node) => {
+      if (isNotBody(node)) return NodeFilter.FILTER_REJECT;
+      else return NodeFilter.FILTER_ACCEPT;
+    },
+  );
 
   let stringIndex: number = 0;
   let constructedHTMLString: string = "";
@@ -381,7 +388,7 @@ function handleNodeAdd(
       return [[], calculateStartIndex(nodeInfo)];
     }
 
-    if (isPotentialLocation(node)) {
+    if (isNotBody(node)) {
       if (p.debug)
         console.log(
           "%c    Ignoring node because it is a potential location element:",
@@ -958,17 +965,15 @@ export function processMutations(
   return final;
 }
 
-const isPotentialLocation = (node?: Node | null) =>
-  node instanceof HTMLElement &&
-  (node.classList.contains("potential-location") ||
-    node.parentElement?.classList.contains("potential-location"));
+const isNotBody = (node?: Node | null) =>
+  Boolean(closestClass(node, "not-body"));
 
 const truePreviousSibling = (node?: Node | null): Node | null => {
-  if (isPotentialLocation(node))
-    throw new Error("Called truePrevSibling for a potential-location element.");
+  if (isNotBody(node))
+    throw new Error("Called truePrevSibling for a not-body element.");
 
   let currentNode = node?.previousSibling ?? null;
-  while (currentNode && isPotentialLocation(currentNode)) {
+  while (currentNode && isNotBody(currentNode)) {
     currentNode = currentNode?.previousSibling ?? null;
   }
   return currentNode;
@@ -1024,14 +1029,11 @@ export function patchMutations(
 
   const patches: DocPatch[] = [];
   for (const mutation of mutations) {
-    // Ignore anything and everything to do with 'potential-location's
-    // Potential-locations created by the editor are either a div element
-    //  with the relevant class or a span element with the relevant class
-    //  and a single direct child which is a div (without the class).
+    // Ignore anything and everything to do with not-body elements.
     if (
-      isPotentialLocation(mutation.target) ||
-      isPotentialLocation(mutation.addedNode) ||
-      isPotentialLocation(mutation.removedNode)
+      isNotBody(mutation.target) ||
+      isNotBody(mutation.addedNode) ||
+      isNotBody(mutation.removedNode)
     )
       continue;
 

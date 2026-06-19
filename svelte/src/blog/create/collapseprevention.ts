@@ -1,4 +1,9 @@
-import { getAllTextNodes, lastChild, nextElementSibling } from "./helper";
+import {
+  closestClass,
+  getAllTextNodes,
+  lastChild,
+  nextElementSibling,
+} from "./helper";
 import { mode } from "./store.svelte";
 import { request2AnimationFrames } from "/shared/helper";
 
@@ -42,8 +47,7 @@ function nodeWhitespaceRestricted(node: Node, strict = true) {
   if (node instanceof HTMLElement) {
     return (
       (strict ? node.innerText : node.innerText.trim()) === "" &&
-      !node.classList.contains("potential-location") &&
-      !node.parentElement?.classList.contains("potential-location")
+      !closestClass(node, "not-body")
     );
   } else if (node instanceof Text) {
     return (strict ? node.textContent : node.textContent?.trim()) === "";
@@ -127,6 +131,9 @@ export function handleCollapsePrevention(
 
   for (const mutation of mutations) {
     const target = mutation.target;
+
+    // Don't do anything with the element/node if it has anything to do with "non-body" elements
+    if (closestClass(target, "not-body")) continue;
 
     // 1)
     mutation.addedNodes.forEach((added) => {

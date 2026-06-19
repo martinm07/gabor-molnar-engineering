@@ -3,13 +3,12 @@ import {
   type GetCompLibFetchReturn,
 } from "./components/component.svelte";
 import type { IMultipleSelect } from "./cursormodes/MultipleSelect.svelte";
-import { parseHTMLFragment } from "./helper";
+import { closestClass, parseHTMLFragment } from "./helper";
 import type { HistoryManager } from "./history";
 import {
   allComponentTags,
   compLibEdits,
   compLibVer,
-  editorState,
   localSave,
   localSaveEntryIsDoc,
   localSaveEntryIsLib,
@@ -17,6 +16,7 @@ import {
   savedComponents,
   type SavedComponent,
 } from "./store.svelte";
+import { editorState } from "./url.svelte";
 import { assign, fetch_, request2AnimationFrames } from "/shared/helper";
 
 interface EditorInterfaceLoading {
@@ -37,7 +37,11 @@ function loadDocBody(body: Node[], p: EditorInterfaceLoading) {
   // TODO: What replaces this?
   // patchSync = false;
 
-  while (p.docEl?.firstChild) p.docEl.removeChild(p.docEl.firstChild);
+  // The first elements of docEl can include "non-body" elements (such as containing metadata), which shouldn't be removed here
+  //  (we're removing body elements to replace them with new body elements)
+  const isBody = (node: Node) => !closestClass(node, "not-body");
+  while (p.docEl?.lastChild && isBody(p.docEl.lastChild))
+    p.docEl.removeChild(p.docEl.lastChild);
   body.forEach((node) => p.docEl?.appendChild(node));
 
   p.historyManager?.changeActiveDoc(`${documentID}`);
@@ -207,9 +211,14 @@ export async function loadComponent(p: EditorInterfaceLoading) {
     (edit) => edit.type !== "remove" && edit.identName === componentID,
   );
   if (!comp && !editMatch) {
-    if (p.docEl)
-      p.docEl.innerHTML =
-        "<div>Welcome to purgatory - Please either select or create a component</div>";
+    if (p.docEl) {
+      const div = document.createElement("div");
+      div.textContent =
+        "Welcome to purgatory - Please either select or create a component";
+      loadDocBody([div], p);
+    }
+    // p.docEl.innerHTML =
+    //   "<div>Welcome to purgatory - Please either select or create a component</div>";
   } else {
     // Combine the saved component library with locally stored edits
     const compWithEdits = assign(

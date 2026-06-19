@@ -1,9 +1,10 @@
 <script lang="ts">
   import { fly } from "svelte/transition";
-  import { compLibEdits, editorState } from "../store.svelte";
+  import { compLibEdits } from "../store.svelte";
+  import { editorState } from "../url.svelte";
   import { saveLibChanges, discardLibChanges } from "./component.svelte";
   import { tada } from "/shared/helper";
-  import Trash from "phosphor-svelte/lib/Trash";
+  import TrashIcon from "phosphor-svelte/lib/TrashIcon";
 
   let showFullModal = $state(false);
   let btnTempDisabled = $state(false);
@@ -125,7 +126,7 @@
           discardLibChanges();
         }}
       >
-        <Trash />
+        <TrashIcon />
       </button>
     {/if}
   </div>

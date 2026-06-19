@@ -2,9 +2,16 @@
   import type { HTMLTextareaAttributes } from "svelte/elements";
   import { watch } from "runed";
 
-  interface Props extends HTMLTextareaAttributes {}
+  interface Props extends HTMLTextareaAttributes {
+    dontModifyWidth?: boolean;
+  }
 
-  let { value = $bindable(), oninput, ...props }: Props = $props();
+  let {
+    dontModifyWidth,
+    value = $bindable(),
+    oninput,
+    ...props
+  }: Props = $props();
 
   let el: HTMLTextAreaElement;
 
@@ -22,7 +29,9 @@
   watch(
     () => value,
     () => {
-      el.style.width = `${el.value.length || el.placeholder.length}ch`;
+      if (!dontModifyWidth) {
+        el.style.width = `${el.value.length || el.placeholder.length}ch`;
+      }
 
       el.style.height = "0px";
       // This calls getComputedStyle() which should force a style calculation, thus letting

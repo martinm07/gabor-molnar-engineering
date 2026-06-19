@@ -4,9 +4,9 @@ import {
   selection,
   type SavedComponent,
   compLibEdits,
-  editorState,
   compLibVer,
 } from "../store.svelte";
+import { editorState } from "../url.svelte";
 import { type DocNodeMap } from "../docsyncing";
 import {
   getAllChildNodes,

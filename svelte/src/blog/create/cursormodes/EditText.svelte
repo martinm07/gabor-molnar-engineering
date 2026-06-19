@@ -16,9 +16,9 @@
   );
 
   interface Props {
-    doc: HTMLElement;
+    docEl: HTMLElement;
   }
-  let { doc }: Props = $props();
+  let { docEl }: Props = $props();
 
   $effect(() => {
     if (mode.cursor !== "edit" && editTarget) unfocus();

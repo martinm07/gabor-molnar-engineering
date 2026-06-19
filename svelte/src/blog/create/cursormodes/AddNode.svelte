@@ -1,5 +1,11 @@
 <script module lang="ts">
-  import { prevSibling, nextSibling, firstChild, lastChild } from "../helper";
+  import {
+    prevSibling,
+    nextSibling,
+    firstChild,
+    lastChild,
+    closestClass,
+  } from "../helper";
 
   export type Rect = { x: number; y: number; w: number; h: number };
   // Represents line segment locked only to a change in x or a change in y (but not both)
@@ -185,7 +191,9 @@
 
     addPotentialLocs(filterLocs: (loc: HTMLElement) => boolean = () => true) {
       if (this.addedLocs) return;
-      const allNodes = getAllChildNodes(this.doc).slice(1);
+      const allNodes = getAllChildNodes(this.doc)
+        .slice(1)
+        .filter((node) => !closestClass(node, "not-body"));
       const potentialLocations: HTMLElement[] = [];
       for (const node of allNodes) {
         if (node.nodeType !== Node.ELEMENT_NODE) continue;
@@ -211,7 +219,7 @@
             continue;
 
           const el = document.createElement(inline ? "span" : "div");
-          el.classList.add("potential-location");
+          el.classList.add("potential-location", "not-body");
           insert(node, el);
           if (!filterLocs(el)) {
             el.remove();
@@ -339,9 +347,9 @@
   import { request2AnimationFrames } from "/shared/helper";
 
   interface Props {
-    doc: HTMLElement;
+    docEl: HTMLElement;
   }
-  let { doc }: Props = $props();
+  let { docEl }: Props = $props();
 
   const editText: IEditText["startEdit"] = getContext("startEdit");
   const setSelection: (nodes?: Node[] | Node) => void =
@@ -351,7 +359,7 @@
     "suggestCreateNewHistoryItem",
   );
 
-  const potentialLocations = new PotentialLocations(doc);
+  const potentialLocations = new PotentialLocations(docEl);
 
   watch(
     () => mode.cursor,
@@ -375,7 +383,7 @@
       caret &&
       !caret.isCollapsed &&
       caret.anchorNode === caret.focusNode &&
-      doc.contains(caret.anchorNode)
+      docEl.contains(caret.anchorNode)
     ) {
       // Wrap selection in new node
       const fragment = document.createDocumentFragment();

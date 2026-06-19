@@ -11,10 +11,10 @@
 
   interface Props {
     shiftPressed: boolean;
-    doc: HTMLElement;
+    docEl: HTMLElement;
   }
 
-  let { shiftPressed, doc }: Props = $props();
+  let { shiftPressed, docEl }: Props = $props();
 
   let highlight: HTMLElement;
   let targetOriginal: Element | undefined;
@@ -30,16 +30,16 @@
     if (doSelect) selection.hover = targetOriginal;
   });
 
-  const off1 = on(doc, "mouseover", (e) => {
+  const off1 = on(docEl, "mouseover", (e) => {
     if (!(e.target instanceof Element)) return;
-    const target = e.target === doc ? undefined : e.target;
+    const target = e.target === docEl ? undefined : e.target;
     if (doSelect) selection.hover = target;
     targetOriginal = target;
     ancestorCount = 0;
   });
   onDestroy(off1);
 
-  const off2 = on(doc, "mouseleave", (e) => {
+  const off2 = on(docEl, "mouseleave", (e) => {
     if (doSelect) selection.hover = undefined;
     targetOriginal = undefined;
     ancestorCount = 0;

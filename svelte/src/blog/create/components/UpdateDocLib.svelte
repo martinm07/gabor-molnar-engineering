@@ -1,7 +1,8 @@
 <script lang="ts">
-  import WarningDiamond from "phosphor-svelte/lib/WarningDiamond";
-  import ArrowRight from "phosphor-svelte/lib/ArrowRight";
-  import { changePage, compLibVer, editorState } from "../store.svelte";
+  import WarningDiamond from "phosphor-svelte/lib/WarningDiamondIcon";
+  import ArrowRight from "phosphor-svelte/lib/ArrowRightIcon";
+  import { compLibVer } from "../store.svelte";
+  import { changePage, editorState } from "../url.svelte";
   // import { type CompLibUpgradeInfo } from "../helper";
   import { getContext, onMount } from "svelte";
   import {
@@ -156,7 +157,7 @@
             </div>
           {/each}
         </div>
-        <div class="mx-6 my-2 h-[1px] bg-yellow-300"></div>
+        <div class="mx-6 my-2 h-px bg-yellow-300"></div>
         <div class="text-lg font-bold text-center text-yellow-800">
           Components that will be affected:
         </div>
