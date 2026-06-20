@@ -172,73 +172,75 @@
   <div class="w-5/6 ml-[8.3%] h-0.5 bg-rock-300"></div>
 {/snippet}
 
-<TagsDropdown bind:tags />
-{@render divider()}
-<DateDropdown bind:fromDate bind:toDate />
-{@render divider()}
-<form
-  method="get"
-  onsubmit={preventDefault(search)}
-  class="p-5 text-center border-b-2 border-rock-300 bg-background"
->
-  <input
-    type="text"
-    bind:value
-    placeholder="search"
-    class="border-2 border-rock-400 px-3 py-1 w-full max-w-[500px] rounded font-mono focus:outline-none ring-rock-200 focus:ring-4"
-  />
-  <br />
-  <button
-    type="submit"
-    disabled={!queryModified}
-    class="mt-4 px-5 py-2 text-lg text-steel-600 border-2 border-steel-400 bg-steel-100 rounded-lg shadow-[inset_4px_4px_white,inset_-8px_-8px_var(--steel-200)] disabled:shadow-none disabled:opacity-40 disabled:bg-background transition-all hover:ring-4 hover:ring-rock-200 disabled:ring-0"
+<div class="min-h-screen flex flex-col">
+  <TagsDropdown bind:tags />
+  {@render divider()}
+  <DateDropdown bind:fromDate bind:toDate />
+  {@render divider()}
+  <form
+    method="get"
+    onsubmit={preventDefault(search)}
+    class="p-5 text-center border-b-2 border-rock-300 bg-background"
   >
-    Submit Query</button
-  >
-</form>
-<div class="bg-steel-100 px-5 py-3 relative z-10 text-right">
-  <div class="ml-auto inline-flex items-center">
-    <label for="sortby" class="mr-2 font-bold text-rock-600">Sort by:</label
-    ><select
-      bind:value={sortBy}
-      class="bg-background px-2 py-1 rounded text-rock-700"
-      name="sortby"
-      id="sortby"
-    >
-      <option value="relevance">Relevance</option>
-      <option value="date_created">Date Created</option>
-    </select>
+    <input
+      type="text"
+      bind:value
+      placeholder="search"
+      class="border-2 border-rock-400 px-3 py-1 w-full max-w-[500px] rounded font-mono focus:outline-none ring-rock-200 focus:ring-4"
+    />
+    <br />
     <button
-      class="h-7 px-1 ml-3 bg-background hover:bg-rock-200 hover:text-rock-700 rounded text-rock-600 text-xl flex items-center disabled:opacity-40 disabled:bg-background disabled:text-rock-600"
-      title="{sortOrder === 'asc' ? 'Ascending' : 'Descending'} Order"
-      onclick={() => {
-        sortOrder = sortOrder === "desc" ? "asc" : "desc";
-      }}
-      disabled={sortBy === "relevance"}
+      type="submit"
+      disabled={!queryModified}
+      class="mt-4 px-5 py-2 text-lg text-steel-600 border-2 border-steel-400 bg-steel-100 rounded-lg shadow-[inset_4px_4px_white,inset_-8px_-8px_var(--steel-200)] disabled:shadow-none disabled:opacity-40 disabled:bg-background transition-all hover:ring-4 hover:ring-rock-200 disabled:ring-0"
     >
-      {#if sortOrder === "asc" && sortBy !== "relevance"}
-        <ion-icon name="caret-up"></ion-icon>
-      {:else}
-        <ion-icon name="caret-down"></ion-icon>
-      {/if}
-    </button>
+      Submit Query</button
+    >
+  </form>
+  <div class="bg-steel-100 px-5 py-3 relative z-10 text-right">
+    <div class="ml-auto inline-flex items-center">
+      <label for="sortby" class="mr-2 font-bold text-rock-600">Sort by:</label
+      ><select
+        bind:value={sortBy}
+        class="bg-background px-2 py-1 rounded text-rock-700"
+        name="sortby"
+        id="sortby"
+      >
+        <option value="relevance">Relevance</option>
+        <option value="date_created">Date Created</option>
+      </select>
+      <button
+        class="h-7 px-1 ml-3 bg-background hover:bg-rock-200 hover:text-rock-700 rounded text-rock-600 text-xl flex items-center disabled:opacity-40 disabled:bg-background disabled:text-rock-600"
+        title="{sortOrder === 'asc' ? 'Ascending' : 'Descending'} Order"
+        onclick={() => {
+          sortOrder = sortOrder === "desc" ? "asc" : "desc";
+        }}
+        disabled={sortBy === "relevance"}
+      >
+        {#if sortOrder === "asc" && sortBy !== "relevance"}
+          <ion-icon name="caret-up"></ion-icon>
+        {:else}
+          <ion-icon name="caret-down"></ion-icon>
+        {/if}
+      </button>
+    </div>
+    {#if results}
+      <div class="text-steel-700 text-sm inline-block mt-4 float-left">
+        {results.found} results found. Searched {results.out_of} documents in {results.search_time_ms}ms.
+      </div>
+    {/if}
+    <div class="clear-left"></div>
   </div>
   {#if results}
-    <div class="text-steel-700 text-sm inline-block mt-4 float-left">
-      {results.found} results found. Searched {results.out_of} documents in {results.search_time_ms}ms.
-    </div>
+    {#key results.hits}
+      {#each results.hits as result}
+        <SearchCard info={result} />
+      {/each}
+    {/key}
+    <Pagination
+      bind:page
+      perPage={results.request_params.per_page}
+      total={results.found}
+    />
   {/if}
-  <div class="clear-left"></div>
 </div>
-{#if results}
-  {#key results.hits}
-    {#each results.hits as result}
-      <SearchCard info={result} />
-    {/each}
-  {/key}
-  <Pagination
-    bind:page
-    perPage={results.request_params.per_page}
-    total={results.found}
-  />
-{/if}

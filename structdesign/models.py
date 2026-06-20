@@ -3,8 +3,9 @@ from __future__ import annotations
 import datetime
 from typing import List, Literal
 
-from sqlalchemy import Column, ForeignKey, String, Table, Text, func
+from sqlalchemy import Column, ForeignKey, ForeignKeyConstraint, String, Table, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.types import Integer
 from typesense.types.collection import CollectionCreateSchema
 
 from .extensions import db
@@ -81,15 +82,24 @@ class UserSecret(db.Model):
 document_tag_association_table = Table(
     "document_tag_association_table",
     db.Model.metadata,
-    Column("blog_id", ForeignKey("blogs.id")),
+    Column("blog_id", Integer),
+    Column("blog_type", Integer),
     Column("tag_id", ForeignKey("blogtags.id")),
+    ForeignKeyConstraint(
+        ("blog_id", "blog_type"),
+        ("blogs.id", "blogs.type"),
+    )
 )
 
 
 class GuidanceDocument(db.Model):
     __tablename__ = "blogs"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    ## This a composite primary key. Access to rows using the primary key use a tuple of two values.
+    ##  The first represents the 'id', the second represents the 'type'
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    type: Mapped[int] = mapped_column(primary_key=True) # 0 is for 'published', 1 is for 'development'
+
     date_created: Mapped[datetime.date] = mapped_column(default=func.current_date())
     date_updated: Mapped[datetime.date] = mapped_column(default=func.current_date())
     title: Mapped[str] = mapped_column(String(256))
@@ -98,8 +108,8 @@ class GuidanceDocument(db.Model):
     accent: Mapped[str] = mapped_column(String(11))
     thumbnail: Mapped[str] = mapped_column(String(4096))
     tags: Mapped[List["DocumentTag"]] = relationship(
-        secondary=document_tag_association_table, back_populates="documents"
-    )
+        secondary=document_tag_association_table, back_populates="documents")
+
     hearts: Mapped[int] = mapped_column(default=0)
     status: Mapped[Literal["featured", "public", "unlisted", "private"]] = (
         mapped_column(String(16), default="private")
@@ -116,8 +126,7 @@ class DocumentTag(db.Model):
     accent: Mapped[str] = mapped_column(String(11), nullable=True)
 
     documents: Mapped[List["GuidanceDocument"]] = relationship(
-        secondary=document_tag_association_table, back_populates="tags"
-    )
+        secondary=document_tag_association_table, back_populates="tags")
 
 
 documents_schema: CollectionCreateSchema = {

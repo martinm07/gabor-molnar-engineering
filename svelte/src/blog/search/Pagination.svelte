@@ -53,7 +53,7 @@
 </script>
 
 <div
-  class="bg-steel-100 p-5 font-mono text-xl text-steel-600 flex items-center justify-center"
+  class="bg-steel-100 p-5 font-mono text-xl text-steel-600 flex items-center justify-center mt-auto"
 >
   <button
     onclick={() => (page -= 1)}

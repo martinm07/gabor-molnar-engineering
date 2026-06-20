@@ -32,6 +32,7 @@ def populate_blogs(num: int, **kwargs) -> list[GuidanceDocument]:
             hearts=getval("hearts", i, 0),
             status=getval("status", i, "public"),
             component_lib_version=getval("component_lib_version", i, ""),
+            type=0,
         )
         if getval("date_created", i):
             doc.date_created = datetime.fromisoformat(kwargs["date_created"][i])

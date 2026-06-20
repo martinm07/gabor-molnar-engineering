@@ -23,24 +23,24 @@ def test_get_latest_blogs(client: FlaskClient):
 
 def test_get_latest_blogs_paginate(client: FlaskClient):
     resp = client.get("/documents/get_latest", query_string={"p": 0, "l": 10}).json
-    assert resp
+    assert resp is not None
     assert len(resp) == 0
 
     populate_blogs(5)
     resp = client.get("/documents/get_latest", query_string={"p": 0, "l": 0}).json
-    assert resp
+    assert resp is not None
     assert len(resp) == 0
 
     resp1 = client.get("/documents/get_latest", query_string={"p": 0, "l": 10}).json
-    assert resp1
+    assert resp1 is not None
     assert len(resp1) == 5
     resp1 = client.get("/documents/get_latest", query_string={"l": 10}).json
-    assert resp1
+    assert resp1 is not None
     assert len(resp1) == 5
 
     populate_blogs(10)
     resp2 = client.get("/documents/get_latest", query_string={"p": 0, "l": 10}).json
-    assert resp2
+    assert resp2 is not None
     assert len(resp2) == 10
 
     assert resp1 == resp2[:5]
@@ -66,7 +66,7 @@ def test_get_latest_blogs_sorts(client: FlaskClient):
         ],
     )
     resp = client.get("/documents/get_latest").json
-    assert resp
+    assert resp is not None
     new_order = [4, 2, 0, 3, 1]
     for i, doc in enumerate(resp):
         assert doc["title"].find(f"{new_order[i]}") != -1
@@ -74,21 +74,21 @@ def test_get_latest_blogs_sorts(client: FlaskClient):
 
 def test_get_tagnames(client: FlaskClient):
     resp = client.get("/documents/get_tagnames").json
-    assert resp
+    assert resp is not None
     iter(resp)
     assert len(resp) == 0
 
     [db.session.add(DocumentTag(name=f"tag{i}", description="")) for i in range(5)]
     db.session.commit()
     resp = client.get("/documents/get_tagnames").json
-    assert resp
+    assert resp is not None
     assert len(resp) == 5
 
 
 def test_get_blogs_tag(client: FlaskClient):
     def get_resp(name: str):
         resp_ = client.get("/documents/get_blogs_tag", query_string={"name": name}).json
-        assert resp_
+        assert resp_ is not None
         return resp_
 
     resp = get_resp("nonexistent")

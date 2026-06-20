@@ -27,11 +27,14 @@
         id: doc.id,
         value: hearted_ ? 1 : -1,
       }),
-    }).then(() => {
-      hearted_
-        ? storageListAdd(doc.id, "hearted")
-        : storageListRemove(doc.id, "hearted");
-    });
+    })
+      .then((resp) => resp.json())
+      .then((data) => {
+        if (!data["result"]) console.error("Failed to process heart action");
+        hearted_
+          ? storageListAdd(doc.id, "hearted")
+          : storageListRemove(doc.id, "hearted");
+      });
   }
 
   let infoEl: HTMLElement;

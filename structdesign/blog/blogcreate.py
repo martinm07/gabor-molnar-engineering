@@ -132,7 +132,7 @@ def get_version(version: str):
         select(SavedComponentDiff).filter_by(version=version)
     ).first()
     if diff is None:
-        raise Exception(f"Found no SavedComponentDiff for version '{version}'")
+        raise KeyError(f"Found no SavedComponentDiff for version '{version}'")
     return diff
 
 
@@ -435,7 +435,10 @@ def get_component_library():
         #  we should still give one final check before saying the history was exhausted
         # This is why we need a separate current_version variable instead of saying
         #  current.version when defining current_comp_vers at the top of this while loop
-        current = get_version(current.next_version)
+        try:
+            current = get_version(current.next_version)
+        except KeyError:
+            current = None
 
     print(final)
     print("--------")
@@ -554,7 +557,7 @@ def update_components():
     # RQwUepLp,7kyvhXsb,L5sIoaeY,RZKbXsiJ
 
     data: dict[str, Any] = json.loads(request.data.decode("utf-8"))
-    acting_version: str = data.get("version", "")
+    acting_version = data.get("version", "")
     # Update: dictionary with names as keys and fields with new values. The following fields are allowed:
     #       "name": Name of the component as a string
     #       "description": Description of the component as a string
@@ -575,6 +578,8 @@ def update_components():
             "'version' key is required when updating components (key 'update' exists) or removing components (key 'remove' exists)",
             400,
         )
+    if message is None or description is None:
+        return "'message' and 'description' are required", 400
 
     lib = get_component_lib()
     # We need the full component library, not just the ones that will be updated/removed,
@@ -672,14 +677,15 @@ def update_components():
         if isinstance(new_comp_data["parts"], list):
             new_comp_data["parts"] = "|".join(new_comp_data["parts"])
 
-        new_comp_data_tags = ",".join(new_comp_data["tags"]) if isinstance(new_comp_data["tags"], list) else new_comp_data["tags"]
+        new_comp_tags = new_comp_data.get("tags", "")
+        new_comp_tagsstr = ",".join(new_comp_tags) if isinstance(new_comp_tags, list) else new_comp_tags
 
         new_comp = SavedComponent(
             name=new_comp_data.get("name"),
             description=new_comp_data.get("description", ""),
             content=new_comp_data.get("content"),
             parts=new_comp_data.get("parts"),
-            tags=fill_tag_names(new_comp_data_tags),
+            tags=fill_tag_names(new_comp_tagsstr),
             tags_str=new_comp_data.get("tags", ""),
             library=lib,
         )
@@ -725,6 +731,7 @@ def update_components():
         is_safe=False,
     )
     db.session.add(diff)
+    print("🎈 Added SavedComponentDiff with version", new_version);
 
     # Update latest_version of the library
     lib.latest_version = new_version
@@ -734,13 +741,37 @@ def update_components():
     return lib.latest_version
 
 
+def get_development_document(id_: int, commit_changes = False):
+    devdoc = db.session.get(GuidanceDocument, (id_, 1))
+    if devdoc: return devdoc
+
+    publishdoc = db.session.get(GuidanceDocument, (id_, 0))
+    if publishdoc:
+        devdoc = GuidanceDocument(
+            type=1,
+            title=publishdoc.title,
+            description=publishdoc.description,
+            body=publishdoc.body,
+            accent=publishdoc.accent,
+            thumbnail=publishdoc.thumbnail,
+            tags=publishdoc.tags,
+            hearts=publishdoc.hearts,
+            status=publishdoc.status,
+            component_lib_version=publishdoc.component_lib_version
+        )
+        db.session.add(devdoc)
+        if (commit_changes): db.session.commit()
+    else:
+        return None
+
+
 @bp.route("/get_document_edit")
 @cors_enabled(methods=["GET"])
 def get_document_edit():
     id_ = request.args.get("id")
     if id_ is None:
         return "Required URL parameter 'id'", 400
-    doc = db.session.get(GuidanceDocument, int(id_))
+    doc = get_development_document(int(id_))
     if doc is None:
         return f"Found no document of id '{id_}'", 400
 
@@ -776,7 +807,8 @@ def sync_document_full():
     if body is None:
         return "Missing required 'body' key", 400
 
-    document = db.session.get(GuidanceDocument, int(id_))
+    # document = db.session.get(GuidanceDocument, int(id_))
+    document = get_development_document(int(id_))
     if document is None:
         return f"Found no document of id '{id_}'", 400
     document.body = body
@@ -820,7 +852,8 @@ def sync_document_patch():
     # document = db.session.scalars(
     #     select(GuidanceDocument).filter_by(id=int(id_))
     # ).first()
-    document = db.session.get(GuidanceDocument, int(id_))
+    # document = db.session.get(GuidanceDocument, int(id_))
+    document = get_development_document(int(id_))
     if not document:
         return f"No guidance document of id '{id_}'", 400
     content = document.body
@@ -866,7 +899,8 @@ def update_document_complib():
     if version is None:
         version = get_component_lib().latest_version
 
-    document = db.session.get(GuidanceDocument, int(id_))
+    # document = db.session.get(GuidanceDocument, int(id_))
+    document = get_development_document(int(id_))
     if not document:
         return f"No guidance document of id '{id_}'", 400
 
@@ -900,7 +934,7 @@ def create_component_lib_base():
 
 @bp.cli.command("reset_document_1")
 def reset_document_1():
-    document = db.session.get(GuidanceDocument, 1)
+    document = db.session.get(GuidanceDocument, (1, 1))
     if document:
         document.body = """<h1>Introducing a Light, Visual HTML Editor</h1>
 <p>

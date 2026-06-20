@@ -1,5 +1,6 @@
 from flask.testing import FlaskClient
 from pytest_mock import MockerFixture
+from typesense import Client
 
 from structdesign.helper import collection_exists, get_unix_timestamp
 from structdesign.models import (
@@ -9,8 +10,8 @@ from structdesign.models import (
 from .populate_dbs import populate_blogs, populate_tags
 
 
-def import_docs(docs, client):
-    docs_ = [
+def import_docs(docs, client: Client):
+    docs_: list = [
         {
             "id": str(doc.id),
             "title": doc.title,
@@ -22,10 +23,11 @@ def import_docs(docs, client):
         }
         for doc in docs
     ]
+
     client.collections["documents"].documents.import_(docs_, {"action": "create"})
 
 
-def test_query(client: FlaskClient, typesense_client, mocker: MockerFixture):
+def test_query(client: FlaskClient, typesense_client: Client, mocker: MockerFixture):
     def get(**kwargs):
         resp_ =  client.get("/documents/query", query_string=kwargs).json
         assert resp_
@@ -69,7 +71,7 @@ def test_query(client: FlaskClient, typesense_client, mocker: MockerFixture):
     assert resp["hits"][1]["document"]["title"] == "apple shoes"
 
 
-def test_advanced_query(client: FlaskClient, typesense_client, mocker: MockerFixture):
+def test_advanced_query(client: FlaskClient, typesense_client: Client, mocker: MockerFixture):
     def get(**kwargs):
         resp_ = client.get("/documents/advanced_query", query_string=kwargs).json
         assert resp_

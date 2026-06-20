@@ -101,7 +101,10 @@ def get_blogs_tag():
         .join_from(
             GuidanceDocument,
             document_tag_association_table,
-            GuidanceDocument.id == document_tag_association_table.c.blog_id,
+            and_(
+                GuidanceDocument.id == document_tag_association_table.c.blog_id,
+                GuidanceDocument.type == document_tag_association_table.c.blog_type
+            ),
         )
         .where(document_tag_association_table.c.tag_id == scalar_subq)
     )
@@ -154,7 +157,8 @@ def read(name: str):
 def get():
     # TODO: this onfalsey use is probably unwanted behavior?
     id_ = json.loads(onfalsey(request.args.get("id"), "1"))
-    doc = db.session.scalars(select(GuidanceDocument).filter_by(id=id_)).first()
+
+    doc = db.session.get(GuidanceDocument, (id_, 0))
     if not doc:
         return f"Document {id_} not found", 404
     return {
@@ -188,9 +192,10 @@ def heart():
     blog_id = int(data.get("id"))
     value = int(data.get("value"))
 
-    blog = db.session.execute(
-        select(GuidanceDocument).filter_by(id=blog_id)
-    ).scalar_one()
+    blog = db.session.get(GuidanceDocument, (blog_id, 0))
+    if blog is None:
+        return {"result": False}
+
     if value > 0:
         blog.hearts += 1
     elif value < 0:
@@ -246,6 +251,7 @@ def addblogs(num):
             thumbnail=thumbnail,
             component_lib_version="",
             status=status,
+            type=0,
         )
         db.session.add(doc)
     db.session.commit()

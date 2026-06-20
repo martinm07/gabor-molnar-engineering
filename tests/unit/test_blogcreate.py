@@ -29,7 +29,7 @@ def test_update_components_update(client: FlaskClient):
 
     def post(version: str, data: dict[str, dict[str, Any]]):
         return client.post(
-            "/documents/update_components", json={"version": version, "update": data}
+            "/documents/update_components", json={"version": version, "update": data, "message": "test", "description": "test123"}
         ).text
 
     # new_ver = post({comps[0].name: {"name": "altered name"}})
@@ -66,7 +66,7 @@ def test_update_components_update(client: FlaskClient):
 
 def test_update_components_add(client: FlaskClient):
     def post(data: list[dict[str, Any]]):
-        return client.post("/documents/update_components", json={"add": data}).text
+        return client.post("/documents/update_components", json={"add": data, "message": "test", "description": "test123"}).text
 
     lib = create_component_lib()
 
@@ -113,7 +113,7 @@ def test_update_components_add(client: FlaskClient):
 def test_update_components_remove(client: FlaskClient):
     def post(version: str, data: list[str]):
         resp = client.post(
-            "/documents/update_components", json={"version": version, "remove": data}
+            "/documents/update_components", json={"version": version, "remove": data, "message": "test", "description": "test123"}
         )
         return resp.text, resp.status_code
 
@@ -143,14 +143,17 @@ def test_get_component_library(client: FlaskClient):
     lib = create_component_lib()
     comps, ver = populate_components(5, lib)
 
-    resp: list[dict[str, Any]] = get(ver)
+    resp = get(ver)
 
     # We don't include 'tags' in this list because the db and result represent it differently.
     #  We test tags separately at the end.
     keys_filter = ["name", "description", "parts", "content"]
 
+    retrieved_library = resp.get("library")
+    assert retrieved_library is not None
+
     assert sorted(
-        [{k: c[k] for k in c if k in keys_filter} for c in resp],
+        [{k: c[k] for k in c if k in keys_filter} for c in retrieved_library],
         key=lambda x: x.get("name", 0),
     ) == sorted(
         [{k: c.__dict__[k] for k in c.__dict__ if k in keys_filter} for c in comps],
@@ -159,22 +162,26 @@ def test_get_component_library(client: FlaskClient):
 
     latest_ver = client.post(
         "/documents/update_components",
-        json={"version": ver, "update": {comps[0].name: {"content": "altered"}}},
+        json={"version": ver, "update": {comps[0].name: {"content": "altered"}}, "message": "test", "description": "test123"},
     ).text
     client.post(
         "/documents/update_components",
         json={
             "version": latest_ver,
             "update": {comps[2].name: {"name": "altered2", "tags": "newtag1,tag2"}},
+            "message": "test",
+            "description": "test123"
         },
     )
 
     resp = get(ver)
+    retrieved_library = resp.get("library")
+    assert retrieved_library is not None
 
-    assert [d for d in resp if d["name"] == "name0"][0]["content"] != "altered"
+    assert [d for d in retrieved_library if d["name"] == "name0"][0]["content"] != "altered"
     assert (
         len(
-            [d for d in resp if d["name"] == "altered2" and d["tags"] == "newtag1,tag2"]
+            [d for d in retrieved_library if d["name"] == "altered2" and d["tags"] == "newtag1,tag2"]
         )
         == 0
     )
@@ -208,20 +215,26 @@ def test_get_component_library_add_remove(client: FlaskClient):
                 {"name": "new-comp2", "content": "", "parts": "1|1,1"},
             ],
             "remove": [comps[3].name, comps[4].name],
+            "message": "test",
+            "description": "test123"
         },
     ).text
 
-    resp: list[dict[str, Any]] = get(latest_ver)
+    resp = get(latest_ver)
+    retrieved_library = resp.get("library")
+    assert retrieved_library is not None
 
-    assert resp[1]["description"] == "altered"
-    assert resp[3]["name"] == "new-comp"
-    assert resp[4]["name"] == "new-comp2"
+    assert retrieved_library[1]["description"] == "altered"
+    assert retrieved_library[3]["name"] == "new-comp"
+    assert retrieved_library[4]["name"] == "new-comp2"
 
     resp = get(ver)
+    retrieved_library = resp.get("library")
+    assert retrieved_library is not None
 
-    assert resp[1]["description"] != "altered"
-    assert resp[3]["name"] != "new-comp"
-    assert resp[4]["name"] != "new-comp2"
+    assert retrieved_library[1]["description"] != "altered"
+    assert retrieved_library[3]["name"] != "new-comp"
+    assert retrieved_library[4]["name"] != "new-comp2"
 
 
 def test_sync_document_patch(client: FlaskClient):
