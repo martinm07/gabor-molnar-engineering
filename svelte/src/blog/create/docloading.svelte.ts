@@ -7,8 +7,10 @@ import { closestClass, parseHTMLFragment } from "./helper";
 import type { HistoryManager } from "./history";
 import {
   allComponentTags,
+  allDocumentTags,
   compLibEdits,
   compLibVer,
+  doc,
   localSave,
   localSaveEntryIsDoc,
   localSaveEntryIsLib,
@@ -149,6 +151,27 @@ export async function loadDocument(p: EditorInterfaceLoading) {
       diff_msgs: compLibInfo.upgrade_diff_msgs,
     };
     compLibVer.latestVer = compLibInfo.upgrade_to_version;
+  }
+
+  doc.info = {
+    id: `${documentID}`,
+
+    title: data["title"],
+    description: data["description"],
+    tags: data["tags"],
+    accent: data["accent"],
+    thumbnail: data["thumbnail"],
+    status: data["status"],
+
+    body: data["body"],
+    componentLibVer: data["component_lib_ver"],
+  };
+
+  const tagsResp = await fetch_("/documents/get_all_document_tags");
+  if (tagsResp.ok) {
+    const allTags = await tagsResp.json();
+    console.log(allTags);
+    allDocumentTags.splice(0, allDocumentTags.length, ...allTags);
   }
 }
 

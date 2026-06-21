@@ -17,6 +17,7 @@ from sqlalchemy import select
 from ..extensions import db
 from ..helper import cors_enabled
 from ..models import (  # noqa: F401
+    DocumentTag,
     GuidanceDocument,
     SavedComponent,
     SavedComponentDiff,
@@ -499,16 +500,27 @@ def get_component_library():
     }
 
 
-# Convert tags_str to list of database instances, creating tags that don't yet exist
-def fill_tag_names(names: str | None) -> list[SavedComponentTag]:
-    if not names:
+"""Convert tags to list of database instances, creating tags that don't yet exist. DOESN'T COMMIT CHANGES."""
+def fill_comp_tag_names(tags: list[str] | None) -> list[SavedComponentTag]:
+    if not tags:
         return []
-    names_list = names.split(",")
+
     final: list[SavedComponentTag] = []
-    for name in names_list:
-        tag = db.session.scalars(select(SavedComponentTag).filter_by(name=name)).first()
+    for tag_str in tags:
+        tag = db.session.scalars(select(SavedComponentTag).filter_by(name=tag_str)).first()
         if not tag:
-            tag = SavedComponentTag(name=name)
+            tag = SavedComponentTag(name=tag)
+            db.session.add(tag)
+        final.append(tag)
+    return final
+
+"""Convert tags to list of database instances, creating tags that don't yet exist. DOESN'T COMMIT CHANGES."""
+def fill_doc_tag_names(tags: list[str]) -> list[DocumentTag]:
+    final: list[DocumentTag] = []
+    for tag_str in tags:
+        tag = db.session.scalars(select(DocumentTag).filter_by(name=tag_str)).first()
+        if not tag:
+            tag = DocumentTag(name=tag_str, description="")
             db.session.add(tag)
         final.append(tag)
     return final
@@ -661,7 +673,7 @@ def update_components():
             #  table column "tags_str" that gives the order. It's also useful for being
             #  the same as what's generated from the diffs
             comp.tags_str = newvalstr
-            comp.tags = fill_tag_names(newvalstr)
+            comp.tags = fill_comp_tag_names(newvalstr.split(","))
             diff_parts[-1]["tags"] = dmp.patch_toText(dmp.patch_make(newval, curval))
 
     for new_comp_data in add:
@@ -685,7 +697,7 @@ def update_components():
             description=new_comp_data.get("description", ""),
             content=new_comp_data.get("content"),
             parts=new_comp_data.get("parts"),
-            tags=fill_tag_names(new_comp_tagsstr),
+            tags=fill_comp_tag_names(new_comp_tagsstr.split(",")),
             tags_str=new_comp_data.get("tags", ""),
             library=lib,
         )
@@ -748,6 +760,7 @@ def get_development_document(id_: int, commit_changes = False):
     publishdoc = db.session.get(GuidanceDocument, (id_, 0))
     if publishdoc:
         devdoc = GuidanceDocument(
+            id=id_,
             type=1,
             title=publishdoc.title,
             description=publishdoc.description,
@@ -760,7 +773,9 @@ def get_development_document(id_: int, commit_changes = False):
             component_lib_version=publishdoc.component_lib_version
         )
         db.session.add(devdoc)
-        if (commit_changes): db.session.commit()
+        if (commit_changes):
+            db.session.commit()
+        return devdoc
     else:
         return None
 
@@ -771,7 +786,7 @@ def get_document_edit():
     id_ = request.args.get("id")
     if id_ is None:
         return "Required URL parameter 'id'", 400
-    doc = get_development_document(int(id_))
+    doc = get_development_document(int(id_), commit_changes = True)
     if doc is None:
         return f"Found no document of id '{id_}'", 400
 
@@ -786,6 +801,17 @@ def get_document_edit():
         "status": doc.status,
         "component_lib_ver": doc.component_lib_version,
     }
+
+
+@bp.route("/get_all_document_tags")
+@cors_enabled()
+def get_all_document_tags():
+    tags = db.session.execute(select(DocumentTag.name, DocumentTag.description, DocumentTag.accent)).all()
+    return [{
+        "name": tag[0],
+        "description": tag[1],
+        "accent": tag[2],
+    } for tag in tags]
 
 
 @bp.route("/get_component_tags")
@@ -849,10 +875,6 @@ def sync_document_patch():
     if type(patches) is not list:
         return "'patches' must be an array", 400
 
-    # document = db.session.scalars(
-    #     select(GuidanceDocument).filter_by(id=int(id_))
-    # ).first()
-    # document = db.session.get(GuidanceDocument, int(id_))
     document = get_development_document(int(id_))
     if not document:
         return f"No guidance document of id '{id_}'", 400
@@ -895,7 +917,7 @@ def update_document_complib():
     id_: int = data.get("id")
     if not id_:
         return "Missing required 'id' key", 400
-    version: str = data.get("version")
+    version: str | None = data.get("version")
     if version is None:
         version = get_component_lib().latest_version
 
@@ -909,6 +931,85 @@ def update_document_complib():
     return ""
 
 
+@bp.route("/update_document_metadata", methods=["OPTIONS", "POST"])
+@cors_enabled()
+def update_document_metadata():
+    data = json.loads(request.data.decode("utf-8"))
+    id_: int = data.get("id")
+    if not id_:
+        return "Missing required 'id' key", 400
+
+    document = get_development_document(int(id_))
+    if not document:
+        return f"No guidance document of id '{id_}'", 400
+
+    try:
+        if (title := data.get("title")): document.title = title
+        if (description := data.get("description")): document.description = description
+        if (tags := data.get("tags")): document.tags = fill_doc_tag_names(tags)
+        if (accent := data.get("accent")): document.accent = accent
+        if (thumbnail := data.get("thumbnail")): document.thumbnail = thumbnail
+
+        ## IMP: ANY VALIDATION SHOULD GO HERE
+
+        db.session.commit()
+    except Exception:
+        document = get_development_document(int(id_), commit_changes=True)
+        if not document:
+            return f"Somehow no guidance document of id '{id_}'", 400
+
+    return {
+        "title": document.title,
+        "description": document.description,
+        "tags": [tag.name for tag in document.tags],
+        "accent": document.accent,
+        "thumbnail": document.thumbnail,
+    }
+
+
+@bp.route("/publish_development_document", methods=["OPTIONS", "POST"])
+@cors_enabled()
+def publish_development_document():
+    data = json.loads(request.data.decode("utf-8"))
+    id_ = data.get("id")
+    if not id_:
+        return "Missing required 'id' key", 400
+
+    document = get_development_document(int(id_))
+    if not document:
+        return f"No guidance document of id '{id_}'", 400
+
+    publishdoc = db.session.get(GuidanceDocument, (int(id_), 0))
+    if not publishdoc:
+        publishdoc = GuidanceDocument(
+            id=id_,
+            type=1,
+            title=document.title,
+            description=document.description,
+            body=document.body,
+            accent=document.accent,
+            thumbnail=document.thumbnail,
+            tags=document.tags,
+            hearts=document.hearts,
+            status=document.status,
+            component_lib_version=document.component_lib_version
+        )
+        db.session.add(publishdoc)
+    else:
+        publishdoc.title = document.title
+        publishdoc.description = document.description
+        publishdoc.accent = document.accent
+        publishdoc.thumbnail = document.thumbnail
+        publishdoc.tags = document.tags
+
+        publishdoc.body = document.body
+        publishdoc.component_lib_version = document.component_lib_version
+        # We don't set hearts or status
+
+    db.session.commit()
+    return ""
+
+
 @bp.route("/edit/<id>")
 def edit_document(id):
     return render_template("blog/create.html", document_or_component_id=id)
@@ -917,6 +1018,7 @@ def edit_document(id):
 def edit_component(id):
     return render_template("blog/create.html", document_or_component_id=id)
 
+#####################
 
 @bp.cli.command("create_component_lib_base")
 def create_component_lib_base():

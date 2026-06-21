@@ -1,3 +1,4 @@
+import { useDebounce } from "runed";
 import {
   comps,
   generateCompContentStr,
@@ -14,6 +15,7 @@ import {
 } from "./docsyncing";
 import {
   compLibVer,
+  doc,
   localSave,
   localSaveEntryIsDoc,
   pruneLocalSave,
@@ -44,9 +46,15 @@ export class SaveDoc {
   serverSyncPatchesQueue: DocPatchStr[] = [];
   prevFetch: Promise<Response> | null = null;
   doServerSync: boolean;
+  // syncDocMetadataDebounce: (info: typeof doc.info) => void;
+  // syncDocMetadataDebounce: typeof useDebounce<Array<typeof doc.info>>;
+  syncDocMetadataDebounce: ReturnType<
+    typeof useDebounce<[typeof doc.info], void>
+  >;
 
   prevDocumentType: typeof editorState.mode | null = null;
   prevDocumentID: typeof editorState.resourceName | null = null;
+  // prevDocInfo: typeof doc.info | null = null;
 
   makePatches: () => ReturnType<typeof patchMutations>;
   getDocEl: () => HTMLElement | undefined;
@@ -60,6 +68,13 @@ export class SaveDoc {
         () => this.syncServerDocPatch(getDocumentID()),
         SERVER_SYNC_INTERVAL_TIME,
       );
+
+    this.syncDocMetadataDebounce = useDebounce(
+      (info: typeof doc.info) => {
+        this.syncDocMetadata(info);
+      },
+      () => SERVER_SYNC_INTERVAL_TIME,
+    );
 
     this.getDocEl = p.getDocEl;
     this.docNodes = p.docNodes;
@@ -131,6 +146,7 @@ export class SaveDoc {
 
   flushServerChanges() {
     this.syncServerDocPatch(getDocumentID());
+    this.syncDocMetadataDebounce.runScheduledNow();
   }
 
   /**
@@ -206,6 +222,33 @@ export class SaveDoc {
 
     if (this.prevFetch === null) this.prevFetch = createFetch();
     else this.prevFetch = this.prevFetch.then(createFetch);
+  }
+
+  async syncDocMetadata(info: typeof doc.info) {
+    console.log("DOING UPDATE OF METADATA");
+    const resp = await fetch_("/documents/update_document_metadata", {
+      method: "post",
+      body: JSON.stringify({
+        id: info.id,
+        title: info.title,
+        description: info.description,
+        tags: info.tags,
+        accent: info.accent,
+        thumbnail: info.thumbnail,
+      }),
+    });
+    if (!resp.ok) {
+      console.log("🎈", resp);
+      console.error(await resp.text());
+      return;
+    }
+
+    const data = await resp.json();
+    doc.info.title = data["title"];
+    doc.info.description = data["description"];
+    doc.info.tags = data["tags"];
+    doc.info.accent = data["accent"];
+    doc.info.thumbnail = data["thumbnail"];
   }
 
   syncDocLocal(htmlStr: string) {

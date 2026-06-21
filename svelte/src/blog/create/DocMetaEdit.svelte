@@ -1,10 +1,16 @@
 <script lang="ts">
   import { watch } from "runed";
-  import { doc } from "./store.svelte";
+  import {
+    allDocumentTags,
+    autocompleteSuggestions,
+    doc,
+  } from "./store.svelte";
   import FitContentWrapTextarea from "/shared/components/FitContentWrapTextarea.svelte";
   import { TagsEditor } from "./components/ComponentMetaEdit.svelte";
   import { fade } from "svelte/transition";
   import { untrack } from "svelte";
+  import { fetch_ } from "/shared/helper";
+  import { deepEqual } from "./helper";
 
   type PossibleKeys = "title" | "description" | "accent" | "thumbnail";
 
@@ -57,37 +63,74 @@
     return null;
   }
 
-  // const syncTagsChange = (tags: string[]) => {
-  //   doc.info.tags = tags;
-  // }
-
   let tagsEditorEl: HTMLElement | null = $state(null);
+  let didEditorSync: boolean = false;
   const tagsEditor = new TagsEditor(
-    (tag: string) => {
-      let exists = false;
-      // if (allComponentTags.includes(tag)) exists = true;
-
+    (index, tags) => {
+      const tag = tags[index];
       let msg = "";
-      if (tag.length === 0) msg = "Missing tag";
-      // if (/^[0-9]/.test(tag)) msg = "Tag cannot start with numeral";
-      // if (/[\-_]$/.test(tag)) msg = "Tag cannot end with '-' or '_'";
-      // if (/[, ]/.test(tag)) msg = "Tag cannot contain ',' or ' '";
 
+      if (tags.slice(0, index).includes(tag)) msg = "Added already";
+
+      if (!allDocumentTags.some((existingTag) => existingTag.name === tag))
+        msg = "Nonexistent tag";
+
+      if (tag.length === 0) msg = "Missing tag";
+
+      const exists = msg === "";
       return [exists, msg !== "", msg];
     },
     (tags) => {
       doc.info.tags = tags;
+      didEditorSync = true;
+      setTimeout(() => (didEditorSync = false));
     },
     ["+"],
   );
 
-  $effect(() => {
-    if (!tagsEditorEl) return;
-    untrack(() => {
-      console.log("SET TAGS");
-      tagsEditor.setTags(doc.info.tags, tagsEditorEl!);
+  watch(
+    () => doc.info.tags,
+    (curr, prev) => {
+      if (didEditorSync) {
+        console.log("SKIPPED");
+        didEditorSync = false;
+        return;
+      }
+      if (!deepEqual(curr, prev) && tagsEditorEl)
+        tagsEditor.setTags(curr, tagsEditorEl);
+    },
+  );
+
+  function handleTagsAutocomplete() {
+    const caret = getSelection();
+    if (!caret || !caret.focusNode) return;
+    const node = caret.focusNode;
+    if (
+      (node instanceof HTMLElement &&
+        node.closest("#edit-tags-doc span:not(.space)")) ||
+      node.parentElement?.closest("#edit-tags-doc span:not(.space)")
+    ) {
+      $autocompleteSuggestions = allDocumentTags
+        .map(({ name }) => name)
+        .filter((name) => node.textContent && name.startsWith(node.textContent))
+        .toSorted((a, b) => a.length - b.length);
+    } else {
+      $autocompleteSuggestions = [];
+    }
+  }
+
+  let confirmPublish = $state(false);
+  let publishResp: Promise<Response> | null = $state(null);
+
+  async function publishChanges() {
+    console.log("PUBLISHING CHANGES.");
+    publishResp = fetch_("/documents/publish_development_document", {
+      method: "post",
+      body: JSON.stringify({
+        id: doc.info.id,
+      }),
     });
-  });
+  }
 </script>
 
 <svelte:document
@@ -114,6 +157,7 @@
         name="edit-title"
         id="edit-title"
         placeholder="Guidance Document Title"
+        spellcheck="true"
         bind:value={doc.info.title}
       />
       {#if validateTitle(doc.info.title)}
@@ -155,23 +199,88 @@
   </div>
 
   <div class="flex px-4 mt-5 w-3xl mx-auto">
-    <label for="edit-tags" class="text-rock-700 text-2xl flex items-center"
-      >Tags:</label
+    <label
+      for="edit-tags-doc"
+      class="text-rock-700 text-2xl flex items-center"
+      id="edit-tags-doc-label">Tags:</label
     >
     <div
       role="application"
+      aria-labelledby="edit-tags-doc-label"
       spellcheck="false"
       contenteditable="true"
       id="edit-tags-doc"
       bind:this={tagsEditorEl}
-      oninput={(e) => tagsEditorEl && tagsEditor.onInput(tagsEditorEl)}
+      oninput={(e) => {
+        if (tagsEditorEl) {
+          tagsEditor.onInput(tagsEditorEl);
+          handleTagsAutocomplete();
+        }
+      }}
       onkeydown={(e) => tagsEditor.onKeydown(e)}
       class="mx-3 text-rock-600 font-mono outline-none flex flex-wrap min-w-60 relative"
     ></div>
   </div>
 </div>
-<div class="text-base italic text-rock-400 w-3xl mx-auto pl-8 mt-1">
-  Press "+" while editing to add new tags
+<div class="text-base italic text-rock-500 w-3xl mx-auto pl-8 mt-1">
+  Press "+" while editing to add new tags. <a
+    class="underline text-steel-600 text-lg ml-1 hover:no-underline"
+    href="/documents/tags"
+    target="_blank">Manage tags</a
+  >
+</div>
+
+<div class="flex px-4 mt-5 w-3xl mx-auto">
+  <label class="text-rock-700 text-2xl flex items-center mr-3" for="edit-accent"
+    >Accent:</label
+  >
+  <input
+    bind:value={doc.info.accent}
+    class="rounded border-rock-300 border-2 p-1 bg-background"
+    id="edit-accent"
+    type="color"
+  />
+</div>
+
+<div class="flex px-4 mt-7 w-3xl mx-auto">
+  <label
+    class="text-rock-700 text-2xl flex items-center mr-3"
+    for="edit-thumbnail">Thumbnail:</label
+  >
+  <textarea
+    class="border-2 border-rock-300 rounded grow h-28 p-1 bg-background focus:bg-white outline-none focus:ring-4 ring-steel-200 text-rock-600 font-mono"
+    name="edit-thumbnail"
+    id="edit-thumbnail"
+    bind:value={doc.info.thumbnail}
+  ></textarea>
+</div>
+
+<div class="flex items-center flex-col mt-18">
+  {#if confirmPublish}
+    <div
+      class="bg-yellow-100 text-yellow-700 text-lg p-2 rounded max-w-1/2 mb-4"
+    >
+      Please note; this makes ALL changes made to the document PUBLIC, and that
+      <br />THIS ACTION CANNOT BE UNDONE. <br />Click "Publish Changes" again if
+      you wish to proceed.
+    </div>
+  {/if}
+  <button
+    class="text-xl border-2 border-steel-300 text-steel-600 px-4 py-1 rounded bg-steel-50 hover:bg-white hover:ring-4 ring-steel-100 font-bold active:translate-y-1 active:bg-steel-100 disabled:opacity-50 disabled:pointer-events-none"
+    type="button"
+    onclick={() =>
+      !confirmPublish ? (confirmPublish = true) : publishChanges()}
+    disabled={Boolean(publishResp)}>Publish Changes</button
+  >
+  {#if publishResp}
+    {#await publishResp}
+      <div>Processing...</div>
+    {:then}
+      <div class="text-green-700 font-bold">Success!</div>
+    {:catch}
+      <div class="text-red-700 font-bold">Something went wrong.</div>
+    {/await}
+  {/if}
 </div>
 
 <style>

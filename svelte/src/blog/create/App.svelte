@@ -371,7 +371,7 @@
     {/if}
 
     <div class="doc w-3/4 max-w-[600px]" bind:this={docEl}>
-      <DocMeta {docEl} bind:this={docMeta} />
+      <DocMeta {docEl} {docSaver} bind:this={docMeta} />
       Loading document...
     </div>
   </div>

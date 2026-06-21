@@ -31,7 +31,13 @@ export const selection = new Selection();
 
 /////////////////////////////////////////// AUTOCOMPLETE
 
-type AutocompleteMode = "css" | "attributes" | "tag" | "component" | null;
+type AutocompleteMode =
+  | "css"
+  | "attributes"
+  | "tag"
+  | "component"
+  | "doctag"
+  | null;
 export const autocompleteMode: Writable<AutocompleteMode> = writable(null);
 export const autocompleteSuggestions: Writable<string[]> = writable([]);
 
@@ -95,9 +101,19 @@ class Doc {
     body: "",
     componentLibVer: "",
   });
+
+  // savedInfo: DocumentInfo =
 }
 
 export const doc = new Doc();
+
+interface DocumentTag {
+  name: string;
+  description: string;
+  accent: string;
+}
+
+export const allDocumentTags: DocumentTag[] = $state([]);
 
 // export const docInfo: DocumentInfo | null = null;
 

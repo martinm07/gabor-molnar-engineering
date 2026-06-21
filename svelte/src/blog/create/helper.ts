@@ -466,3 +466,14 @@ export function parseHTMLFragment(
   template.innerHTML = htmlStr;
   return Array.from(template.content.childNodes);
 }
+
+// https://stackoverflow.com/a/32922084/11493659
+export function deepEqual(x: any, y: any): boolean {
+  const ok = Object.keys,
+    tx = typeof x,
+    ty = typeof y;
+  return x && y && tx === "object" && tx === ty
+    ? ok(x).length === ok(y).length &&
+        ok(x).every((key) => deepEqual(x[key], y[key]))
+    : x === y;
+}

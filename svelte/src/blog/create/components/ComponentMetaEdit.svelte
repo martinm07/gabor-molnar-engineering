@@ -41,160 +41,6 @@
     }
   }
 
-  // export class TagsEditor2 {
-  //   editorEl: HTMLElement | null = $state(null);
-  // }
-
-  // export class TagsEditor {
-  //   getEl: () => HTMLElement | null = $state(() => null);
-  //   getSavedVal: () => string | string[];
-  //   inputVal: string | string[] | null = $state(null);
-  //   syncChange: Function;
-
-  //   constructor(
-  //     editorEl: () => HTMLElement | null,
-  //     syncChange: Function,
-  //     getSavedVal: () => string | string[],
-
-  //   ) {
-  //     // this.savedVal = $derived(comps.current.tags ?? "");
-  //     this.getEl = editorEl;
-
-  //     this.getSavedVal = getSavedVal;
-
-  //     watch([() => this.getEl(), () => this.getSavedVal()], () => {
-  //       // Don't override an existing value if there is one in the tags editor
-  //       //  (which will be the case when syncing changes using updateCompEdit while the user is typing)
-  //       //  as that causes the editor to remove invalid tags
-  //       if (this.getEl()?.textContent) return;
-
-  //       this.onInput(this.getSavedVal(), false);
-  //     });
-
-  //     this.syncChange = syncChange;
-  //   }
-
-  //   onInput(overrideText?: string | string[], doSync = true) {
-  //     const editorEl = this.getEl();
-  //     if (!editorEl) return;
-  //     let text = overrideText ?? editorEl.textContent ?? "";
-  //     this.inputVal = this.parseTagsStr(text);
-  //     // TODO: Remove all non alphanumeric, -, _ and spaces from the string.
-  //     // console.log(text);
-  //     // text = text.replace(/[^a-zA-Z0-9\-_ ]/g, "");
-  //     // console.log(text);
-
-  //     const caret = document.getSelection();
-  //     const offset = calculateTotalOffset(
-  //       editorEl,
-  //       caret?.focusNode,
-  //       caret?.focusOffset,
-  //     );
-
-  //     const html = TagsEditor.parseTagsStrAsHTML(text);
-  //     editorEl.innerHTML = html;
-
-  //     const [node, newOffset] = findNodeFromOffset(editorEl, offset);
-  //     if (editorEl.contains(caret?.focusNode ?? null))
-  //       caret?.setPosition(node, newOffset);
-
-  //     if (doSync) this.syncChange();
-  //   }
-
-  //   static parseTagsStrAsHTML(text: string | string[]) {
-  //     let tags: string[];
-  //     if (Array.isArray(text)) tags = text;
-  //     else tags = text.split(/[\s,]/);
-  //     // console.log(`Parsing the string "${text}"`);
-  //     // const tags = text.split(/[\s,]/);
-  //     // console.log("Found the following tags:", tags);
-  //     const final = tags
-  //       .map((tag) => {
-  //         let errMsg: string | null;
-  //         if (allComponentTags.includes(tag)) {
-  //           return `<span class="existing">${tag}</span>`;
-  //         } else if ((errMsg = this.generateErrMsg(tag)) !== null) {
-  //           return `<span class="error new" style="--errormsg: &quot;${errMsg}&quot;;">${tag}</span>`;
-  //         } else {
-  //           return `<span class="new">${tag}</span>`;
-  //         }
-  //       })
-  //       .join('<span class="space">&nbsp;</span>');
-
-  //     return final;
-  //   }
-
-  //   // static generateErrMsg(tag: string) {
-  //   //   if (tag.length === 0) return "Missing tag";
-  //   //   if (/^[0-9]/.test(tag)) return "Tag cannot start with numeral";
-  //   //   if (/[\-_]$/.test(tag)) return "Tag cannot end with '-' or '_'";
-  //   //   return null;
-  //   // }
-
-  //   // parseTagsStr<T extends string | string[]>(text: T): T {
-  //   //   if (Array.isArray(text)) {
-  //   //     return text.filter((tag) => {
-  //   //       return this.generateErrMsg(tag) === null;
-  //   //     })
-  //   //   } else {
-
-  //   //     const tags = text.split(/[\s,]/);
-  //   //     const final = tags.filter((tag) => {
-  //   //       return this.generateErrMsg(tag) === null;
-  //   //     });
-  //   //     return final.join(",");
-  //   //   }
-  //   // }
-  //   parseTagsStr(text: string): string;
-  //   parseTagsStr(text: string[]): string[];
-  //   parseTagsStr(text: string | string[]): string | string[];
-  //   parseTagsStr(text: string | string[]): string | string[] {
-  //     if (Array.isArray(text)) {
-  //       return text.filter((tag) => {
-  //         return this.generateErrMsg(tag) === null;
-  //       })
-  //     } else {
-
-  //       const tags = text.split(/[\s,]/);
-  //       const final = tags.filter((tag) => {
-  //         return this.generateErrMsg(tag) === null;
-  //       });
-  //       return final.join(",");
-  //     }
-  //   }
-
-  //   onSelectionChange() {
-  //     const editorEl = this.getEl();
-  //     const caret = getSelection();
-  //     if (!caret || !editorEl) return;
-  //     const focusEl =
-  //       caret.focusNode instanceof Element
-  //         ? caret.focusNode
-  //         : caret.focusNode?.parentElement;
-  //     if (!focusEl) return;
-
-  //     console.log("Focus element:", focusEl);
-
-  //     const clearFocused = () =>
-  //       Array.from(editorEl.children).forEach((child) =>
-  //         child.classList.remove("focused"),
-  //       );
-
-  //     // If the focus changed and is within the tags editor, then change the
-  //     //  element which is focused, and otherwise clear focus from the tags editor
-  //     if (editorEl !== focusEl && editorEl.contains(focusEl)) {
-  //       // If the element-to-focus is already focused, or is a .space, then ignore
-  //       if (
-  //         focusEl.classList.contains("focused") ||
-  //         focusEl.classList.contains("space")
-  //       )
-  //         return;
-  //       clearFocused();
-  //       focusEl.classList.add("focused");
-  //     } else clearFocused();
-  //   }
-  // }
-
   /* Structure of HTML:
 ```html
 <div contenteditable class="tags-container">
@@ -209,13 +55,15 @@
 ``` */
   export class TagsEditor {
     validateTag: (
-      tag: string,
+      tagIndex: number,
+      allTags: string[],
     ) => [exists: boolean, error: boolean, msg: string];
     syncTags: (tags: string[]) => void;
     keysForNewTag: string[];
     // syncInnerHTML: (htmlStr: string) => void;
 
     parsedTags: string[] = $state([]);
+    prevFilteredTags: string[] = $state([]);
 
     private splitStr: string = TagsEditor.generateSplitStr();
 
@@ -225,24 +73,22 @@
 
     constructor(
       validateTag: (
-        tag: string,
+        tagIndex: number,
+        allTags: string[],
       ) => [exists: boolean, error: boolean, msg: string],
       syncTags: (tags: string[]) => void,
       keysForNewTag: string[],
     ) {
-      //   syncInnerHTML: (htmlStr: string) => void,
-      // ) {
       this.validateTag = validateTag;
       this.syncTags = syncTags;
       this.keysForNewTag = keysForNewTag;
-      // this.syncInnerHTML = syncInnerHTML;
     }
 
     parseTagsIntoHTML(tags: string[]) {
       const final = tags
-        .map((tag_) => {
+        .map((tag_, i) => {
           const tag = tag_ === "" ? tag_ : tag_;
-          const [exists, err, msg] = this.validateTag(tag);
+          const [exists, err, msg] = this.validateTag(i, tags);
 
           if (exists) {
             return `<span class="existing">${tag}</span>`;
@@ -258,7 +104,7 @@
     }
 
     parseHTMLIntoTags(tagsEditorEl: Element): string[] {
-      console.log(tagsEditorEl.innerHTML);
+      // console.log(tagsEditorEl.innerHTML);
       const elStrs: string[] = [];
 
       let tagStartedFromSpace = false;
@@ -340,18 +186,27 @@
       //   tagsEditorEl.textContent.length,
       // );
 
-      const filteredTags = this.parsedTags.filter((tag) => {
-        const [_, err] = this.validateTag(tag);
+      const filteredTags = this.parsedTags.filter((tag, i) => {
+        const [_, err] = this.validateTag(i, this.parsedTags);
         return !err;
       });
-      this.syncTags(filteredTags);
+
+      if (!deepEqual(filteredTags, this.prevFilteredTags)) {
+        this.syncTags(filteredTags);
+        this.prevFilteredTags = filteredTags;
+      }
     }
 
     setTags(tags: string[], tagsEditorEl: Element) {
       this.parsedTags = tags;
       const html = this.parseTagsIntoHTML(this.parsedTags);
       tagsEditorEl.innerHTML = html;
-      tagsEditorEl.dispatchEvent(new Event("input", { bubbles: true }));
+
+      const inputEvent = new CustomEvent("input", {
+        bubbles: true,
+        detail: "synthetic",
+      });
+      tagsEditorEl.dispatchEvent(inputEvent);
     }
 
     onSelectionChange(tagsEditorEl: Element) {
@@ -414,7 +269,9 @@
           console.log(selection.rangeCount);
           console.log(selection.getComposedRanges());
 
-          e.target?.dispatchEvent(new Event("input", { bubbles: true }));
+          e.target?.dispatchEvent(
+            new CustomEvent("input", { bubbles: true, detail: "synthetic" }),
+          );
         } else if (selection.focusNode instanceof Element) {
           // When the selection focusNode/anchor node is of an Element type, the anchorOffset/focusOffset
           //  refer to boundaries between the children, not to boundaries betwee text characters in textContent
@@ -449,7 +306,9 @@
           // Restore caret position after modifying textContent
           selection.setPosition(selection.focusNode, selection.focusOffset);
 
-          e.target?.dispatchEvent(new Event("input", { bubbles: true }));
+          e.target?.dispatchEvent(
+            new CustomEvent("input", { bubbles: true, detail: "synthetic" }),
+          );
 
           setTimeout(() => {
             // Move caret into newly added (empty) tag
@@ -473,6 +332,7 @@
     findNodeFromOffset,
   } from "../editors/css/CSSEditor.svelte";
   import { onDestroy, untrack } from "svelte";
+  import { deepEqual } from "../helper";
 
   // // Represents the component data saved in the database
   // let compInfo: Partial<CompParts> = $derived.by(() => {
@@ -542,11 +402,17 @@
   // );
 
   const tagsEditor = new TagsEditor(
-    (tag: string) => {
+    (index, tags) => {
+      const tag = tags[index];
+
       let exists = false;
       if (allComponentTags.includes(tag)) exists = true;
 
       let msg = "";
+      if (tags.slice(0, index).includes(tag)) {
+        msg = "Added already";
+        exists = false;
+      }
       if (tag.length === 0) msg = "Missing tag";
       if (/^[0-9]/.test(tag)) msg = "Tag cannot start with numeral";
       if (/[\-_]$/.test(tag)) msg = "Tag cannot end with '-' or '_'";

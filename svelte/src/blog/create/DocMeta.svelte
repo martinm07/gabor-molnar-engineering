@@ -6,13 +6,21 @@
 
 <script lang="ts">
   import { watch } from "runed";
-  import { doc, docMetaFields, type TDocMetaFields } from "./store.svelte";
+  import {
+    doc,
+    docMetaFields,
+    type DocumentInfo,
+    type TDocMetaFields,
+  } from "./store.svelte";
   import { getContext } from "svelte";
+  import type { SaveDoc } from "./docsaving.svelte";
+  import { deepEqual } from "./helper";
 
   interface Props {
     docEl: HTMLElement;
+    docSaver: SaveDoc;
   }
-  let { docEl }: Props = $props();
+  let { docEl, docSaver }: Props = $props();
 
   export function informMetaUpdate(mutations: MutationRecord[]) {
     for (const mutation of mutations) {
@@ -58,13 +66,21 @@
     }
   }
 
-  // Check if we need to update any relevant values
-  // watch(
-  //   () => doc.info,
-  //   () => {
-
-  //   },
-  // );
+  // Server sync
+  watch(
+    () => $state.snapshot(doc.info),
+    (curr, prev) => {
+      if (deepEqual(curr, prev)) {
+        // console.log("NOTHING CHANGED.");
+      } else {
+        // console.log("SENDING DEBOUNCED SERVER METADATA UPDATE");
+        docSaver.syncDocMetadataDebounce(curr);
+      }
+    },
+    {
+      lazy: true,
+    },
+  );
 </script>
 
 <div class="doc-meta not-body">
@@ -97,8 +113,6 @@
     {/each}
   </div>
 </div>
-
-hello
 
 <style>
   .doc-meta {

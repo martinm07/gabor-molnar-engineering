@@ -245,6 +245,9 @@
     } else if (e.target.closest(".data-component-val-input")) {
       $autocompleteMode = "component";
       $autocompleteSuggestions = [];
+    } else if (e.target.closest("#edit-tags-doc")) {
+      $autocompleteMode = "doctag";
+      $autocompleteSuggestions = [];
     } else if (!e.target.closest(".autocomplete-display")) {
       $autocompleteMode = null;
     }
