@@ -235,6 +235,7 @@ export class SaveDoc {
         tags: info.tags,
         accent: info.accent,
         thumbnail: info.thumbnail,
+        status: info.status,
       }),
     });
     if (!resp.ok) {
@@ -249,6 +250,7 @@ export class SaveDoc {
     doc.info.tags = data["tags"];
     doc.info.accent = data["accent"];
     doc.info.thumbnail = data["thumbnail"];
+    doc.info.status = data["status"];
   }
 
   syncDocLocal(htmlStr: string) {

@@ -274,7 +274,7 @@ def addtags(num):
     blogs = db.session.scalars(select(GuidanceDocument)).all()
     for tag in tags:
         for blog in blogs:
-            if random.random() < 0.5:
+            if random.random() < 0.8:
                 continue
             blog.tags.append(tag)
     db.session.commit()

@@ -25,7 +25,7 @@
 - [x] Managing document component library version
     - ~~Detection of old component library version and displayed warning.~~
     - ~~Updating component instances in document upon updating library version ~~
-- [ ] Managing document metadata 
+- [x] Managing document metadata 
     - (button on navbar that brings screen-wide popup for modifying title, description, tags, accent colour, thumbnail, and published status) probably using identical code as the popup for modifying component metadata
 - [ ] Admin view of all guidance documents, creation of new ones, etc.
 - [ ] Document media tray
@@ -67,6 +67,13 @@ The big expansion after everything will be "macros". Here was my initial idea fo
 It would essentially involve creating a JavaScript API for the document editor, implementing a web-based JavaScript editor (probably using a third-party library), implementing keyboard shortcut customisation, icon customisation, etc. and somehow involving them in component library versioning.
 
 At this point though, I think it is fine to call the editor complete without macros implemented.
+
+## List of Future Improvements
+
+- DocMetaEdit changes the page url (and going back from "Manage Tags" would bring you straight back to the DocMetaEdit screen)
+- Editing file names in the media tray
+- Preview of media in the media tray (like for image and video)
+- Search feature for media tray
 
 ## Thoughts Board
 

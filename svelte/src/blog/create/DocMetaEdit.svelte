@@ -121,15 +121,18 @@
 
   let confirmPublish = $state(false);
   let publishResp: Promise<Response> | null = $state(null);
+  let disablePublishBtn = $state(false);
 
   async function publishChanges() {
     console.log("PUBLISHING CHANGES.");
+    disablePublishBtn = true;
     publishResp = fetch_("/documents/publish_development_document", {
       method: "post",
       body: JSON.stringify({
         id: doc.info.id,
       }),
     });
+    publishResp.finally(() => (disablePublishBtn = false));
   }
 </script>
 
@@ -170,7 +173,7 @@
     </div>
   </div>
 
-  <div class="flex items-stretch px-4 w-3xl mx-auto mt-12">
+  <div class="flex items-stretch px-4 max-w-3xl mx-auto mt-12">
     <label
       for="edit-description"
       class="text-rock-700 flex items-center text-2xl">Description:</label
@@ -198,7 +201,7 @@
     </div>
   </div>
 
-  <div class="flex px-4 mt-5 w-3xl mx-auto">
+  <div class="flex px-4 mt-5 max-w-3xl mx-auto">
     <label
       for="edit-tags-doc"
       class="text-rock-700 text-2xl flex items-center"
@@ -222,7 +225,7 @@
     ></div>
   </div>
 </div>
-<div class="text-base italic text-rock-500 w-3xl mx-auto pl-8 mt-1">
+<div class="text-base italic text-rock-500 max-w-3xl mx-auto pl-8 mt-1">
   Press "+" while editing to add new tags. <a
     class="underline text-steel-600 text-lg ml-1 hover:no-underline"
     href="/documents/tags"
@@ -230,7 +233,7 @@
   >
 </div>
 
-<div class="flex px-4 mt-5 w-3xl mx-auto">
+<div class="flex px-4 mt-5 max-w-3xl mx-auto">
   <label class="text-rock-700 text-2xl flex items-center mr-3" for="edit-accent"
     >Accent:</label
   >
@@ -242,7 +245,7 @@
   />
 </div>
 
-<div class="flex px-4 mt-7 w-3xl mx-auto">
+<div class="flex px-4 mt-7 max-w-3xl mx-auto">
   <label
     class="text-rock-700 text-2xl flex items-center mr-3"
     for="edit-thumbnail">Thumbnail:</label
@@ -253,6 +256,22 @@
     id="edit-thumbnail"
     bind:value={doc.info.thumbnail}
   ></textarea>
+</div>
+
+<div class="flex px-4 mt-5 max-w-3xl mx-auto">
+  <label class="text-rock-700 text-2xl flex items-center mr-3" for="edit-status"
+    >Status:</label
+  >
+  <select
+    class="text-lg text-rock-600 font-mono bg-background border-b-2 rounded border-rock-300 px-4 py-2 focus:ring-4 ring-steel-200 font-bold"
+    id="edit-status"
+    bind:value={doc.info.status}
+  >
+    <option value="private">Private</option>
+    <option value="unlisted">Unlisted</option>
+    <option value="public">Public</option>
+    <option value="featured">Featured</option>
+  </select>
 </div>
 
 <div class="flex items-center flex-col mt-18">
@@ -270,13 +289,19 @@
     type="button"
     onclick={() =>
       !confirmPublish ? (confirmPublish = true) : publishChanges()}
-    disabled={Boolean(publishResp)}>Publish Changes</button
+    disabled={disablePublishBtn}>Publish Changes</button
   >
   {#if publishResp}
     {#await publishResp}
-      <div>Processing...</div>
-    {:then}
-      <div class="text-green-700 font-bold">Success!</div>
+      <div class="italic text-rock-700">Processing...</div>
+    {:then resp}
+      {#if resp.ok}
+        <div class="text-green-700 font-bold">Success!</div>
+      {:else}
+        {let respText = $state("")}
+        {const _ = resp.text().then((text) => (respText = text))}
+        <div class="text-red-700 font-bold">({resp.status}) Something went wrong. Message:<br /><span class="font-normal">{respText}</span></div>
+      {/if}
     {:catch}
       <div class="text-red-700 font-bold">Something went wrong.</div>
     {/await}

@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from functools import cmp_to_key
 from typing import Any, Sequence, Union
 import warnings
+import time
 
 import requests
 from bs4 import BeautifulSoup
@@ -949,6 +950,7 @@ def update_document_metadata():
         if (tags := data.get("tags")): document.tags = fill_doc_tag_names(tags)
         if (accent := data.get("accent")): document.accent = accent
         if (thumbnail := data.get("thumbnail")): document.thumbnail = thumbnail
+        if (status := data.get("status")): document.status = status
 
         ## IMP: ANY VALIDATION SHOULD GO HERE
 
@@ -964,6 +966,7 @@ def update_document_metadata():
         "tags": [tag.name for tag in document.tags],
         "accent": document.accent,
         "thumbnail": document.thumbnail,
+        "status": document.status,
     }
 
 
@@ -1004,9 +1007,58 @@ def publish_development_document():
 
         publishdoc.body = document.body
         publishdoc.component_lib_version = document.component_lib_version
-        # We don't set hearts or status
+
+        publishdoc.status = document.status
+        # We don't set hearts
 
     db.session.commit()
+    return ""
+
+
+@bp.route("/save_doctag_changes", methods=["OPTIONS", "POST"])
+@cors_enabled()
+def save_doctag_changes():
+    data = json.loads(request.data.decode("utf-8"))
+
+    all_tags = get_all_tags(True)
+
+    # Add new tags
+    added = data.get("added", [])
+    for new_tag_data in added:
+        new_tag = DocumentTag(
+            name=new_tag_data.get("name"),
+            description=new_tag_data.get("description"),
+            accent=new_tag_data.get("accent"),
+        )
+        db.session.add(new_tag)
+
+    # Edit tags
+    edit: dict[str, dict] = data.get("edit", {})
+    for i, new_data in edit.items():
+        tag = all_tags[int(i)]
+        print(tag.name, " -> ", new_data.get("name"))
+        print(tag.description, " -> ", new_data.get("description"))
+        print(tag.accent, " -> ", new_data.get("accent"))
+        print("-----------")
+
+        if (name := new_data.get("name")): tag.name = name
+        if (description := new_data.get("description")): tag.description = description
+        if (accent := new_data.get("accent")): tag.accent = accent
+
+
+    # Remove tags
+    removed = data.get("removed", [])
+    for i in removed:
+        db.session.delete(all_tags[i])
+
+    print(all_tags)
+    print("-------------------")
+    print(added)
+    print(edit)
+    print(removed)
+
+    db.session.commit()
+
     return ""
 
 
@@ -1017,6 +1069,44 @@ def edit_document(id):
 @bp.route("/edit/component/<id>")
 def edit_component(id):
     return render_template("blog/create.html", document_or_component_id=id)
+
+
+def get_all_tags(return_objs = False) -> list[Any]:
+    tag_objs = db.session.scalars(select(DocumentTag)).all()
+
+    tag_objs = list(tag_objs)
+    tag_objs.sort(key=lambda x: x.id)
+
+    all_tags = []
+    for tag in tag_objs:
+        document_titles = [doc.title for i, doc in enumerate(tag.documents) if not any(x.id == doc.id for x in tag.documents[:i])]
+
+        all_tags.append({
+            "name": tag.name,
+            "description": tag.description,
+            "accent": tag.accent,
+            "documentTitles": document_titles
+        })
+
+    if not return_objs:
+        return all_tags
+    else:
+        return tag_objs
+
+## Route for Svelte development only
+@bp.route("/get_all_tags")
+@cors_enabled()
+def get_all_tags_view():
+    all_tags = get_all_tags()
+    return all_tags
+
+
+@bp.route("/tags")
+def tags():
+    all_tags = get_all_tags()
+
+    return render_template("blog/tagsedit.html", all_tags=all_tags)
+
 
 #####################
 

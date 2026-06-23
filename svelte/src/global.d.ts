@@ -1,3 +1,10 @@
+interface DocTag {
+  name: string;
+  description: string;
+  accent: string;
+  documentTitles: string[];
+}
+
 export declare global {
   var jinjaParsed: boolean;
   var csrfToken: string;
@@ -7,6 +14,9 @@ export declare global {
   var blogreadTitle: string;
   var blogreadDesc: string;
   var blogreadBody: string;
+
+  // /create/tagsedit
+  var allDocTags: DocTag[];
 
   type CaretPosition = {
     offsetNode: Node;
