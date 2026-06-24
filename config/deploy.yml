@@ -62,6 +62,7 @@ env:
 #
 aliases:
   shell: app exec --interactive --reuse "bash"
+  mysql: accessory exec db --interactive --reuse "mysql -p"
 
 # Use a different ssh user than root
 #
