@@ -1,1 +1,0 @@
-import{b as d,a1 as m,c as p,a as v,d as _,s as b,a2 as h,p as k}from"./svelte-wxNFYN69.js";function g(s,l,i){var n=s,r=h,e,c,a=null,u=m;function f(){e&&k(e),a!==null&&(a.lastChild.remove(),n.before(a),a=null),e=c}d(()=>{if(u(r,r=l())){var t=n,o=b();o&&(a=document.createDocumentFragment(),a.append(t=p())),c=v(()=>i(t)),o?_.add_callback(f):f()}})}export{g as k};

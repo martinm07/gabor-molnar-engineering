@@ -20,7 +20,7 @@
           "{{ url_for(request.endpoint, id=document_or_component_id).split('/')[0] + '/' }}";
 
         globalThis.csrfToken = "{{ csrf_token() }}";
-        globalThis.allDocTags = JSON.parse("{{ all_tags }}");
+        globalThis.allDocTags = JSON.parse(`{{ all_tags|tojson }}`);
       } catch {}
     </script>
 
