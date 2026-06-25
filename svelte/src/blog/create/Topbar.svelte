@@ -2,20 +2,39 @@
   import { circInOut } from "svelte/easing";
   import { compLibVer, mode } from "./store.svelte";
   import { editorState } from "./url.svelte";
-  import ComponentMetaEdit from "./components/ComponentMetaEdit.svelte";
+
+  import ComponentMetaEdit, {
+    dClassComponentMetaEdit,
+  } from "./components/ComponentMetaEdit.svelte";
+  import DocMetaEdit, { dClassDocMetaEdit } from "./DocMetaEdit.svelte";
+  import MediaTray, { dClassMediaTray } from "./MediaTray.svelte";
+
   import TreeView from "phosphor-svelte/lib/TreeViewIcon";
   import SquaresFour from "phosphor-svelte/lib/SquaresFourIcon";
   import ListIcon from "phosphor-svelte/lib/ListIcon";
   import XIcon from "phosphor-svelte/lib/XIcon";
-  import DocMetaEdit from "./DocMetaEdit.svelte";
+  import ImagesSquareIcon from "phosphor-svelte/lib/ImagesSquareIcon";
 
   // interface Props {
   // }
 
   // let {  }: Props = $props();
 
-  type DropdownState = "docmetaedit" | "compmetaedit" | "none";
-  let dropdown: DropdownState = $state("none");
+  type DropdownState = "docmetaedit" | "compmetaedit" | "mediatray" | "none";
+  let dropdown: DropdownState = $state("mediatray"); // TODO: change back
+
+  const dropdownContainerClass = $derived.by(() => {
+    switch (dropdown) {
+      case "compmetaedit":
+        return dClassComponentMetaEdit;
+      case "docmetaedit":
+        return dClassDocMetaEdit;
+      case "mediatray":
+        return dClassMediaTray;
+      default:
+        return "";
+    }
+  });
 
   function dropdownExpandTransition(
     node: HTMLElement,
@@ -88,6 +107,19 @@
   {:else if editorState.mode === "document"}
     <button
       class="aspect-square m-1.5 rounded flex items-center justify-center text-3xl text-rock-700 hover:bg-rock-100 cursor-pointer"
+      class:bg-rock-100={dropdown === "mediatray"}
+      aria-label="Configure component metadata"
+      onclick={() => {
+        if (dropdown === "mediatray") dropdown = "none";
+        else dropdown = "mediatray";
+      }}
+    >
+      <ImagesSquareIcon class={dropdown === "mediatray" ? "hidden" : ""} />
+      <XIcon class={dropdown === "mediatray" ? "" : "hidden"} />
+    </button>
+
+    <button
+      class="aspect-square m-1.5 rounded flex items-center justify-center text-3xl text-rock-700 hover:bg-rock-100 cursor-pointer"
       class:bg-rock-100={dropdown === "docmetaedit"}
       aria-label="Configure component metadata"
       onclick={() => {
@@ -104,13 +136,15 @@
 {#if dropdown !== "none"}
   <div
     transition:dropdownExpandTransition={{ expandAmount: 500, duration: 100 }}
-    class="absolute w-[96%] left-[2%] h-[calc(100vh-4rem)] bg-white z-10 top-12 border-2 border-t-0 rounded-b-lg border-rock-300 overflow-y-scroll shadow-[0_30px_5px_20px_var(--background-50)]"
+    class={dropdownContainerClass}
   >
     {#if dropdown === "docmetaedit"}
       <!-- <div class="h-screen"></div> -->
       <DocMetaEdit />
     {:else if dropdown === "compmetaedit"}
       <ComponentMetaEdit />
+    {:else if dropdown === "mediatray"}
+      <MediaTray />
     {/if}
   </div>
 {/if}

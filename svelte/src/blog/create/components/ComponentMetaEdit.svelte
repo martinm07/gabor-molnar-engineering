@@ -1,4 +1,7 @@
 <script module lang="ts">
+  export const dClassComponentMetaEdit =
+    "absolute w-[96%] left-[2%] h-[calc(100vh-4rem)] bg-white z-10 top-12 border-2 border-t-0 rounded-b-lg border-rock-300 overflow-y-scroll shadow-[0_30px_5px_20px_var(--background-50)]"; //t
+
   export class InputState {
     keyName: keyof CompParts;
     keyVal: string;
@@ -41,18 +44,20 @@
     }
   }
 
-  /* Structure of HTML:
-```html
-<div contenteditable class="tags-container">
-  <span class="existing">tag 1</span>
-  <span class="space">&nbsp;</span>
-  <span class="new">tag 2</span>
-  <span class="space">&nbsp;</span>
-  <span class="error new" style="--errormsg: &quot;message here&quot;;">tag 3</span>
-  <span class="space">&nbsp;</span>
-  <span class="existing focused" style="--errormsg: &quot;message here&quot;;">tag 4</span>
-</div>
-``` */
+  /**
+   * Structure of HTML:
+   * ```html
+   * <div contenteditable class="tags-container">
+   *   <span class="existing">tag 1</span>
+   *   <span class="space">&nbsp;</span>
+   *   <span class="new">tag 2</span>
+   *   <span class="space">&nbsp;</span>
+   *   <span class="error new" style="--errormsg: &quot;message here&quot;;">tag 3</span>
+   *   <span class="space">&nbsp;</span>
+   *   <span class="existing focused" style="--errormsg: &quot;message here&quot;;">tag 4</span>
+   * </div>
+   * ```
+   */
   export class TagsEditor {
     validateTag: (
       tagIndex: number,

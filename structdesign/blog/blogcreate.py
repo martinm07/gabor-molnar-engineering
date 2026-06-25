@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from diff_match_patch import diff_match_patch
 from flask import Blueprint, Response, g, render_template, request, stream_with_context
 from sqlalchemy import select
+from werkzeug.utils import secure_filename
 
 from ..extensions import db
 from ..helper import cors_enabled
@@ -1059,6 +1060,21 @@ def save_doctag_changes():
 
     db.session.commit()
 
+    return ""
+
+@bp.route("/add_media_file", methods=["OPTIONS", "POST"])
+@cors_enabled()
+def add_media_file():
+    # files = request.files.getlist("files")
+    file = request.files.get("file")
+
+    if not file:
+        print("No file provided!")
+        return "No file provided", 400
+    else:
+        print(f"filename: {file.filename}")
+
+    # secure_filename()
     return ""
 
 

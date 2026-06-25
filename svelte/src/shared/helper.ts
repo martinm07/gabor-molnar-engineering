@@ -4,7 +4,7 @@ export function fetch_(input: string | URL | Request, init?: RequestInit) {
   if (globalThis.jinjaParsed) {
     if (
       input instanceof Request &&
-      /^(GET|HEAD|OPTIONS|TRACE)/i.test(input.method)
+      !/(GET|HEAD|OPTIONS|TRACE)/i.test(input.method)
     ) {
       input.headers.set("X-CSRFToken", globalThis.csrfToken);
     }
@@ -30,6 +30,96 @@ export function fetch_(input: string | URL | Request, init?: RequestInit) {
 
   return fetch(input, init);
 }
+
+/****************************** Claude generated this, as an XMLHttpRequest equivalent to the above fetch function */
+type XHRBody = Document | XMLHttpRequestBodyInit | null;
+
+export interface XHROptions {
+  method?: string;
+  headers?: HeadersInit;
+  body?: XHRBody;
+  responseType?: XMLHttpRequestResponseType;
+  timeout?: number;
+  onUploadProgress?: (event: ProgressEvent) => void;
+  onDownloadProgress?: (event: ProgressEvent) => void;
+}
+
+export interface XHRHandle {
+  /** Raw XHR instance — use for `.abort()`, inspecting `.status`, etc. */
+  xhr: XMLHttpRequest;
+  /** Resolves with the XHR once it loads (check `.status` yourself — this
+   *  does NOT reject on 4xx/5xx, only on network error/abort/timeout). */
+  promise: Promise<XMLHttpRequest>;
+}
+
+function normalizeHeaders(headers: HeadersInit): [string, string][] {
+  if (headers instanceof Headers) return [...headers.entries()];
+  if (Array.isArray(headers)) return headers;
+  return Object.entries(headers);
+}
+
+/**
+ * XMLHttpRequest counterpart to `fetch_`. Same dev/prod split:
+ *  - production (jinjaParsed): same-origin, attach CSRF token on unsafe methods
+ *  - dev: rewrite relative URLs to the Vite-side Flask dev server, send cookies
+ *    cross-origin via `withCredentials`
+ *
+ * Unlike `fetch_`, this only accepts string/URL inputs (XHR has no Request
+ * object), and calls `.send()` immediately — attach progress handlers via the
+ * options, not after the fact.
+ */
+export function xhr_(input: string | URL, init: XHROptions = {}): XHRHandle {
+  const method = init.method ?? "GET";
+  let url = input.toString();
+
+  if (!globalThis.jinjaParsed && !URL.canParse(url)) {
+    url = new URL(url, import.meta.env.VITE_DEV_FLASK_SERVER).toString();
+  }
+
+  const xhr = new XMLHttpRequest();
+  xhr.open(method, url, true);
+
+  if (globalThis.jinjaParsed) {
+    // Unsafe methods need the CSRF token; safe methods don't.
+    if (!/^(GET|HEAD|OPTIONS|TRACE)/i.test(method)) {
+      xhr.setRequestHeader("X-CSRFToken", globalThis.csrfToken);
+    }
+  } else {
+    // Cross-origin dev request — let cookies (session/CSRF) flow.
+    xhr.withCredentials = true;
+  }
+
+  if (init.headers) {
+    for (const [key, value] of normalizeHeaders(init.headers)) {
+      xhr.setRequestHeader(key, value);
+    }
+  }
+
+  if (init.responseType) xhr.responseType = init.responseType;
+  if (init.timeout) xhr.timeout = init.timeout;
+  if (init.onUploadProgress) {
+    xhr.upload.addEventListener("progress", init.onUploadProgress);
+  }
+  if (init.onDownloadProgress) {
+    xhr.addEventListener("progress", init.onDownloadProgress);
+  }
+
+  const promise = new Promise<XMLHttpRequest>((resolve, reject) => {
+    xhr.addEventListener("load", () => resolve(xhr));
+    xhr.addEventListener("error", () => reject(new Error("Network error")));
+    xhr.addEventListener("timeout", () =>
+      reject(new DOMException("Timed out", "TimeoutError")),
+    );
+    xhr.addEventListener("abort", () =>
+      reject(new DOMException("Aborted", "AbortError")),
+    );
+  });
+
+  xhr.send(init.body ?? null);
+
+  return { xhr, promise };
+}
+/****************************** */
 
 export async function timeoutPromise(
   seconds: number,

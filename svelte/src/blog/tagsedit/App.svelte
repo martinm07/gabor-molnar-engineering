@@ -118,7 +118,7 @@
     <div class="text-4xl font-serif text-center text-rock-700 mt-5 w-full">Manage Guidance Document Tags</div>
     <div class="max-w-3xl mx-auto h-fit my-5 px-4">
       {#each tags as tag, i}
-        {const color = $derived(Color(convertAccent(tag.accent ?? "#e7e8e3")))}
+        {const color = $derived(Color(convertAccent((!tag.accentDisabled && tag.accent) || "#e7e8e3")))}
         {const colorLightest = $derived(color.lightness(95))}
         {const colorLight = $derived(color.lightness(90))}
 

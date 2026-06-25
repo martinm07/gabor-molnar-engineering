@@ -1,3 +1,7 @@
+<script module lang="ts">
+  export const dClassDocMetaEdit = "absolute w-[96%] left-[2%] h-[calc(100vh-4rem)] bg-white z-10 top-12 border-2 border-t-0 rounded-b-lg border-rock-300 overflow-y-scroll shadow-[0_30px_5px_20px_var(--background-50)]"; //t
+</script>
+
 <script lang="ts">
   import { watch } from "runed";
   import {
@@ -7,51 +11,8 @@
   } from "./store.svelte";
   import FitContentWrapTextarea from "/shared/components/FitContentWrapTextarea.svelte";
   import { TagsEditor } from "./components/ComponentMetaEdit.svelte";
-  import { fade } from "svelte/transition";
-  import { untrack } from "svelte";
   import { fetch_ } from "/shared/helper";
   import { deepEqual } from "./helper";
-
-  type PossibleKeys = "title" | "description" | "accent" | "thumbnail";
-
-  // class InputState {
-  //   keyName: PossibleKeys;
-  //   keyVal: string;
-  //   inputVal: string | null = $state(null);
-  //   inputErr: string | null;
-  //   lastValidInputVal: string | null = null;
-
-  //   constructor(
-  //     keyName: PossibleKeys,
-  //     validateVal: (val: string) => string | null,
-  //   ) {
-  //     this.keyName = keyName;
-  //     this.keyVal = $derived(doc.info?.[this.keyName] ?? "");
-  //     this.inputErr = $derived(
-  //       this.inputVal !== null ? validateVal(this.inputVal) : null,
-  //     );
-  //     this.inputVal = doc.info?.[this.keyName] ?? "";
-
-  //     watch([() => this.inputVal, () => this.inputErr], () => {
-  //       if (!this.inputErr && this.inputVal !== null)
-  //         this.lastValidInputVal = this.inputVal;
-  //     });
-
-  //     watch(
-  //       () => this.inputVal,
-  //       () => {
-  //         console.log(`Changed value of ${this.keyName} to ${this.inputVal}`);
-  //       },
-  //     );
-  //   }
-  // }
-
-  // const titleState = new InputState("title", (val) => {
-  //   // Validate name
-  //   if (val.length === 0) return "Title required";
-  //   if (val.length > 128) return "Title should be less then 129 characters";
-  //   return null;
-  // });
 
   function validateTitle(title: string) {
     if (title.length === 0) return "Title required";

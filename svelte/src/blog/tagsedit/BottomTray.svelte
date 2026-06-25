@@ -120,10 +120,10 @@
 </script>
 
 {#snippet editor(inputTag: Partial<DocTag>, tag: DocTag)}
-  <div class="flex">
+  <div class="flex flex-col md:flex-row">
     <label
       for="edit-tagname"
-      class="text-2xl flex items-center text-rock-700 mr-2">Name:</label
+      class="text-xl md:text-2xl flex items-center text-rock-700 mr-2">Name:</label
     >
     <div class="relative grow">
       <input
@@ -151,10 +151,10 @@
       {/if}
     </div>
   </div>
-  <div class="flex mt-3">
+  <div class="flex flex-col md:flex-row mt-3">
     <label
       for="edit-tagdescription"
-      class="text-2xl flex items-center text-rock-700 mr-2"
+      class="text-xl md:text-2xl flex items-center text-rock-700 mr-2"
       >Description:</label
     >
     <FitContentWrapTextarea
@@ -175,7 +175,7 @@
   <div class="flex mt-3">
     <label
       for="edit-tagaccent"
-      class="text-2xl flex items-center text-rock-700 mr-2">Accent:</label
+      class="text-xl md:text-2xl flex items-center text-rock-700 mr-2">Accent:</label
     >
     <input
       id="edit-toggle-tagaccent"
