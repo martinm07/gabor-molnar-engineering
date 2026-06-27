@@ -117,6 +117,16 @@ export const allDocumentTags: DocumentTag[] = $state([]);
 
 // export const docInfo: DocumentInfo | null = null;
 
+/////////////////////////////////////////// MEDIA TRAY
+
+export interface FileState {
+  file: File;
+  status: "idle" | "uploading" | "queued" | "failed" | "completed";
+  progress: string;
+  errMessage: string | null;
+}
+export const fileStates: FileState[] = $state([]);
+
 /////////////////////////////////////////// COMPONENT LIBRARY
 
 export interface SavedComponent {

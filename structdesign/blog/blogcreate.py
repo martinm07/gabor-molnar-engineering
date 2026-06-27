@@ -8,11 +8,13 @@ from functools import cmp_to_key
 from typing import Any, Sequence, Union
 import warnings
 import time
+from pathlib import Path
+import os
 
 import requests
 from bs4 import BeautifulSoup
 from diff_match_patch import diff_match_patch
-from flask import Blueprint, Response, g, render_template, request, stream_with_context
+from flask import Blueprint, Response, current_app, g, render_template, request, stream_with_context
 from sqlalchemy import select
 from werkzeug.utils import secure_filename
 
@@ -1065,16 +1067,37 @@ def save_doctag_changes():
 @bp.route("/add_media_file", methods=["OPTIONS", "POST"])
 @cors_enabled()
 def add_media_file():
-    # files = request.files.getlist("files")
     file = request.files.get("file")
+    docid = request.form.get("id")
+
+    print(f"Document ID: {docid}")
+
+    current_app.instance_path
 
     if not file:
         print("No file provided!")
         return "No file provided", 400
-    else:
-        print(f"filename: {file.filename}")
 
-    # secure_filename()
+    # print(f"filename: {file.filename}")
+
+    if file.filename:
+        filename = secure_filename(file.filename)
+    else:
+        filename = "unnamed"
+
+    filename = Path(filename)
+
+    dirpath = current_app.instance_path / Path(f"documentmedia/{docid}")
+    os.makedirs(dirpath, exist_ok=True)
+
+    current_fpath = dirpath / filename
+    i = 1
+    while current_fpath.exists():
+        i += 1
+        current_fpath = dirpath / (filename.stem + f"_{i}" + filename.suffix)
+
+    file.save(current_fpath)
+
     return ""
 
 

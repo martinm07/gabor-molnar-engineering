@@ -88,9 +88,29 @@
       selection.hover = parent;
     }
   }
+
+  function onKeydown(e: KeyboardEvent) {
+    // if (e.shiftKey) console.log(e.key);
+    if (mode.cursor !== "select") return;
+    if (shiftPressed && e.key === "ArrowUp") {
+      e.preventDefault();
+      const parent = selection.hover?.parentElement ?? undefined;
+      if (parent instanceof HTMLElement && parent.classList.contains("doc"))
+        return;
+      selection.hover = parent;
+      ancestorCount++;
+    } else if (shiftPressed && e.key === "ArrowDown") {
+      e.preventDefault();
+      let parent = targetOriginal;
+      ancestorCount = Math.max(0, ancestorCount - 1);
+      for (let i = 0; i < ancestorCount; i++)
+        parent = parent?.parentElement ?? undefined;
+      selection.hover = parent;
+    }
+  }
 </script>
 
-<svelte:window onwheel={onWheel} />
+<svelte:window onwheel={onWheel} onkeydown={onKeydown} />
 <div
   class:hidden={!selection.hover || !displaySelection}
   class="absolute border-8 rounded-xl border-rock-500/50 box-content -translate-x-2 -translate-y-2 pointer-events-none z-10"

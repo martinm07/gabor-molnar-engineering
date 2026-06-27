@@ -61,7 +61,12 @@
 <svelte:body
   onclick={(e) => {
     // Note, <svg> is NOT considered a HTMLElement, but is considered an Element
-    if (!(e.target instanceof Element && e.target.closest(".topbar")))
+    if (
+      !(
+        e.target instanceof Element &&
+        (e.target.closest(".topbar") || !e.target.isConnected)
+      )
+    )
       dropdown = "none";
   }}
 />
