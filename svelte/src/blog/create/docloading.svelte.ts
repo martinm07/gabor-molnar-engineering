@@ -166,6 +166,7 @@ export async function loadDocument(p: EditorInterfaceLoading) {
     body: data["body"],
     componentLibVer: data["component_lib_ver"],
   };
+  doc.infoFetched = true;
 
   const tagsResp = await fetch_("/documents/get_all_document_tags");
   if (tagsResp.ok) {

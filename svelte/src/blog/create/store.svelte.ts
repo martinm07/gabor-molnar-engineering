@@ -101,7 +101,7 @@ class Doc {
     body: "",
     componentLibVer: "",
   });
-
+  infoFetched = $state(false);
   // savedInfo: DocumentInfo =
 }
 
@@ -126,6 +126,10 @@ export interface FileState {
   errMessage: string | null;
 }
 export const fileStates: FileState[] = $state([]);
+
+export const mediaFiles: string[] = $state([]);
+// export const fetchedMediaFiles: { yes: boolean } = $state({ yes: false });
+export const fetchedMediaFiles: { yes: boolean } = { yes: false };
 
 /////////////////////////////////////////// COMPONENT LIBRARY
 

@@ -21,7 +21,7 @@
   // let {  }: Props = $props();
 
   type DropdownState = "docmetaedit" | "compmetaedit" | "mediatray" | "none";
-  let dropdown: DropdownState = $state("mediatray"); // TODO: change back
+  let dropdown: DropdownState = $state("none");
 
   const dropdownContainerClass = $derived.by(() => {
     switch (dropdown) {

@@ -14,7 +14,7 @@ import os
 import requests
 from bs4 import BeautifulSoup
 from diff_match_patch import diff_match_patch
-from flask import Blueprint, Response, current_app, g, render_template, request, stream_with_context
+from flask import Blueprint, Response, current_app, g, render_template, request, send_from_directory, stream_with_context
 from sqlalchemy import select
 from werkzeug.utils import secure_filename
 
@@ -1099,6 +1099,58 @@ def add_media_file():
     file.save(current_fpath)
 
     return ""
+
+
+@bp.route("/remove_media_file", methods=["OPTIONS", "POST"])
+@cors_enabled()
+def remove_media_file():
+    data = json.loads(request.data.decode("utf-8"))
+    docid: str | None = data.get("id")
+    path: str | None = data.get("path")
+
+    if not docid or not path:
+        return "Parameters 'id' (document ID) and 'path' (path to media file) are required", 400
+
+    file_path = current_app.instance_path / Path(f"documentmedia/{docid}") / path
+    print(f"Removing file: {file_path}")
+    if not file_path.exists():
+        return "File doesn't exist", 400
+
+    file_path.unlink()
+
+    return ""
+
+
+@bp.route("/get_media_files", methods=["GET"])
+@cors_enabled()
+def get_media_files():
+    docid = request.args.get("id")
+
+    if not docid:
+        return "Parameter 'id' (document ID) required.", 400
+
+    media_dir = current_app.instance_path / Path(f"documentmedia/{docid}")
+    # Doesn't recursively read directories
+    # media_files = [fpath.name for fpath in media_dir.iterdir() if fpath.is_file()]
+
+    # Does recursively read directories
+    media_files: list[str] = []
+    for root, dirs, files in media_dir.walk():
+        media_files.extend(
+            [str((root / file).relative_to(media_dir)) for file in files]
+        )
+
+    def sort_by_modified(x: str):
+        return (media_dir / x).stat().st_mtime
+
+    media_files.sort(key=sort_by_modified, reverse=True)
+
+    return media_files
+
+
+@bp.route("/media/<int:docid>/<path:subpath>")
+def get_media_file(docid, subpath):
+    return send_from_directory(os.path.join(current_app.instance_path, "documentmedia", f"{docid}"), subpath)
 
 
 @bp.route("/edit/<id>")
