@@ -117,6 +117,7 @@
 <style>
   .doc-meta {
     background: lightgoldenrodyellow;
+    display: none;
     /*height: 100px;*/
   }
 

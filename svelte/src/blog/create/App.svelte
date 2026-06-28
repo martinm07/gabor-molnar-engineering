@@ -141,7 +141,7 @@
 
   const LOG_PATCH_SYNC = false;
   const LOG_DOC_HIST = true;
-  const DO_SERVER_SYNC = false;
+  const DO_SERVER_SYNC = true;
 
   const docNodes: DocNodeMap = new Map();
   const stringPosNodeMap: StringPosNodeMap = new Map();

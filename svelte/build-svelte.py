@@ -58,7 +58,7 @@ with open(DISTFILES_PATH, "w+") as f:
     old_distfiles_str = f.read()
     f.write("\n".join(distfiles))
 
-to_delete = [file for file in old_distfiles if file not in distfiles]
+to_delete = [file for file in old_distfiles if file and file not in distfiles]
 
 # Delete old HTML files
 
