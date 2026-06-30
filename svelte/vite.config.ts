@@ -406,7 +406,7 @@ export default defineConfig({
 
           console.warn(`The asset file "${assetInfo.name}" was not able to be seen to a section.
                         Perhaps it was a media file not recognized?`);
-          return `${STATIC_PATH}/shared/${extType}/[name]-[hash][extname]`;
+          return `${STATIC_PATH}shared/${extType}/[name]-[hash][extname]`;
         },
         chunkFileNames: (chunkInfo) => {
           const getModuleInfo: GetModuleInfo = globalThis.getModuleInfo;

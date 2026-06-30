@@ -3,7 +3,8 @@ import os
 from flask import Flask
 
 from . import auth, helper, home, register
-from .blog import blogcreate, bloghomeread, blogsearch
+from .blog import blogcreate, bloghomeread, blogsearch, blogtagsedit
+from .blog import blogcreatedocuments, blogcreatecomponents, blogcreateiframeresizer
 from .extensions import csrf, db, migrate
 
 
@@ -30,7 +31,13 @@ def create_app(test_config=None):
     app.register_blueprint(bloghomeread.bp)
     app.register_blueprint(blogsearch.bp)
     app.register_blueprint(blogcreate.bp)
+    app.register_blueprint(blogtagsedit.bp)
     app.register_blueprint(home.bp)
+
+    ## API for Guidance Document editor
+    app.register_blueprint(blogcreatedocuments.bp)
+    app.register_blueprint(blogcreatecomponents.bp)
+    app.register_blueprint(blogcreateiframeresizer.bp)
 
     ## For looking at the old (and frankly better) registration page
     ##  in a Svelte development server under _DEPR_svelte, uncomment this
