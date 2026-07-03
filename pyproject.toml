@@ -17,6 +17,7 @@ dependencies = [
     "passlib>=1.7.4",
     "py3-validate-email",
     "pymysql>=1.1.1",
+    "pypandoc-binary>=1.17",
     "pytest>=8.4.1",
     "python-dotenv>=1.1.1",
     "twilio>=9.7.0",

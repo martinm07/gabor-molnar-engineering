@@ -238,3 +238,39 @@ export function assign<T1 extends object, T2 extends object>(
 ): T1 & T2 {
   return Object.assign(structuredClone(obj1), obj2);
 }
+
+export function convertAccent(accent: string) {
+  let color: string;
+  if (/^\d+ \d+ \d/g.test(accent)) {
+    color =
+      "#" +
+      accent
+        .split(" ")
+        .map((num) => Number.parseInt(num).toString(16))
+        .join("");
+  } else {
+    color = accent;
+  }
+
+  return color;
+}
+
+const bytePrefixMap = new Map([
+  [1, "bytes"],
+  [1_000, "KB"],
+  [1_000_000, "MB"],
+  [1_000_000_000, "GB"],
+]);
+export function prefixBytesVal(bytes: number) {
+  let bestVal: number = bytes;
+  let bestPrefix: string = "bytes";
+  bytePrefixMap.forEach((prefixStr, key) => {
+    const val = bytes / key;
+    if (val > 1 && val < bestVal) {
+      bestVal = val;
+      bestPrefix = prefixStr;
+    }
+  });
+
+  return bestVal.toPrecision(3) + " " + bestPrefix;
+}

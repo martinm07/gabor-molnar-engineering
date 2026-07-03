@@ -3,7 +3,7 @@ import os
 from flask import Flask
 
 from . import auth, helper, home, register
-from .blog import blogcreate, bloghomeread, blogsearch, blogtagsedit
+from .blog import blogcreate, bloghomeread, blogsearch, blogtagsedit, blogadmin
 from .blog import blogcreatedocuments, blogcreatecomponents, blogcreateiframeresizer
 from .extensions import csrf, db, migrate
 
@@ -27,12 +27,15 @@ def create_app(test_config=None):
     csrf.init_app(app)
 
     app.register_blueprint(helper.bp)
+
+    app.register_blueprint(home.bp)
     app.register_blueprint(register.bp)
+
     app.register_blueprint(bloghomeread.bp)
     app.register_blueprint(blogsearch.bp)
     app.register_blueprint(blogcreate.bp)
     app.register_blueprint(blogtagsedit.bp)
-    app.register_blueprint(home.bp)
+    app.register_blueprint(blogadmin.bp)
 
     ## API for Guidance Document editor
     app.register_blueprint(blogcreatedocuments.bp)

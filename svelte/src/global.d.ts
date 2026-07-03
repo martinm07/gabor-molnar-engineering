@@ -1,8 +1,21 @@
-interface DocTag {
+interface IncomingDocTag {
   name: string;
   description: string;
   accent: string;
   documentTitles: string[];
+}
+
+interface IncomingDoc {
+  id: number;
+  title: string;
+  description: string;
+  tags: [{ name: string; accent: string; description: string }];
+  accent: string;
+  thumbnail: string;
+  date_created: string;
+  date_updated: string;
+  hearts: number;
+  status: "featured" | "public" | "unlisted" | "private";
 }
 
 export declare global {
@@ -15,8 +28,11 @@ export declare global {
   var blogreadDesc: string;
   var blogreadBody: string;
 
-  // /create/tagsedit
-  var allDocTags: DocTag[];
+  // /blog/tagsedit
+  var allDocTags: IncomingDocTag[];
+
+  // /blog/admin
+  var allDocs: IncomingDoc[];
 
   type CaretPosition = {
     offsetNode: Node;

@@ -8,7 +8,7 @@
   import XIcon from "phosphor-svelte/lib/XIcon";
   import XCircleIcon from "phosphor-svelte/lib/XCircleIcon";
   import ArrowCounterClockwiseIcon from "phosphor-svelte/lib/ArrowCounterClockwiseIcon";
-  import { fetch_, xhr_ } from "/shared/helper";
+  import { fetch_, xhr_, prefixBytesVal } from "/shared/helper";
   import { watch } from "runed";
   import {
     doc,
@@ -46,7 +46,9 @@
       if (globalThis.jinjaParsed) {
         fpath = `/documents/media/${doc.info.id}/${filename}`;
       } else {
-        fpath = import.meta.env.VITE_DEV_FLASK_SERVER + `/documents/media/${doc.info.id}/${filename}`;
+        fpath =
+          import.meta.env.VITE_DEV_FLASK_SERVER +
+          `/documents/media/${doc.info.id}/${filename}`;
       }
 
       navigator.clipboard.writeText(fpath);
@@ -62,20 +64,22 @@
         method: "post",
         body: JSON.stringify({
           id: doc.info.id,
-          path: filename
-        })
+          path: filename,
+        }),
       });
       if (resp.ok) {
-        const fileIndex = mediaFiles.indexOf(filename)
+        const fileIndex = mediaFiles.indexOf(filename);
         if (fileIndex !== -1) {
           mediaFiles.splice(fileIndex, 1);
         } else {
-          console.error(`"filename" (${filename}) isn't in mediaFiles:`, mediaFiles);
+          console.error(
+            `"filename" (${filename}) isn't in mediaFiles:`,
+            mediaFiles,
+          );
         }
       }
-
     } catch (err) {
-      console.error(err)
+      console.error(err);
     }
   }
 
@@ -99,26 +103,6 @@
       });
     },
   );
-
-  const bytePrefixMap = new Map([
-    [1, "bytes"],
-    [1_000, "KB"],
-    [1_000_000, "MB"],
-    [1_000_000_000, "GB"],
-  ]);
-  function prefixBytesVal(bytes: number) {
-    let bestVal: number = bytes;
-    let bestPrefix: string = "bytes";
-    bytePrefixMap.forEach((prefixStr, key) => {
-      const val = bytes / key;
-      if (val > 1 && val < bestVal) {
-        bestVal = val;
-        bestPrefix = prefixStr;
-      }
-    });
-
-    return bestVal.toPrecision(3) + " " + bestPrefix;
-  }
 
   function onSubmit(e: SubmitEvent): () => void {
     e.preventDefault();
@@ -234,13 +218,13 @@
                 [
                   { transform: "scale(100%)" },
                   { transform: "scale(110%)" },
-                  { transform: "scale(100%)" }
+                  { transform: "scale(100%)" },
                 ],
                 {
                   duration: 250,
-                  iterations: 1
-                }
-              )
+                  iterations: 1,
+                },
+              );
             }
           }}
         >
@@ -248,11 +232,13 @@
         </button>
         <button
           class="text-2xl mr-6 px-2 rounded hover:bg-rock-100 text-steel-700 active:bg-rock-200"
-          onclick={() => removeMediaFile(filename)}
-          ><XCircleIcon /></button
+          onclick={() => removeMediaFile(filename)}><XCircleIcon /></button
         >
       </div>
-      <div class="h-0.5 my-0.5 bg-rock-200 mx-6" class:hidden={i === mediaFiles.length - 1}></div>
+      <div
+        class="h-0.5 my-0.5 bg-rock-200 mx-6"
+        class:hidden={i === mediaFiles.length - 1}
+      ></div>
     {/each}
   </div>
   {#if showPopup}

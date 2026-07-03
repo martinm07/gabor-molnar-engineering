@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/cog1-svgrepo-com.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Guidance Documents | Admin Dashboard</title>
+  </head>
+  <body>
+    <div id="app" style="position: relative"></div>
+    <input id="flask-server" type="hidden" value="%VITE_DEV_FLASK_SERVER%" />
+    <script>
+      globalThis.jinjaParsed = false;
+      globalThis.urlRoot = document.getElementById("flask-server").value;
+      try {
+        if (!Number.parseInt("{{ 1 }}"))
+          throw new Error("Jinja wasn't parsed.");
+        globalThis.jinjaParsed = true;
+        globalThis.urlRoot =
+          "{{ url_for(request.endpoint, id=document_or_component_id).split('/')[0] + '/' }}";
+
+        globalThis.csrfToken = "{{ csrf_token() }}";
+        globalThis.allDocs = JSON.parse(`{{ all_docs|tojson }}`);
+      } catch {}
+    </script>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

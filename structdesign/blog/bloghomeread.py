@@ -4,8 +4,8 @@ from itertools import islice
 from typing import Iterable
 
 import click
-from flask import Blueprint, abort, jsonify, render_template, request
-from sqlalchemy import and_, func, select
+from flask import Blueprint, abort, jsonify, render_template, request, session
+from sqlalchemy import and_, func, or_, select
 
 from ..extensions import db
 from ..helper import cors_enabled
@@ -129,18 +129,32 @@ def get_blogs_tag():
 @bp.route("/<string:name>")
 def read(name: str):
     name_transformed = name.replace("-", "").replace(" ", "").lower()
+    print("Trying to fetch article:", name_transformed)
+    # stmt = select(GuidanceDocument).where(
+    #     and_(
+    #         func.LOWER(
+    #             func.REPLACE(func.REPLACE(GuidanceDocument.title, "-", ""), " ", "")
+    #         )
+    #         == name_transformed,
+    #         or_(
+    #             GuidanceDocument.status == "public",
+    #             GuidanceDocument.status == "featured",
+    #             GuidanceDocument.status == "unlisted"
+    #         )
+    #     )
+    # )
+
     stmt = select(GuidanceDocument).where(
-        and_(
-            func.LOWER(
-                func.REPLACE(func.REPLACE(GuidanceDocument.title, "-", ""), " ", "")
-            )
-            == name_transformed,
-            GuidanceDocument.status == "public",
-        )
+        func.LOWER(
+            func.REPLACE(func.REPLACE(GuidanceDocument.title, "-", ""), " ", "")
+        ) == name_transformed
     )
 
     doc = db.session.scalars(stmt).first()
     if doc is None:
+        abort(404)
+
+    if doc.status == "private" and not session.get("is_admin"):
         abort(404)
 
     return render_template(

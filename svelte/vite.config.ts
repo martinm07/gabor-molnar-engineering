@@ -32,6 +32,7 @@ const entryPoints = {
   blogread: resolve(root, "blog/read/index.html"),
   blogcreate: resolve(root, "blog/create/index.html"),
   blogtagsedit: resolve(root, "blog/tagsedit/index.html"),
+  blogadmin: resolve(root, "blog/admin/index.html"),
 };
 
 // IMP: Want to extend output.manualChunks? Do so here!

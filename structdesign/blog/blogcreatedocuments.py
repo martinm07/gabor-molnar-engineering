@@ -284,8 +284,6 @@ def add_media_file():
 
     print(f"Document ID: {docid}")
 
-    current_app.instance_path
-
     if not file:
         print("No file provided!")
         return "No file provided", 400
