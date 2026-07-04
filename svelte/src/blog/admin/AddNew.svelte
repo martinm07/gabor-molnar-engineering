@@ -9,14 +9,17 @@
   // let file: File | null = $derived(files ? files[0] : null);
 
   class FileState {
-    status: "idle" | "uploading" | "failed" | "success" = $state("idle");
-    errMsg: string = $state("");
+    // status: "idle" | "uploading" | "done" = $state("idle");
+    // errMsg: string = $state("");
     progress: string = $state("");
     file: File | null = $derived(files ? files[0] : null);
   }
   const fileState = new FileState();
 
   let title = $state("");
+
+  let formStatus: "idle" | "processing" | "success" | "error" = $state("idle");
+  let errMsg: string = $state("");
 
   function onSubmit(e: SubmitEvent) {
     console.log("SUBMITTED");
@@ -26,8 +29,10 @@
     if (fileState.file) formData.append("file", fileState.file);
     formData.set("title", title);
 
-    fileState.status = "uploading";
-    const { xhr, promise } = xhr_("/documents/add_media_file", {
+    // fileState.status = "uploading";
+    formStatus = "processing";
+    errMsg = "";
+    const { xhr, promise } = xhr_("/documents/create_new_guidance_document", {
       method: "POST",
       body: formData,
       onUploadProgress: (e) => {
@@ -44,13 +49,27 @@
       .then((resp) => {
         if (resp.status < 200 || resp.status >= 300) {
           console.error(`Upload failed: ${resp.status} "${resp.responseText}"`);
-          fileState.status = "failed";
-          fileState.errMsg = resp.responseText;
+          // fileState.status = "failed";
+          formStatus = "error";
+          errMsg = resp.responseText;
         } else {
-          fileState.status = "success";
+          // fileState.status = "success";
+          formStatus = "success";
+          console.log(resp.responseText);
+          setTimeout(() => {
+            window.location.assign(resp.responseText);
+          }, 1000);
         }
       })
-      .catch(() => (fileState.status = "failed"));
+      .catch(() => {
+        // fileState.status = "failed";
+        formStatus = "error";
+        errMsg = "Something unexpected went wrong.";
+      })
+      .finally(() => {
+        // fileState.status = "done";
+        formStatus = "success";
+      });
 
     return () => xhr.abort();
   }
@@ -100,9 +119,10 @@
         class="grow border-2 rounded border-rock-300 text-xl py-2 px-4 outline-none focus:ring-4 ring-steel-100 text-rock-700 bg-rock-50 focus:bg-white"
         placeholder="Title of New Guidance Document"
         bind:value={title}
+        required
       />
     </div>
-    <div class="italic text-rock-600 p-4 max-w-1/2">
+    <div class="italic text-rock-600 p-4 xl:max-w-1/2">
       Note that the title of guidance documents should be unique, and that they
       should rarely be changed, as links to guidance documents are based on
       titles.
@@ -118,7 +138,8 @@
         name="add-import-upload"
         multiple
         type="file"
-        disabled={fileState.status === "uploading"}
+        disabled={formStatus === "processing"}
+        oninput={() => (formStatus = "idle")}
       />
       <!-- {#if fileState.status === "failed"}
         <div aria-live="polite" class="text-red-700 font-bold ml-4 text-lg">
@@ -127,12 +148,11 @@
       {/if} -->
 
       {#if fileState.file}
-        <span
-          class="mr-1 text-rock-700 font-mono bg-rock-50 p-1 rounded-lg"
-          class:hidden={fileState.errMsg}>{fileState.file.name}</span
+        <span class="mr-1 text-rock-700 font-mono bg-rock-50 p-1 rounded-lg"
+          >{fileState.file.name}</span
         >
-        {#if fileState.status === "idle"}
-          <span class="text-rock-600"
+        {#if formStatus === "idle" || formStatus === "error"}
+          <span class="text-rock-600 text-nowrap"
             >({prefixBytesVal(fileState.file.size)})</span
           >
           <button
@@ -142,25 +162,25 @@
               fileState.file = null;
             }}><XCircleIcon class="text-2xl" /></button
           >
-        {:else if fileState.status === "uploading"}
+        {:else if formStatus === "processing"}
           <span class="not-italic text-rock-700"
             >({fileState.progress
               ? fileState.progress + "%"
               : "uploading..."})</span
           >
-        {:else if fileState.status === "failed"}
+          <!-- {:else if fileState.status === "failed"}
           {#if fileState.errMsg}
             <span class="w-full" aria-hidden="true"></span>
             <span class="text-red-700 mb-2 -mt-0.5">“{fileState.errMsg}”</span>
           {:else}
             <span class="error not-italic text-red-700">failed</span>
-          {/if}
-        {:else if fileState.status === "success"}
-          <span class="text-green-700">(done)</span>
+          {/if} -->
+          <!-- {:else if fileState.status === "success"}
+          <span class="text-green-700">(done)</span> -->
         {/if}
       {/if}
     </div>
-    <div class="italic text-rock-600 p-4 max-w-1/2">
+    <div class="italic text-rock-600 p-4 xl:max-w-1/2">
       Extracts the content and document structure, from a <a
         target="_blank"
         class="underline hover:no-underline text-rock-700"
@@ -169,11 +189,27 @@
       >.<br />
       Don't upload anything for a blank document.
     </div>
-    <div class="mt-5 flex items-center justify-center">
+    <div class="mt-5 flex items-center justify-center flex-col relative">
       <button
         class="text-xl font-mono border-2 border-steel-200 bg-steel-50 px-4 py-2 rounded-lg text-steel-800 hover:bg-steel-100 active:translate-y-1 active:bg-steel-200 focus:ring-4 ring-steel-100"
         >Create<ArrowRightIcon class="inline-block ml-2 text-2xl" /></button
       >
+      {#if formStatus === "processing"}
+        <span
+          class="text-rock-700 text-lg italic absolute -bottom-1 translate-y-full"
+          >{errMsg}</span
+        >
+      {:else if formStatus === "error"}
+        <span
+          class="text-red-700 text-lg font-bold absolute -bottom-1 translate-y-full"
+          >{errMsg}</span
+        >
+      {:else if formStatus === "success"}
+        <span
+          class="text-green-700 text-lg font-bold absolute -bottom-1 translate-y-full"
+          >Success! Redirecting...</span
+        >
+      {/if}
     </div>
   </form>
 </dialog>
