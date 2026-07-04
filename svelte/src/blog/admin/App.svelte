@@ -44,16 +44,27 @@
   }
 </script>
 
-<h1
-  class="font-serif text-6xl text-rock-700 text-center pb-4 pt-12 decoration-dotted underline underline-offset-8"
->
-  Manage Guidance Documents
-</h1>
+<div class="flex justify-center">
+  <div class="flex flex-col items-center w-fit">
+    <h1
+      class="font-serif text-6xl text-rock-700 text-center pb-4 pt-12 decoration-dotted underline underline-offset-8"
+    >
+      Manage Guidance Documents
+    </h1>
+    <div class="text-2xl text-rock-600 inline-block ml-auto">
+      Or <a
+        href="/documents/tags"
+        class="text-rock-700 underline hover:no-underline"
+        >manage guidance document tags</a
+      >.
+    </div>
+  </div>
+</div>
 
 <AddNew />
 
 <div class="flex flex-wrap justify-between mx-5">
-  {#each docs as doc}
+  {#each docs as doc (doc.id)}
     <DocCard {doc} />
   {/each}
 </div>

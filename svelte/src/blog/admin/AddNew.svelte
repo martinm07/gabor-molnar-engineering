@@ -3,7 +3,7 @@
   import ArrowRightIcon from "phosphor-svelte/lib/ArrowRightIcon";
   import XCircleIcon from "phosphor-svelte/lib/XCircleIcon";
   import XIcon from "phosphor-svelte/lib/XIcon";
-  import { prefixBytesVal, xhr_ } from "/shared/helper";
+  import { prefixBytesVal, tada, xhr_ } from "/shared/helper";
 
   let files: FileList | null = $state(null);
   // let file: File | null = $derived(files ? files[0] : null);
@@ -65,10 +65,6 @@
         // fileState.status = "failed";
         formStatus = "error";
         errMsg = "Something unexpected went wrong.";
-      })
-      .finally(() => {
-        // fileState.status = "done";
-        formStatus = "success";
       });
 
     return () => xhr.abort();
@@ -85,7 +81,7 @@
       command="show-modal"
       commandfor="new-guidance-document"
       {@attach (node) => {
-        node.click();
+        // node.click();
       }}
       ><FilePlusIcon weight="fill" class="mr-1 text-3xl text-green-700" /> New Guidance
       Document</button
@@ -141,11 +137,6 @@
         disabled={formStatus === "processing"}
         oninput={() => (formStatus = "idle")}
       />
-      <!-- {#if fileState.status === "failed"}
-        <div aria-live="polite" class="text-red-700 font-bold ml-4 text-lg">
-          {fileState.errMsg}
-        </div>
-      {/if} -->
 
       {#if fileState.file}
         <span class="mr-1 text-rock-700 font-mono bg-rock-50 p-1 rounded-lg"
@@ -168,15 +159,6 @@
               ? fileState.progress + "%"
               : "uploading..."})</span
           >
-          <!-- {:else if fileState.status === "failed"}
-          {#if fileState.errMsg}
-            <span class="w-full" aria-hidden="true"></span>
-            <span class="text-red-700 mb-2 -mt-0.5">“{fileState.errMsg}”</span>
-          {:else}
-            <span class="error not-italic text-red-700">failed</span>
-          {/if} -->
-          <!-- {:else if fileState.status === "success"}
-          <span class="text-green-700">(done)</span> -->
         {/if}
       {/if}
     </div>
@@ -197,12 +179,13 @@
       {#if formStatus === "processing"}
         <span
           class="text-rock-700 text-lg italic absolute -bottom-1 translate-y-full"
-          >{errMsg}</span
+          >Processing...</span
         >
       {:else if formStatus === "error"}
         <span
           class="text-red-700 text-lg font-bold absolute -bottom-1 translate-y-full"
-          >{errMsg}</span
+          aria-live="polite"
+          in:tada={{ duration: 400 }}>{errMsg}</span
         >
       {:else if formStatus === "success"}
         <span

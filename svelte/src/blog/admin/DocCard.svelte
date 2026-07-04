@@ -1,7 +1,7 @@
 <script lang="ts">
   import Color from "color";
-  import { type Doc } from "./store.svelte";
-  import { convertAccent } from "/shared/helper";
+  import { docs, type Doc } from "./store.svelte";
+  import { convertAccent, fetch_ } from "/shared/helper";
 
   import HeartIcon from "phosphor-svelte/lib/HeartIcon";
   import PencilIcon from "phosphor-svelte/lib/PencilIcon";
@@ -9,19 +9,57 @@
   import CalendarDotsIcon from "phosphor-svelte/lib/CalendarDotsIcon";
   import ClockCounterClockwiseIcon from "phosphor-svelte/lib/ClockCounterClockwiseIcon";
   import ArrowSquareOutIcon from "phosphor-svelte/lib/ArrowSquareOutIcon";
+  import { closestClass } from "../create/helper";
 
   interface Props {
     doc: Doc;
   }
   let { doc }: Props = $props();
+
+  let deleteConfirmVisible: boolean = $state(false);
+  // if (doc.id === "1") deleteConfirmVisible = true;
+
+  function checkUnfocusOfDeleteConfirm(target: EventTarget | null) {
+    if (target instanceof Node && !closestClass(target, `card-${doc.id}`)) {
+      deleteConfirmVisible = false;
+    }
+  }
+
+  let deleteErrMsg: string = $state("");
+  function deleteDocument() {
+    deleteErrMsg = "";
+    fetch_("/documents/delete_document", {
+      method: "post",
+      body: JSON.stringify({
+        id: doc.id,
+      }),
+    })
+      .then((resp) => {
+        if (!resp.ok) {
+          resp.text().then((msg) => (deleteErrMsg = msg));
+        } else {
+          const spliceI = docs.indexOf(doc);
+          console.log("Splicing:", spliceI);
+          if (spliceI >= 0) docs.splice(spliceI, 1);
+        }
+      })
+      .catch(() => {
+        deleteErrMsg = "Something unexpected went wrong.";
+      });
+  }
 </script>
+
+<svelte:document
+  onclick={(e) => checkUnfocusOfDeleteConfirm(e.target)}
+  onfocusin={(e) => checkUnfocusOfDeleteConfirm(e.target)}
+/>
 
 {const color = $derived(Color(convertAccent(doc.accent)))}
 {const colorLight = $derived(color.lightness(95))}
 
 <div
   style="--accentSaved: {color.hex()}; --accentLightSaved: {colorLight.hex()}"
-  class="card transition-all duration-500 h-fit relative w-[calc(100%-1em)] md:w-[calc(50%-1em)] xl:w-[calc(33.3%-1em)] 2xl:w-[calc(25%-1em)] my-3 border-2 border-rock-300 rounded-lg p-4"
+  class="card card-{doc.id} transition-all duration-500 h-fit relative w-[calc(100%-1em)] md:w-[calc(50%-1em)] xl:w-[calc(33.3%-1em)] 2xl:w-[calc(25%-1em)] my-3 border-2 border-rock-300 rounded-lg p-4"
 >
   <a
     class="title font-serif text-2xl border-b border-steel-700 hover:border-b-0"
@@ -55,6 +93,9 @@
       <div class="mt-2 flex items-center">
         <button
           class="p-2 bg-red-100 hover:bg-red-200 text-red-800 text-xl rounded mr-2 active:translate-y-1 active:bg-red-300"
+          onclick={() => {
+            deleteConfirmVisible = !deleteConfirmVisible;
+          }}
         >
           <TrashIcon />
         </button>
@@ -87,7 +128,43 @@
       </div>
     </div>
   </div>
-  <div class="absolute left-1 bottom-1"></div>
+  {#if deleteConfirmVisible}
+    <div
+      class="confirm-delete-container absolute w-full bg-(--accentLight) transition-colors duration-500 p-4 left-0 z-10 translate-y-3 border-2 border-rock-300 border-t-0 shadow-lg rounded-b-lg"
+    >
+      {let disabledCounter = $state(-1)}
+      <div class="p-2 bg-yellow-100 rounded text-yellow-800 font-bold mb-4">
+        Please confirm you want to delete this guidance document.<br />THIS
+        ACTION CAN'T BE UNDONE
+      </div>
+      <button
+        class="inline-flex items-center text-xl bg-steel-100 rounded text-steel-800 py-2 px-3 border-2 border-steel-300 hover:bg-steel-200 hover:text-steel-900 disabled:opacity-50 disabled:pointer-events-none active:bg-steel-300 active:translate-y-1"
+        onclick={() => deleteDocument()}
+        {@attach (el) => {
+          el.disabled = true;
+          disabledCounter = 2;
+          const disabledTimeout = setInterval(() => {
+            disabledCounter -= 1;
+            if (disabledCounter <= 0) {
+              el.disabled = false;
+              clearInterval(disabledTimeout);
+            }
+          }, 1000);
+
+          return () => clearInterval(disabledTimeout);
+        }}
+        ><TrashIcon class="mr-1" />Delete
+        {#if disabledCounter > 0}
+          ({disabledCounter})
+        {/if}
+      </button>
+      {#if deleteErrMsg}
+        <div class="text-red-700 font-bold mt-3">
+          An error occured: “{deleteErrMsg}”
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -117,7 +194,8 @@
     box-shadow: inset -0.75em -0.75em 10px 0px var(--color-with-transparency);
   }
 
-  .card:hover {
+  .card:hover,
+  .card:focus-within {
     --accent: var(--accentSaved);
     --accentLight: var(--accentLightSaved);
     --transparency: 10%;
@@ -127,7 +205,8 @@
     --color-light: var(--steel-100);
     --color-text: var(--steel-700);
   }
-  .card:hover .tag {
+  .card:hover .tag,
+  .card:focus-within .tag {
     --color-light: var(--color-lightSaved);
     --color-text: var(--color-textSaved);
   }

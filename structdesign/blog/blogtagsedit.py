@@ -11,7 +11,7 @@ from ..models import DocumentTag
 bp = Blueprint("blogtagsedit", __name__, url_prefix="/documents")
 
 
-def get_all_tags(return_objs = False) -> list[Any]:
+def get_all_tags(return_objs=False) -> list[Any]:
     tag_objs = db.session.scalars(select(DocumentTag)).all()
 
     tag_objs = list(tag_objs)
@@ -19,19 +19,26 @@ def get_all_tags(return_objs = False) -> list[Any]:
 
     all_tags = []
     for tag in tag_objs:
-        document_titles = [doc.title for i, doc in enumerate(tag.documents) if not any(x.id == doc.id for x in tag.documents[:i])]
+        document_titles = [
+            doc.title
+            for i, doc in enumerate(tag.documents)
+            if not any(x.id == doc.id for x in tag.documents[:i])
+        ]
 
-        all_tags.append({
-            "name": tag.name,
-            "description": tag.description,
-            "accent": tag.accent,
-            "documentTitles": document_titles
-        })
+        all_tags.append(
+            {
+                "name": tag.name,
+                "description": tag.description,
+                "accent": tag.accent,
+                "documentTitles": document_titles,
+            }
+        )
 
     if not return_objs:
         return all_tags
     else:
         return tag_objs
+
 
 ## Route for Svelte development only
 @bp.route("/get_all_tags")
@@ -44,12 +51,17 @@ def get_all_tags_view():
 @bp.route("/get_all_document_tags")
 @cors_enabled()
 def get_all_document_tags():
-    tags = db.session.execute(select(DocumentTag.name, DocumentTag.description, DocumentTag.accent)).all()
-    return [{
-        "name": tag[0],
-        "description": tag[1],
-        "accent": tag[2],
-    } for tag in tags]
+    tags = db.session.execute(
+        select(DocumentTag.name, DocumentTag.description, DocumentTag.accent)
+    ).all()
+    return [
+        {
+            "name": tag[0],
+            "description": tag[1],
+            "accent": tag[2],
+        }
+        for tag in tags
+    ]
 
 
 @bp.route("/save_doctag_changes", methods=["OPTIONS", "POST"])
@@ -78,10 +90,12 @@ def save_doctag_changes():
         print(tag.accent, " -> ", new_data.get("accent"))
         print("-----------")
 
-        if (name := new_data.get("name")): tag.name = name
-        if (description := new_data.get("description")): tag.description = description
-        if (accent := new_data.get("accent")): tag.accent = accent
-
+        if name := new_data.get("name"):
+            tag.name = name
+        if description := new_data.get("description"):
+            tag.description = description
+        if accent := new_data.get("accent"):
+            tag.accent = accent
 
     # Remove tags
     removed = data.get("removed", [])

@@ -8,20 +8,17 @@ import pypandoc
 from flask import (
     Blueprint,
     current_app,
-    jsonify,
     render_template,
     request,
-    send_from_directory,
     url_for,
 )
 from sqlalchemy import select
-from werkzeug.datastructures import FileStorage
 
 from structdesign.blog.blogcreatecomponents import get_component_lib
 from structdesign.helper import cors_enabled
 
 from ..extensions import db
-from ..models import GuidanceDocument, SavedComponentLibrary
+from ..models import GuidanceDocument
 
 bp = Blueprint("blogadmin", __name__, url_prefix="/documents")
 
@@ -69,6 +66,10 @@ def admin():
     return render_template("blog/admin.html", all_docs=all_docs)
 
 
+class UnsupportedOrInvalidFileError(Exception):
+    pass
+
+
 def convert_document_to_html(input_path: str, ext: str, doc_id: str) -> str:
     """
     Converts input_path (.docx/.odt) to HTML, storing media under
@@ -77,30 +78,18 @@ def convert_document_to_html(input_path: str, ext: str, doc_id: str) -> str:
     """
 
     with tempfile.TemporaryDirectory() as tmp_extract_dir:
-        # result = subprocess.run(
-        #     [
-        #         "pandoc",
-        #         input_path,
-        #         "-t", "html",
-        #         f"--extract-media={tmp_extract_dir}",
-        #     ],
-        #     capture_output=True,
-        #     text=True,
-        #     check=True,
-        # )
-        html = pypandoc.convert_file(
-            input_path,
-            "html",
-            ext,
-            outputfile=None,
-            # extra_args=[f"--extract-media=documents/media/{doc_id}/"],
-            extra_args=[f"--extract-media={tmp_extract_dir}"],
-        )
+        try:
+            html = pypandoc.convert_file(
+                input_path,
+                "html",
+                ext,
+                outputfile=None,
+                extra_args=[f"--extract-media={tmp_extract_dir}"],
+            )
+        except RuntimeError:
+            raise UnsupportedOrInvalidFileError
 
         print(tmp_extract_dir)
-
-        # Pandoc writes media into <tmp_extract_dir>/media/...
-        # tmp_media_dir = os.path.join(tmp_extract_dir, "media")
 
         # Real storage location
         final_media_dir = os.path.join(
@@ -114,6 +103,8 @@ def convert_document_to_html(input_path: str, ext: str, doc_id: str) -> str:
 
             # Rewrite HTML: swap the temp filesystem path for the public URL
             url_prefix = f"/documents/media/{doc_id}"
+            # This is safe because of the path given to temporary files is stuff like
+            # "/tmp/nix-shell.vmfioY/tmpwxrp9jlm", which should never appear naturally in the text.
             html = html.replace(tmp_extract_dir, url_prefix)
 
         return html
@@ -127,8 +118,9 @@ def create_new_guidance_document():
 
     if not data.get("title"):
         return "'title' field is required.", 400
+    elif len(data["title"]) > 256:
+        return "Title must be 256 characters long or less."
 
-    # try:
     doc = GuidanceDocument(
         title=data["title"],
         description=data.get("description", ""),
@@ -141,18 +133,12 @@ def create_new_guidance_document():
     )
     db.session.add(doc)
     db.session.flush()  # We flush to resolve the ID, we do not commit
-    # except:
-    #     return "Required fields are 'title'.", 400
 
     if file:
         ext = Path(file.filename or "").suffix[1:]
 
-        if not ext or ext not in pypandoc.get_pandoc_formats()[0]:  # pyright: ignore[reportIndexIssue]
-            return "File had an invalid extension.", 400
-
-        # content = file.stream.read()
-        # file.save(fpath)
-        # file.stream.r
+        # if not ext or ext not in pypandoc.get_pandoc_formats()[0]:  # pyright: ignore[reportIndexIssue]
+        #     return "File had an invalid extension.", 400
 
         with tempfile.NamedTemporaryFile() as input_file:
             file.save(input_file)
@@ -161,24 +147,41 @@ def create_new_guidance_document():
             # input_file.
 
             print(input_file.name)
-            output = convert_document_to_html(input_file.name, ext, str(doc.id))
+            try:
+                output = convert_document_to_html(input_file.name, ext, str(doc.id))
+            except UnsupportedOrInvalidFileError:
+                return (
+                    "File type is unsupported or otherwise the file contents are invalid",
+                    400,
+                )
             print("\n\n")
             print(output)
 
             doc.body = output
 
-    # db.session.commit()
+    db.session.commit()
 
-    # return jsonify(url_for("blogcreate.edit_document", id=doc.id))
+    # We are returning text, not JSON
     return url_for("blogcreate.edit_document", id=doc.id)
 
-    # output = pypandoc.convert_file(
-    #     fpath,
-    #     "html",
-    #     ext,
-    #     outputfile=None,
-    #     extra_args=[f"--extract-media=documents/media/{doc.id}/"],
-    # )
-    # print(output)
 
-    # return ""
+@bp.route("/delete_document", methods=["OPTIONS", "POST"])
+@cors_enabled()
+def delete_document():
+    data = json.loads(request.data.decode("utf-8"))
+    if not data.get("id"):
+        return "'id' required.", 400
+
+    to_delete = db.session.scalars(
+        select(GuidanceDocument).where(GuidanceDocument.id == int(data["id"]))
+    ).all()
+
+    if len(to_delete) == 0:
+        return f"No document of id '{data['id']}'", 400
+
+    for doc in to_delete:
+        db.session.delete(doc)
+
+    db.session.commit()
+
+    return ""

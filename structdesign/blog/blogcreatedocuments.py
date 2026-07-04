@@ -1,6 +1,6 @@
 import json
-from pathlib import Path
 import os
+from pathlib import Path
 
 from flask import Blueprint, current_app, request
 from sqlalchemy import select
@@ -8,16 +8,16 @@ from werkzeug.utils import secure_filename
 
 from ..extensions import db
 from ..helper import cors_enabled
-from ..models import  DocumentTag, GuidanceDocument
-
+from ..models import DocumentTag, GuidanceDocument
 from .blogcreatecomponents import get_component_lib
 
 bp = Blueprint("blogcreatedocuments", __name__, url_prefix="/documents")
 
 
-def get_development_document(id_: int, commit_changes = False):
+def get_development_document(id_: int, commit_changes=False):
     devdoc = db.session.get(GuidanceDocument, (id_, 1))
-    if devdoc: return devdoc
+    if devdoc:
+        return devdoc
 
     publishdoc = db.session.get(GuidanceDocument, (id_, 0))
     if publishdoc:
@@ -32,10 +32,10 @@ def get_development_document(id_: int, commit_changes = False):
             tags=publishdoc.tags,
             hearts=publishdoc.hearts,
             status=publishdoc.status,
-            component_lib_version=publishdoc.component_lib_version
+            component_lib_version=publishdoc.component_lib_version,
         )
         db.session.add(devdoc)
-        if (commit_changes):
+        if commit_changes:
             db.session.commit()
         return devdoc
     else:
@@ -48,7 +48,7 @@ def get_document_edit():
     id_ = request.args.get("id")
     if id_ is None:
         return "Required URL parameter 'id'", 400
-    doc = get_development_document(int(id_), commit_changes = True)
+    doc = get_development_document(int(id_), commit_changes=True)
     if doc is None:
         return f"Found no document of id '{id_}'", 400
 
@@ -203,12 +203,18 @@ def update_document_metadata():
         return f"No guidance document of id '{id_}'", 400
 
     try:
-        if (title := data.get("title")): document.title = title
-        if (description := data.get("description")): document.description = description
-        if (tags := data.get("tags")): document.tags = fill_doc_tag_names(tags)
-        if (accent := data.get("accent")): document.accent = accent
-        if (thumbnail := data.get("thumbnail")): document.thumbnail = thumbnail
-        if (status := data.get("status")): document.status = status
+        if title := data.get("title"):
+            document.title = title
+        if description := data.get("description"):
+            document.description = description
+        if tags := data.get("tags"):
+            document.tags = fill_doc_tag_names(tags)
+        if accent := data.get("accent"):
+            document.accent = accent
+        if thumbnail := data.get("thumbnail"):
+            document.thumbnail = thumbnail
+        if status := data.get("status"):
+            document.status = status
 
         ## IMP: ANY VALIDATION SHOULD GO HERE
 
@@ -253,7 +259,7 @@ def publish_development_document():
             tags=document.tags,
             hearts=document.hearts,
             status=document.status,
-            component_lib_version=document.component_lib_version
+            component_lib_version=document.component_lib_version,
         )
         db.session.add(publishdoc)
     else:
@@ -319,7 +325,10 @@ def remove_media_file():
     path: str | None = data.get("path")
 
     if not docid or not path:
-        return "Parameters 'id' (document ID) and 'path' (path to media file) are required", 400
+        return (
+            "Parameters 'id' (document ID) and 'path' (path to media file) are required",
+            400,
+        )
 
     file_path = current_app.instance_path / Path(f"documentmedia/{docid}") / path
     print(f"Removing file: {file_path}")
