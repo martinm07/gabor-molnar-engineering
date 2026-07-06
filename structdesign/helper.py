@@ -1,9 +1,9 @@
-import datetime
 import functools
 import os
 import smtplib
 import ssl
 import warnings
+from datetime import date, datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from urllib.parse import urlparse
@@ -13,12 +13,16 @@ from flask import (
     Blueprint,
     current_app,
     make_response,
+    redirect,
     render_template,
     request,
+    session,
+    url_for,
 )
 from werkzeug.datastructures import HeaderSet
 
-from .extensions import csrf
+from .extensions import csrf, db
+from .models import Param
 
 bp = Blueprint("tools", __name__)
 
@@ -27,7 +31,7 @@ old_samesite = None
 
 
 # TODO: Add config for "Partitioned" attribute after Flask adds it: https://github.com/pallets/flask/pull/5499
-def cors_enabled(methods=["POST"], allow_credentials=True, development_only=False):
+def cors_enabled(methods=["POST"], allow_credentials=True, development_only=True):
     def decorator(view):
         if (not development_only) or (
             development_only and os.environ.get("FLASK_ENV") == "development"
@@ -68,6 +72,69 @@ def cors_enabled(methods=["POST"], allow_credentials=True, development_only=Fals
                 return make_response(view(**kwargs))
 
             return wrapped_view_generic
+
+    return decorator
+
+
+## SESSION KEYS USED:
+##  is_admin
+##  logged_in_time
+
+
+def admin_required(view_func):
+    @functools.wraps(view_func)
+    def wrapped_view(**kwargs):
+        login_redirect = redirect(url_for("login.login", redirect_to=request.full_path))
+
+        if not session.get("is_admin"):
+            return login_redirect
+
+        saved_logout_after = db.session.get(Param, "logout_admin_before")
+        logout_those_before = (
+            datetime.fromisoformat(saved_logout_after.value)
+            if saved_logout_after
+            else datetime.fromtimestamp(0)
+        )
+
+        saved_login_time = session.get("logged_in_time")
+        login_time = (
+            datetime.fromisoformat(saved_login_time) if saved_login_time else None
+        )
+        if not login_time:
+            session.pop("is_admin", "")
+            session.pop("logged_in_time", "")
+            return login_redirect
+
+        if login_time < logout_those_before:
+            session.pop("is_admin", "")
+            session.pop("logged_in_time", "")
+            return login_redirect
+
+        return view_func(**kwargs)
+
+    return wrapped_view
+
+
+def api_view(methods=["GET"], admin_required=True):
+    def decorator(view_func):
+        # @functools.wraps(view_func)
+        # def wrapped_view(**kwargs):
+        #     print(os.environ.get("FLASK_ENV"))
+        #     if os.environ.get("FLASK_ENV") == "development":
+        #         return cors_enabled(methods=methods)(view_func)(**kwargs)
+        #     elif admin_required:
+        #         return admin_required(view_func)(**kwargs)
+        #     else:
+        #         return view_func(**kwargs)
+
+        if os.environ.get("FLASK_ENV") == "development":
+            wrapped_view = cors_enabled(methods=methods)(view_func)
+        elif admin_required:
+            wrapped_view = admin_required(view_func)
+        else:
+            wrapped_view = view_func
+
+        return wrapped_view
 
     return decorator
 
@@ -461,5 +528,5 @@ def collection_exists(client, collection_name: str):
     ]
 
 
-def get_unix_timestamp(d: datetime.date):
-    return int(datetime.datetime(d.year, d.month, d.day).timestamp())
+def get_unix_timestamp(d: date):
+    return int(datetime(d.year, d.month, d.day).timestamp())

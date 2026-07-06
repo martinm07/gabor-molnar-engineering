@@ -168,7 +168,7 @@ export async function loadDocument(p: EditorInterfaceLoading) {
   };
   doc.infoFetched = true;
 
-  const tagsResp = await fetch_("/documents/get_all_document_tags");
+  const tagsResp = await fetch_("/documents/get_all_tags");
   if (tagsResp.ok) {
     const allTags = await tagsResp.json();
     console.log(allTags);

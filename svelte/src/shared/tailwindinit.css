@@ -71,6 +71,13 @@
 @theme {
   --font-sans: "Source Sans Pro", ui-sans-serif, system-ui, sans;
   --font-source: "Source Sans Pro", ui-sans-serif, system-ui, sans;
+  --font-serif:
+    Merriweather, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-merry:
+    Merriweather, ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  /*--font-merry:
+    Merriweather, ui-serif, Georgia, Cambria, "Times New Roman", Times,
+    serif;*/
 
   --color-text: #0b0b09;
   --color-text-50: #f4f4f1;
@@ -136,6 +143,26 @@
   --color-oxygen-800: #2e3830;
   --color-oxygen-900: #171c18;
   --color-oxygen-950: #0b0e0c;
+}
+
+@font-face {
+  font-family: Merriweather;
+  src:
+    local("Merriweather"),
+    url("Merriweather/Merriweather-VariableFont_opsz,wdth,wght.ttf");
+  font-weight: 300 900;
+  font-stretch: 87 112;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: Merriweather;
+  src:
+    local("MerriweatherItalic"),
+    url("Merriweather/Merriweather-Italic-VariableFont_opsz,wdth,wght.ttf");
+  font-weight: 300 900;
+  font-stretch: 87 112;
+  font-style: italic;
 }
 
 @font-face {

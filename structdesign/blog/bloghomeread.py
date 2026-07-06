@@ -5,10 +5,10 @@ from typing import Iterable
 
 import click
 from flask import Blueprint, abort, jsonify, render_template, request, session
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, func, select
 
 from ..extensions import db
-from ..helper import cors_enabled
+from ..helper import api_view
 from ..models import (
     DocumentFeedback,
     DocumentTag,
@@ -41,10 +41,10 @@ def onfalsey(val, fallback):
 
 
 @bp.route("/get_latest")
-@cors_enabled(methods=["GET"])
+@api_view(admin_required=False)
 def get_latest():
-    page = float(request.args.get("p")) if "p" in request.args else None # type: ignore
-    length = int(request.args.get("l")) if "l" in request.args else None # type: ignore
+    page = float(request.args.get("p")) if "p" in request.args else None  # type: ignore
+    length = int(request.args.get("l")) if "l" in request.args else None  # type: ignore
 
     results = []
     rows = db.session.scalars(
@@ -65,7 +65,7 @@ def get_latest():
 
 
 @bp.route("/get_tagnames")
-@cors_enabled(methods=["GET"])
+@api_view(admin_required=False)
 def get_tagnames():
     tags = db.session.scalars(select(DocumentTag)).all()
     return jsonify(
@@ -77,14 +77,14 @@ def get_tagnames():
 
 
 @bp.route("/get_blogs_tag")
-@cors_enabled(methods=["GET"])
+@api_view(admin_required=False)
 def get_blogs_tag():
     name = request.args.get("name", None)
     if not name:
         return jsonify([])
 
-    page = float(request.args.get("p")) if "p" in request.args else None # type: ignore
-    length = int(request.args.get("l")) if "l" in request.args else None # type: ignore
+    page = float(request.args.get("p")) if "p" in request.args else None  # type: ignore
+    length = int(request.args.get("l")) if "l" in request.args else None  # type: ignore
 
     scalar_subq = (
         select(DocumentTag.id).where(DocumentTag.name == name).scalar_subquery()
@@ -103,7 +103,7 @@ def get_blogs_tag():
             document_tag_association_table,
             and_(
                 GuidanceDocument.id == document_tag_association_table.c.blog_id,
-                GuidanceDocument.type == document_tag_association_table.c.blog_type
+                GuidanceDocument.type == document_tag_association_table.c.blog_type,
             ),
         )
         .where(document_tag_association_table.c.tag_id == scalar_subq)
@@ -145,9 +145,8 @@ def read(name: str):
     # )
 
     stmt = select(GuidanceDocument).where(
-        func.LOWER(
-            func.REPLACE(func.REPLACE(GuidanceDocument.title, "-", ""), " ", "")
-        ) == name_transformed
+        func.LOWER(func.REPLACE(func.REPLACE(GuidanceDocument.title, "-", ""), " ", ""))
+        == name_transformed
     )
 
     doc = db.session.scalars(stmt).first()
@@ -167,7 +166,7 @@ def read(name: str):
 
 
 @bp.route("/get")
-@cors_enabled(methods=["GET"])
+@api_view(admin_required=False)
 def get():
     # TODO: this onfalsey use is probably unwanted behavior?
     id_ = json.loads(onfalsey(request.args.get("id"), "1"))
@@ -184,7 +183,7 @@ def get():
 
 
 @bp.route("/sendfeedback", methods=["OPTIONS", "POST"])
-@cors_enabled(methods=["OPTIONS", "POST"])
+@api_view(methods=["OPTIONS", "POST"], admin_required=False)
 def sendfeedback():
     data = json.loads(request.data.decode("utf-8"))
     blog_id = int(data.get("id"))
@@ -200,7 +199,7 @@ def sendfeedback():
 
 
 @bp.route("/heart", methods=["OPTIONS", "POST"])
-@cors_enabled(methods=["OPTIONS", "POST"])
+@api_view(methods=["OPTIONS", "POST"], admin_required=False)
 def heart():
     data = json.loads(request.data.decode("utf-8"))
     blog_id = int(data.get("id"))

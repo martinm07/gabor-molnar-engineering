@@ -7,7 +7,7 @@ from sqlalchemy import select
 from werkzeug.utils import secure_filename
 
 from ..extensions import db
-from ..helper import cors_enabled
+from ..helper import api_view
 from ..models import DocumentTag, GuidanceDocument
 from .blogcreatecomponents import get_component_lib
 
@@ -43,7 +43,7 @@ def get_development_document(id_: int, commit_changes=False):
 
 
 @bp.route("/get_document_edit")
-@cors_enabled(methods=["GET"])
+@api_view()
 def get_document_edit():
     id_ = request.args.get("id")
     if id_ is None:
@@ -69,7 +69,7 @@ def get_document_edit():
 
 
 @bp.route("/sync_document_full", methods=["OPTIONS", "POST"])
-@cors_enabled()
+@api_view()
 def sync_document_full():
     data = json.loads(request.data.decode("utf-8"))
     id_: int = data.get("id")
@@ -89,7 +89,7 @@ def sync_document_full():
 
 
 @bp.route("/sync_document_patch", methods=["OPTIONS", "POST"])
-@cors_enabled()
+@api_view(methods=["OPTIONS", "POST"])
 def sync_document_patch():
     """
     Synchronizes a guidance document's content by applying a list of patch operations.
@@ -160,7 +160,7 @@ def sync_document_patch():
 
 
 @bp.route("/update_document_complib", methods=["OPTIONS", "POST"])
-@cors_enabled()
+@api_view(methods=["OPTIONS", "POST"])
 def update_document_complib():
     data = json.loads(request.data.decode("utf-8"))
     id_: int = data.get("id")
@@ -191,7 +191,7 @@ def fill_doc_tag_names(tags: list[str]) -> list[DocumentTag]:
 
 
 @bp.route("/update_document_metadata", methods=["OPTIONS", "POST"])
-@cors_enabled()
+@api_view(methods=["OPTIONS", "POST"])
 def update_document_metadata():
     data = json.loads(request.data.decode("utf-8"))
     id_: int = data.get("id")
@@ -235,7 +235,7 @@ def update_document_metadata():
 
 
 @bp.route("/publish_development_document", methods=["OPTIONS", "POST"])
-@cors_enabled()
+@api_view(methods=["OPTIONS", "POST"])
 def publish_development_document():
     data = json.loads(request.data.decode("utf-8"))
     id_ = data.get("id")
@@ -283,7 +283,7 @@ def publish_development_document():
 
 
 @bp.route("/add_media_file", methods=["OPTIONS", "POST"])
-@cors_enabled()
+@api_view(methods=["OPTIONS", "POST"])
 def add_media_file():
     file = request.files.get("file")
     docid = request.form.get("id")
@@ -318,7 +318,7 @@ def add_media_file():
 
 
 @bp.route("/remove_media_file", methods=["OPTIONS", "POST"])
-@cors_enabled()
+@api_view(methods=["OPTIONS", "POST"])
 def remove_media_file():
     data = json.loads(request.data.decode("utf-8"))
     docid: str | None = data.get("id")
@@ -341,7 +341,7 @@ def remove_media_file():
 
 
 @bp.route("/get_media_files", methods=["GET"])
-@cors_enabled()
+@api_view(methods=["OPTIONS", "POST"])
 def get_media_files():
     docid = request.args.get("id")
 

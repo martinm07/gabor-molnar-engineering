@@ -6,7 +6,7 @@ from flask import Blueprint, render_template, request
 from sqlalchemy import select
 
 from ..extensions import db, typesense_client
-from ..helper import collection_exists, cors_enabled, get_unix_timestamp
+from ..helper import api_view, collection_exists, get_unix_timestamp
 from ..models import DocumentTag, GuidanceDocument, documents_schema
 
 bp = Blueprint("blogsearch", __name__, url_prefix="/documents")
@@ -22,7 +22,7 @@ def search():
 
 
 @bp.route("/query")
-@cors_enabled(methods=["GET"])
+@api_view(admin_required=False)
 def query():
     query = request.args.get("q", "*")
     sort_by = request.args.get("sort", "relevance")
@@ -30,15 +30,17 @@ def query():
 
     sort_str = f"{sort_by if sort_by != 'relevance' else '_text_match'}:{'DESC' if sort_descending else 'ASC'}"
 
-    return typesense_client.collections["documents"].documents.search({
-        "q": query,
-        "query_by": ",".join(["title", "description", "body", "tags"]),
-        "sort_by": f"{sort_str}{',_text_match:DESC' if sort_by != 'relevance' else ''}",
-    })
+    return typesense_client.collections["documents"].documents.search(
+        {
+            "q": query,
+            "query_by": ",".join(["title", "description", "body", "tags"]),
+            "sort_by": f"{sort_str}{',_text_match:DESC' if sort_by != 'relevance' else ''}",
+        }
+    )
 
 
 @bp.route("/advanced_query")
-@cors_enabled(methods=["GET"])
+@api_view(admin_required=False)
 def advanced_query():
     query = onfalsey(request.args.get("q"), "*")
     sort_by = onfalsey(request.args.get("sort"), "relevance")
@@ -64,14 +66,16 @@ def advanced_query():
 
     sort_str = f"{sort_by if sort_by != 'relevance' else '_text_match'}:{'desc' if sort_descending else 'asc'}"
 
-    results = typesense_client.collections["documents"].documents.search({
-        "q": query,
-        "query_by": ",".join(["title", "description", "body", "tags"]),
-        "sort_by": f"{sort_str}{',_text_match:desc' if sort_by != 'relevance' else ''}",
-        "filter_by": " && ".join(filter_args),
-        "facet_by": "tags",
-        "page": int(page),
-    })
+    results = typesense_client.collections["documents"].documents.search(
+        {
+            "q": query,
+            "query_by": ",".join(["title", "description", "body", "tags"]),
+            "sort_by": f"{sort_str}{',_text_match:desc' if sort_by != 'relevance' else ''}",
+            "filter_by": " && ".join(filter_args),
+            "facet_by": "tags",
+            "page": int(page),
+        }
+    )
 
     # This whole getting the tags in oder to add the color is very slow
     tags_i = next(
@@ -83,7 +87,9 @@ def advanced_query():
         None,
     )
     if tags_i is not None:
-        tags_list = cast(list[dict[str, str]], results["facet_counts"][tags_i]["counts"])
+        tags_list = cast(
+            list[dict[str, str]], results["facet_counts"][tags_i]["counts"]
+        )
         for tag in tags_list:
             tag_accent = db.session.scalars(
                 select(DocumentTag.accent).filter_by(name=tag["value"])

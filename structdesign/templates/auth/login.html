@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/cog1-svgrepo-com.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Log into structural-design.eu</title>
+    <script type="module" crossorigin src="/static/auth/js/login-C-9XwRgB.js"></script>
+    <link rel="modulepreload" crossorigin href="/static/shared/js/svelte-Zn4dHZ_B.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/transitions-DFmyp1aP.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/props-mC8-prDY.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/context-Cr8mM1CM.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/ArrowRightIcon-Dd5ldpdn.js">
+    <link rel="stylesheet" crossorigin href="/static/shared/css/tailwindinit.css">
+  </head>
+  <body>
+    <div
+      id="app"
+      style="
+        position: relative;
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+      "
+    ></div>
+    <input id="flask-server" type="hidden" value="http://127.0.0.1:5000" />
+    <script>
+      globalThis.jinjaParsed = false;
+      globalThis.urlRoot = document.getElementById("flask-server").value;
+      try {
+        if (!Number.parseInt("{{ 1 }}"))
+          throw new Error("Jinja wasn't parsed.");
+        globalThis.jinjaParsed = true;
+        globalThis.urlRoot =
+          "{{ url_for(request.endpoint, id=document_or_component_id).split('/')[0] + '/' }}";
+
+        globalThis.csrfToken = "{{ csrf_token() }}";
+
+        globalThis.flashedMessages = JSON.parse(
+          `{{ get_flashed_messages()|tojson }}`,
+        );
+      } catch {}
+    </script>
+
+  </body>
+</html>

@@ -2,9 +2,18 @@ import os
 
 from flask import Flask
 
-from . import auth, helper, home, register
-from .blog import blogcreate, bloghomeread, blogsearch, blogtagsedit, blogadmin
-from .blog import blogcreatedocuments, blogcreatecomponents, blogcreateiframeresizer
+from . import helper, home
+from .auth import auth  # , old_auth2, register
+from .blog import (
+    blogadmin,
+    blogcreate,
+    blogcreatecomponents,
+    blogcreatedocuments,
+    blogcreateiframeresizer,
+    bloghomeread,
+    blogsearch,
+    blogtagsedit,
+)
 from .extensions import csrf, db, migrate
 
 
@@ -29,7 +38,7 @@ def create_app(test_config=None):
     app.register_blueprint(helper.bp)
 
     app.register_blueprint(home.bp)
-    app.register_blueprint(register.bp)
+    # app.register_blueprint(register.bp)
 
     app.register_blueprint(bloghomeread.bp)
     app.register_blueprint(blogsearch.bp)
@@ -42,10 +51,12 @@ def create_app(test_config=None):
     app.register_blueprint(blogcreatecomponents.bp)
     app.register_blueprint(blogcreateiframeresizer.bp)
 
+    app.register_blueprint(auth.bp)
+
     ## For looking at the old (and frankly better) registration page
     ##  in a Svelte development server under _DEPR_svelte, uncomment this
     ##  line.
-    app.register_blueprint(auth.bp)
+    # app.register_blueprint(old_auth2.bp)
 
     ## This could be used to see the old old registration page under _DEPR_svelte
     ##  however I don't think that'll function properly without some other work being done.

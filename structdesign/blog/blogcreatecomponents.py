@@ -3,18 +3,17 @@ import hashlib
 import json
 import re
 import urllib.parse
+import warnings
 from collections.abc import Iterable
 from functools import cmp_to_key
 from typing import Any
-import warnings
-from pathlib import Path
 
 from diff_match_patch import diff_match_patch
 from flask import Blueprint, g, request
 from sqlalchemy import select
 
 from ..extensions import db
-from ..helper import cors_enabled
+from ..helper import api_view
 from ..models import (  # noqa: F401
     DocumentTag,
     SavedComponent,
@@ -244,13 +243,13 @@ def get_library_components(lib: SavedComponentLibrary) -> list[SavedComponent]:
 
 
 @bp.route("/savedcomponents_currentversion")
-@cors_enabled(methods=["GET"])
+@api_view()
 def savedcomponents_currentversion():
     return get_component_lib().latest_version
 
 
 @bp.route("/get_component_library")
-@cors_enabled(methods=["GET"])
+@api_view()
 def get_component_library():
     version = request.args.get("ver")
 
@@ -290,7 +289,7 @@ def get_component_library():
     current_version = current.version
     if version != "":
         # If the version IS an empty string, then this would return [''] and in the end have `final = [None]` (hence the need for special logic)
-        comp_versions: list[str | None] = version.split(",") # type: ignore
+        comp_versions: list[str | None] = version.split(",")  # type: ignore
     else:
         comp_versions = []
 
@@ -375,15 +374,20 @@ def get_component_library():
         try:
             diff = get_version(current_version)
         except Exception:
-            warnings.warn("Exhausted version history trying to complete the diff messages report. Likely a custom library version was requested.")
+            warnings.warn(
+                "Exhausted version history trying to complete the diff messages report. Likely a custom library version was requested."
+            )
             extra_diff_msgs = []
             break
 
-        extra_diff_msgs.insert(0, {
-            "version": diff.version,
-            "message": diff.message,
-            "description": diff.description,
-        })
+        extra_diff_msgs.insert(
+            0,
+            {
+                "version": diff.version,
+                "message": diff.message,
+                "description": diff.description,
+            },
+        )
 
         current_version = diff.next_version
 
@@ -430,7 +434,9 @@ def fill_comp_tag_names(tags: list[str] | None) -> list[SavedComponentTag]:
 
     final: list[SavedComponentTag] = []
     for tag_str in tags:
-        tag = db.session.scalars(select(SavedComponentTag).filter_by(name=tag_str)).first()
+        tag = db.session.scalars(
+            select(SavedComponentTag).filter_by(name=tag_str)
+        ).first()
         if not tag:
             tag = SavedComponentTag(name=tag)
             db.session.add(tag)
@@ -439,7 +445,7 @@ def fill_comp_tag_names(tags: list[str] | None) -> list[SavedComponentTag]:
 
 
 @bp.route("/update_components", methods=["OPTIONS", "POST"])
-@cors_enabled()
+@api_view(methods=["OPTIONS", "POST"])
 def update_components():
     """
     Handles updates, additions, and removals of components in the component library.
@@ -602,7 +608,11 @@ def update_components():
             new_comp_data["parts"] = "|".join(new_comp_data["parts"])
 
         new_comp_tags = new_comp_data.get("tags", "")
-        new_comp_tagsstr = ",".join(new_comp_tags) if isinstance(new_comp_tags, list) else new_comp_tags
+        new_comp_tagsstr = (
+            ",".join(new_comp_tags)
+            if isinstance(new_comp_tags, list)
+            else new_comp_tags
+        )
 
         new_comp = SavedComponent(
             name=new_comp_data.get("name"),
@@ -655,8 +665,7 @@ def update_components():
         is_safe=False,
     )
     db.session.add(diff)
-    print("🎈 Added SavedComponentDiff with version", new_version);
-
+    print("🎈 Added SavedComponentDiff with version", new_version)
     # Update latest_version of the library
     lib.latest_version = new_version
 
@@ -666,7 +675,7 @@ def update_components():
 
 
 @bp.route("/get_component_tags")
-@cors_enabled(methods=["GET"])
+@api_view()
 def get_component_tags():
     tag_names = list(db.session.scalars(select(SavedComponentTag.name)).all())
     # Dicts and lists are automatically converted to application/json mimetype responses

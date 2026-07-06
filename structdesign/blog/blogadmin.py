@@ -15,7 +15,7 @@ from flask import (
 from sqlalchemy import select
 
 from structdesign.blog.blogcreatecomponents import get_component_lib
-from structdesign.helper import cors_enabled
+from structdesign.helper import admin_required, api_view
 
 from ..extensions import db
 from ..models import GuidanceDocument
@@ -55,12 +55,13 @@ def get_all_documents_json() -> list[dict]:
 
 
 @bp.route("/list_all_documents")
-@cors_enabled()
+@api_view()
 def list_all_documents():
     return get_all_documents_json()
 
 
 @bp.route("/admin")
+@admin_required
 def admin():
     all_docs = get_all_documents_json()
     return render_template("blog/admin.html", all_docs=all_docs)
@@ -111,7 +112,7 @@ def convert_document_to_html(input_path: str, ext: str, doc_id: str) -> str:
 
 
 @bp.route("/create_new_guidance_document", methods=["OPTIONS", "POST"])
-@cors_enabled()
+@api_view(methods=["OPTIONS", "POST"])
 def create_new_guidance_document():
     file = request.files.get("file")
     data = request.form
@@ -166,7 +167,7 @@ def create_new_guidance_document():
 
 
 @bp.route("/delete_document", methods=["OPTIONS", "POST"])
-@cors_enabled()
+@api_view(methods=["OPTIONS", "POST"])
 def delete_document():
     data = json.loads(request.data.decode("utf-8"))
     if not data.get("id"):

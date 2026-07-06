@@ -22,6 +22,7 @@ export declare global {
   var jinjaParsed: boolean;
   var csrfToken: string;
   var urlRoot: string;
+  var flashedMessages: string[];
 
   var blogreadID: string;
   var blogreadTitle: string;

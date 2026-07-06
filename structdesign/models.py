@@ -22,8 +22,8 @@ from .extensions import db
 class Param(db.Model):
     __tablename__ = "params"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-    key: Mapped[str] = mapped_column(String(128))
+    # id: Mapped[int] = mapped_column(primary_key=True)
+    key: Mapped[str] = mapped_column(String(32), primary_key=True)
     value: Mapped[str] = mapped_column(Text())
 
 

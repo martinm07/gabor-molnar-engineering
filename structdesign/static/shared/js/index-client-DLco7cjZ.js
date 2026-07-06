@@ -1,1 +1,0 @@
-import{ai as t,aj as e,M as u,u as c}from"./svelte-O3ZwT1jW.js";function a(n){t===null&&e(),u(()=>{const o=c(n);if(typeof o=="function")return o})}function i(n){t===null&&e(),a(()=>()=>c(n))}export{i as a,a as o};

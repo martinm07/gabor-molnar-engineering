@@ -1,7 +1,8 @@
 import requests
 from bs4 import BeautifulSoup
 from flask import Blueprint, Response, render_template, request, stream_with_context
-from ..helper import cors_enabled
+
+from ..helper import api_view
 
 bp = Blueprint("blogcreateiframeresizer", __name__, url_prefix="/documents")
 
@@ -29,7 +30,7 @@ bp = Blueprint("blogcreateiframeresizer", __name__, url_prefix="/documents")
 
 
 @bp.route("/iframeresizer")
-@cors_enabled(methods=["GET"])
+@api_view(admin_required=False)
 def iframeresizer():
     url = request.args.get("url")
     if not url:

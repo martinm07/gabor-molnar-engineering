@@ -5,7 +5,7 @@ from flask import Blueprint, render_template, request
 from sqlalchemy import select
 
 from ..extensions import db
-from ..helper import cors_enabled
+from ..helper import api_view
 from ..models import DocumentTag
 
 bp = Blueprint("blogtagsedit", __name__, url_prefix="/documents")
@@ -40,32 +40,15 @@ def get_all_tags(return_objs=False) -> list[Any]:
         return tag_objs
 
 
-## Route for Svelte development only
 @bp.route("/get_all_tags")
-@cors_enabled()
+@api_view(admin_required=False)
 def get_all_tags_view():
     all_tags = get_all_tags()
     return all_tags
 
 
-@bp.route("/get_all_document_tags")
-@cors_enabled()
-def get_all_document_tags():
-    tags = db.session.execute(
-        select(DocumentTag.name, DocumentTag.description, DocumentTag.accent)
-    ).all()
-    return [
-        {
-            "name": tag[0],
-            "description": tag[1],
-            "accent": tag[2],
-        }
-        for tag in tags
-    ]
-
-
 @bp.route("/save_doctag_changes", methods=["OPTIONS", "POST"])
-@cors_enabled()
+@api_view(methods=["OPTIONS", "POST"])
 def save_doctag_changes():
     data = json.loads(request.data.decode("utf-8"))
 

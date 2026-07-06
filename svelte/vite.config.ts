@@ -33,6 +33,7 @@ const entryPoints = {
   blogcreate: resolve(root, "blog/create/index.html"),
   blogtagsedit: resolve(root, "blog/tagsedit/index.html"),
   blogadmin: resolve(root, "blog/admin/index.html"),
+  authlogin: resolve(root, "auth/login/index.html"),
 };
 
 // IMP: Want to extend output.manualChunks? Do so here!
@@ -82,7 +83,7 @@ function isMediaFile(name: string) {
 
 // Small string hasher, taken from https://stackoverflow.com/a/52171480/11493659
 const hashCode = (s: string) => {
-  for (var i = 0, h = 9; i < s.length; )
+  for (var i = 0, h = 9; i < s.length;)
     h = Math.imul(h ^ s.charCodeAt(i++), 9 ** 9);
   return Math.abs(h ^ (h >>> 9)).toString(16);
 };
@@ -402,12 +403,14 @@ export default defineConfig({
             const sec = parse(mapReturn).dir || "shared";
             const origName = parse(mapReturn).name;
 
+            if (sec === "shared")
+              return `${STATIC_PATH}${sec}/${extType}/${origName}[extname]`;
             return `${STATIC_PATH}${sec}/${extType}/${origName}-[hash][extname]`;
           }
 
           console.warn(`The asset file "${assetInfo.name}" was not able to be seen to a section.
                         Perhaps it was a media file not recognized?`);
-          return `${STATIC_PATH}shared/${extType}/[name]-[hash][extname]`;
+          return `${STATIC_PATH}shared/${extType}/[name][extname]`;
         },
         chunkFileNames: (chunkInfo) => {
           const getModuleInfo: GetModuleInfo = globalThis.getModuleInfo;

@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/cog1-svgrepo-com.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Log in to structural-design.eu</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!--<style
+      type="text/tailwindcss"
+      src="{{ url_for('static', filename='shared/css/tailwindinit.css') }}"
+    ></style>-->
+    <!--<link
+      href="{{ url_for('static', filename='shared/css/tailwindinit.css') }}"
+      type="text/tailwindcss"
+    />-->
+    <style type="text/tailwindcss">
+      @theme {
+        --font-sans: "Source Sans Pro", ui-sans-serif, system-ui, sans;
+        --font-source: "Source Sans Pro", ui-sans-serif, system-ui, sans;
+        --font-serif:
+          Merriweather, ui-serif, Georgia, Cambria, "Times New Roman", Times,
+          serif;
+        --font-merry:
+          Merriweather, ui-serif, Georgia, Cambria, "Times New Roman", Times,
+          serif;
+
+        --color-text: #0b0b09;
+        --color-text-50: #f4f4f1;
+        --color-text-100: #e8e8e3;
+        --color-text-200: #d1d1c7;
+        --color-text-300: #babaab;
+        --color-text-400: #a3a38f;
+        --color-text-500: #8c8c73;
+        --color-text-600: #70705c;
+        --color-text-700: #545445;
+        --color-text-800: #38382e;
+        --color-text-900: #1c1c17;
+        --color-text-950: #0e0e0b;
+
+        --color-background: #f8f8f7;
+        --color-background-50: #f3f3f1;
+        --color-background-100: #e7e7e4;
+        --color-background-200: #d0d0c8;
+        --color-background-300: #b8b8ad;
+        --color-background-400: #a0a092;
+        --color-background-500: #888877;
+        --color-background-600: #6d6d5f;
+        --color-background-700: #525247;
+        --color-background-800: #37372f;
+        --color-background-900: #1b1b18;
+        --color-background-950: #0e0e0c;
+
+        --color-rock: #8e937b;
+        --color-rock-50: #f3f4f1;
+        --color-rock-100: #e7e8e3;
+        --color-rock-200: #cfd1c7;
+        --color-rock-300: #b7baab;
+        --color-rock-400: #9fa38f;
+        --color-rock-500: #878c73;
+        --color-rock-600: #6c705c;
+        --color-rock-700: #515445;
+        --color-rock-800: #36382e;
+        --color-rock-900: #1b1c17;
+        --color-rock-950: #0d0e0b;
+
+        --color-steel: #b8c3b6;
+        --color-steel-50: #f1f4f1;
+        --color-steel-100: #e4e8e3;
+        --color-steel-200: #c8d1c7;
+        --color-steel-300: #adbaab;
+        --color-steel-400: #92a38f;
+        --color-steel-500: #778c73;
+        --color-steel-600: #5f705c;
+        --color-steel-700: #475445;
+        --color-steel-800: #2f382e;
+        --color-steel-900: #181c17;
+        --color-steel-950: #0c0e0b;
+
+        --color-oxygen: #9aac9d;
+        --color-oxygen-50: #f1f4f1;
+        --color-oxygen-100: #e3e8e4;
+        --color-oxygen-200: #c7d1c9;
+        --color-oxygen-300: #abbaad;
+        --color-oxygen-400: #8fa392;
+        --color-oxygen-500: #738c77;
+        --color-oxygen-600: #5c705f;
+        --color-oxygen-700: #455447;
+        --color-oxygen-800: #2e3830;
+        --color-oxygen-900: #171c18;
+        --color-oxygen-950: #0b0e0c;
+      }
+
+      @font-face {
+        font-family: Merriweather;
+        src:
+          local("Merriweather"),
+          url("{{ url_for('static', filename='shared/font/Merriweather-VariableFont_opsz_wdth_wght.ttf') }}");
+        font-weight: 300 900;
+        font-stretch: 87 112;
+        font-style: normal;
+      }
+
+      @font-face {
+        font-family: Merriweather;
+        src:
+          local("MerriweatherItalic"),
+          url("{{ url_for('static', filename='shared/font/Merriweather-Italic-VariableFont_opsz,wdth,wght.ttf') }}");
+        font-weight: 300 900;
+        font-stretch: 87 112;
+        font-style: italic;
+      }
+
+      @font-face {
+        font-family: "Source Sans Pro";
+        src:
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-Black.woff2') }}")
+            format("woff2"),
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-Black.woff') }}")
+            format("woff");
+        font-weight: 900;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Source Sans Pro";
+        src:
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-Bold.woff2') }}")
+            format("woff2"),
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-Bold.woff') }}")
+            format("woff");
+        font-weight: bold;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Source Sans Pro";
+        src:
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-BlackIt.woff2') }}")
+            format("woff2"),
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-BlackIt.woff') }}")
+            format("woff");
+        font-weight: 900;
+        font-style: italic;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Source Sans Pro";
+        src:
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-It.woff2') }}")
+            format("woff2"),
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-It.woff') }}")
+            format("woff");
+        font-weight: normal;
+        font-style: italic;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Source Sans Pro";
+        src:
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-ExtraLight.woff2') }}")
+            format("woff2"),
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-ExtraLight.woff') }}")
+            format("woff");
+        font-weight: 200;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Source Sans Pro";
+        src:
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-ExtraLightIt.woff2') }}")
+            format("woff2"),
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-ExtraLightIt.woff') }}")
+            format("woff");
+        font-weight: 200;
+        font-style: italic;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Source Sans Pro";
+        src:
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-Light.woff2') }}")
+            format("woff2"),
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-Light.woff') }}")
+            format("woff");
+        font-weight: 300;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Source Sans Pro";
+        src:
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-LightIt.woff2') }}")
+            format("woff2"),
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-LightIt.woff') }}")
+            format("woff");
+        font-weight: 300;
+        font-style: italic;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Source Sans Pro";
+        src:
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-BoldIt.woff2') }}")
+            format("woff2"),
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-BoldIt.woff') }}")
+            format("woff");
+        font-weight: bold;
+        font-style: italic;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Source Sans Pro";
+        src:
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-Regular.woff2') }}")
+            format("woff2"),
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-Regular.woff') }}")
+            format("woff");
+        font-weight: normal;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Source Sans Pro";
+        src:
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-Semibold.woff2') }}")
+            format("woff2"),
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-Semibold.woff') }}")
+            format("woff");
+        font-weight: 600;
+        font-style: normal;
+        font-display: swap;
+      }
+
+      @font-face {
+        font-family: "Source Sans Pro";
+        src:
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-SemiboldIt.woff2') }}")
+            format("woff2"),
+          url("{{ url_for('static', filename='shared/font/SourceSansPro-SemiboldIt.woff') }}")
+            format("woff");
+        font-weight: 600;
+        font-style: italic;
+        font-display: swap;
+      }
+
+      button {
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <div
+      id="app"
+      style="
+        position: relative;
+        display: flex;
+        min-height: 100vh;
+        align-items: center;
+        justify-content: center;
+      "
+    >
+      <div
+        class="grow max-w-3xl min-h-[50vh] mx-6 rounded-lg border-2 border-rock-300 p-4 pb-16 bg-background flex flex-col"
+      >
+        <h1 class="text-4xl text-rock-700 font-merry text-center py-3">
+          Log into structural-design.eu
+        </h1>
+        <form
+          method="post"
+          class="text-xl text-rock-800 flex items-center flex-col my-auto"
+        >
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <div
+            class="flex items-center mb-6 max-md:flex-col max-md:items-start"
+          >
+            <label for="username" class="mr-3 max-md:mb-1">Username:</label>
+            <input
+              class="border-2 border-rock-300 rounded bg-rock-100 px-3 py-1 focus:bg-white focus:ring-4 ring-steel-300/50 outline-none font-mono"
+              type="text"
+              name="username"
+              id="username"
+              placeholder="username"
+              required
+            />
+          </div>
+          <div
+            class="flex items-center w-full md:px-8 max-md:flex-col max-md:items-start"
+          >
+            <label for="password" class="mr-3 max-md:mb-1">Password:</label>
+            <input
+              class="border-2 border-rock-300 rounded bg-rock-100 px-3 py-1 focus:bg-white focus:ring-4 ring-steel-300/50 outline-none font-mono grow max-md:w-full"
+              type="password"
+              name="password"
+              id="password"
+              placeholder="pa55w0rd"
+              required
+            />
+          </div>
+          <div class="mt-8">
+            <!-- <button
+              class="bg-steel-100 border-4 border-steel-500 rounded-lg flex items-center px-4 py-2 text-xl font-bold text-steel-600 hover:bg-steel-200 hover:text-steel-700 transition-colors active:ring-4 ring-steel-300/50 active:translate-y-1"
+              >Log in<ArrowRightIcon class="ml-1 text-2xl" weight="bold" /></button
+            > -->
+            <button
+              class="text-xl font-mono border-2 border-steel-200 bg-steel-50 px-4 py-2 rounded-lg text-steel-800 hover:bg-steel-100 active:translate-y-1 active:bg-steel-200 focus:ring-4 ring-steel-100 [word-spacing:-4px]"
+            >
+              Log in<ArrowRightIcon class="inline-block ml-2 text-2xl" />
+            </button>
+          </div>
+        </form>
+        {% for message in get_flashed_messages() %}
+        <div class="font-bold text-red-500">{{ message }}</div>
+        {% endfor %}
+      </div>
+    </div>
+    <input id="flask-server" type="hidden" value="%VITE_DEV_FLASK_SERVER%" />
+    <script>
+      globalThis.jinjaParsed = false;
+      globalThis.urlRoot = document.getElementById("flask-server").value;
+      try {
+        if (!Number.parseInt("{{ 1 }}"))
+          throw new Error("Jinja wasn't parsed.");
+        globalThis.jinjaParsed = true;
+        globalThis.urlRoot =
+          "{{ url_for(request.endpoint, id=document_or_component_id).split('/')[0] + '/' }}";
+
+        globalThis.csrfToken = "{{ csrf_token() }}";
+      } catch {}
+
+      console.log(JSON.parse(`{{ get_flashed_messages()|tojson }}`));
+    </script>
+
+    <!--<script type="module" src="./main.ts"></script>-->
+  </body>
+</html>

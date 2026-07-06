@@ -74,7 +74,7 @@
   // fileState.errMsg = "File had an invalid extension.";
 </script>
 
-<div class="flex mb-4">
+<div class="flex my-4">
   <div class="ml-auto mr-6">
     <button
       class="flex items-center text-xl px-3 py-1 border-2 border-steel-300 rounded text-steel-700 bg-background hover:bg-steel-100 active:bg-steel-200 active:translate-y-1 active:ring-4 ring-steel-100 active:text-steel-800"

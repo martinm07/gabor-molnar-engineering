@@ -3,6 +3,8 @@ import os
 from flask import Blueprint, current_app, render_template, send_from_directory
 from sqlalchemy import select
 
+from structdesign.helper import admin_required
+
 from ..extensions import db
 from ..models import GuidanceDocument, SavedComponentLibrary
 
@@ -13,19 +15,25 @@ bp = Blueprint("blogcreate", __name__, url_prefix="/documents")
 #  Flask will not consider it matching this view at all and return a 404 without calling the function body
 @bp.route("/media/<int:docid>/<path:subpath>")
 def get_media_file(docid, subpath):
-    return send_from_directory(os.path.join(current_app.instance_path, "documentmedia", f"{docid}"), subpath)
+    return send_from_directory(
+        os.path.join(current_app.instance_path, "documentmedia", f"{docid}"), subpath
+    )
 
 
 @bp.route("/edit/<id>")
+@admin_required
 def edit_document(id):
     return render_template("blog/create.html", document_or_component_id=id)
 
+
 @bp.route("/edit/component/<id>")
+@admin_required
 def edit_component(id):
     return render_template("blog/create.html", document_or_component_id=id)
 
 
 #####################
+
 
 @bp.cli.command("create_component_lib_base")
 def create_component_lib_base():

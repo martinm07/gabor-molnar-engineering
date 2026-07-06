@@ -25,6 +25,8 @@ There needs to be a file called `.kamal/secrets`, containing secrets referenced 
     ```
     ...to also change the port number, or pass paramters to the Typesense container if it didn't accept configuration through enviornment variables, or other containers in the future, etc.
 - - `<database-name>`: There is passed in a MySQL initialization file however (located at `config/init.sql`) which creates the database that will be used. The name of that database is what needs to go here (e.g. "gab_mol_eng" from `CREATE DATABASE gab_mol_eng;`).
+- `ADMIN_USERNAME`: The username of the "admin account"; the account with privelages to create, edit, delete and generally manage guidance documents.
+- `ADMIN_PASSWORD`: The password of the "admin account".
 
 ---
 

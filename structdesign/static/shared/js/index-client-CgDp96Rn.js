@@ -1,0 +1,1 @@
+import{aj as t,ak as e,M as u,u as c}from"./svelte-Zn4dHZ_B.js";function a(n){t===null&&e(),u(()=>{const o=c(n);if(typeof o=="function")return o})}function s(n){t===null&&e(),a(()=>()=>c(n))}export{s as a,a as o};
