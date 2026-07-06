@@ -30,7 +30,7 @@ bp = Blueprint("blogcreateiframeresizer", __name__, url_prefix="/documents")
 
 
 @bp.route("/iframeresizer")
-@api_view(admin_required=False)
+@api_view(admin_required_=False)
 def iframeresizer():
     url = request.args.get("url")
     if not url:

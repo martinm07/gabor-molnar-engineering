@@ -13,8 +13,8 @@
     devShells.x86_64-linux.default = let
       pkgs = import nixpkgs {system = "x86_64-linux";};
     in
-      pkgs.mkShell {
-        buildInputs = with pkgs; [
+      pkgs.mkShellNoCC {
+        packages = with pkgs; [
           # common build inputs
           direnv
           xclip
@@ -58,11 +58,6 @@
           '')
         ];
 
-        env = {
-          # IMP: That the Ruby version matches up with the ruby version installed by this shell.nix buildInputs
-          PATH = "$PATH:/home/martinm/.local/share/gem/ruby/3.3.0/bin";
-        };
-
         shellHook = ''
           echo "Dev shell ready."
           echo "Run 'typesense-start' to start Typesense server through Docker"
@@ -84,6 +79,9 @@
           export PROJECT_HOME="$(realpath "$(dirname "$0")")"
           # echo "$PROJECT_HOME"
 
+          # IMP: That the Ruby version matches up with the ruby version installed by this shell.nix buildInputs
+          export PATH="$PATH:/home/martinm/.local/share/gem/ruby/3.3.0/bin"
+
           if [ -f "''${PROJECT_HOME}/.venv/bin/activate" ]; then
             source "''${PROJECT_HOME}/.venv/bin/activate"
           else
@@ -93,8 +91,14 @@
           # Clear the hash table so that the PATH updates (by activating the virtual environment) are reflected immediately
           hash -r
 
-          #alias ls=eza
-          #alias ls="ls -alh --color=auto"
+          export ZDOTDIR=$(mktemp -d)
+          cat > "$ZDOTDIR/.zshrc" <<EOF
+
+          # Import parent shell config
+          [ -f "$HOME/.zshrc" ] && source "$HOME/.zshrc"
+
+          # alias ls=eza
+          # alias ls="ls -alh --color=auto"
           alias ls="eza --long --group --header -a --classify --links --level=3 --color=auto --sort=type --time-style=long-iso --extended"
           alias find=fd
           alias fd="fd --hidden --list-details --color=auto" # cannot be aliased to 'find' if using hlissner doom emacs
@@ -102,7 +106,7 @@
           #alias fd="find -L" # cannot be aliased if using hlissner doom emacs
           alias du="duf"
 
-          #git
+          # Git
           alias gst="git status"
           alias gc="git commit"
           alias gcm="git commit -m"
@@ -113,9 +117,16 @@
           alias gp="git push -u"
           alias gpu="git push -u"
 
-          #import parent shell config
-          [ -x ~/.bashrc ] && source ~/.bashrc
-          [ -x ~/.zshrc ] && source ~/.zshrc
+          VENV_PROMPT_TAG=""
+          if [ -n "\$VIRTUAL_ENV" ]; then
+            VENV_PROMPT_TAG="%F{#9fd6e0}($VIRTUAL_ENV_PROMPT)%f "
+          fi
+
+          PS1="\''${VENV_PROMPT_TAG}\$PS1"
+
+          EOF
+
+          exec zsh
         '';
       };
   };

@@ -41,7 +41,7 @@ def get_all_tags(return_objs=False) -> list[Any]:
 
 
 @bp.route("/get_all_tags")
-@api_view(admin_required=False)
+@api_view(admin_required_=False)
 def get_all_tags_view():
     all_tags = get_all_tags()
     return all_tags

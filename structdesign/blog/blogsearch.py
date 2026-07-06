@@ -22,7 +22,7 @@ def search():
 
 
 @bp.route("/query")
-@api_view(admin_required=False)
+@api_view(admin_required_=False)
 def query():
     query = request.args.get("q", "*")
     sort_by = request.args.get("sort", "relevance")
@@ -40,7 +40,7 @@ def query():
 
 
 @bp.route("/advanced_query")
-@api_view(admin_required=False)
+@api_view(admin_required_=False)
 def advanced_query():
     query = onfalsey(request.args.get("q"), "*")
     sort_by = onfalsey(request.args.get("sort"), "relevance")

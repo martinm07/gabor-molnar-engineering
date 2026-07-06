@@ -115,7 +115,7 @@ def admin_required(view_func):
     return wrapped_view
 
 
-def api_view(methods=["GET"], admin_required=True):
+def api_view(methods=["GET"], admin_required_=True):
     def decorator(view_func):
         # @functools.wraps(view_func)
         # def wrapped_view(**kwargs):
@@ -129,7 +129,7 @@ def api_view(methods=["GET"], admin_required=True):
 
         if os.environ.get("FLASK_ENV") == "development":
             wrapped_view = cors_enabled(methods=methods)(view_func)
-        elif admin_required:
+        elif admin_required_:
             wrapped_view = admin_required(view_func)
         else:
             wrapped_view = view_func

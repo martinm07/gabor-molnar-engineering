@@ -41,7 +41,7 @@ def onfalsey(val, fallback):
 
 
 @bp.route("/get_latest")
-@api_view(admin_required=False)
+@api_view(admin_required_=False)
 def get_latest():
     page = float(request.args.get("p")) if "p" in request.args else None  # type: ignore
     length = int(request.args.get("l")) if "l" in request.args else None  # type: ignore
@@ -65,7 +65,7 @@ def get_latest():
 
 
 @bp.route("/get_tagnames")
-@api_view(admin_required=False)
+@api_view(admin_required_=False)
 def get_tagnames():
     tags = db.session.scalars(select(DocumentTag)).all()
     return jsonify(
@@ -77,7 +77,7 @@ def get_tagnames():
 
 
 @bp.route("/get_blogs_tag")
-@api_view(admin_required=False)
+@api_view(admin_required_=False)
 def get_blogs_tag():
     name = request.args.get("name", None)
     if not name:
@@ -166,7 +166,7 @@ def read(name: str):
 
 
 @bp.route("/get")
-@api_view(admin_required=False)
+@api_view(admin_required_=False)
 def get():
     # TODO: this onfalsey use is probably unwanted behavior?
     id_ = json.loads(onfalsey(request.args.get("id"), "1"))
@@ -183,7 +183,7 @@ def get():
 
 
 @bp.route("/sendfeedback", methods=["OPTIONS", "POST"])
-@api_view(methods=["OPTIONS", "POST"], admin_required=False)
+@api_view(methods=["OPTIONS", "POST"], admin_required_=False)
 def sendfeedback():
     data = json.loads(request.data.decode("utf-8"))
     blog_id = int(data.get("id"))
@@ -199,7 +199,7 @@ def sendfeedback():
 
 
 @bp.route("/heart", methods=["OPTIONS", "POST"])
-@api_view(methods=["OPTIONS", "POST"], admin_required=False)
+@api_view(methods=["OPTIONS", "POST"], admin_required_=False)
 def heart():
     data = json.loads(request.data.decode("utf-8"))
     blog_id = int(data.get("id"))
