@@ -52,11 +52,16 @@ def get_document_edit():
     if doc is None:
         return f"Found no document of id '{id_}'", 400
 
+    ## TODO: TEMPORARY FOR DEMO PURPOSES
+    body = doc.body
+    if not body.startswith("<"):
+        body = "<p>" + body + "</p>"
+
     return {
         "id": doc.id,
         "title": doc.title,
         "description": doc.description,
-        "body": doc.body,
+        "body": body,
         "accent": doc.accent,
         "thumbnail": doc.thumbnail,
         "tags": [tag.name for tag in doc.tags],
@@ -250,7 +255,7 @@ def publish_development_document():
     if not publishdoc:
         publishdoc = GuidanceDocument(
             id=id_,
-            type=1,
+            type=0,
             title=document.title,
             description=document.description,
             body=document.body,

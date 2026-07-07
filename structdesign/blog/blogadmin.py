@@ -12,7 +12,8 @@ from flask import (
     request,
     url_for,
 )
-from sqlalchemy import select
+from sqlalchemy import and_, select
+from sqlalchemy.orm import aliased
 
 from structdesign.blog.blogcreatecomponents import get_component_lib
 from structdesign.helper import admin_required, api_view
@@ -24,9 +25,34 @@ bp = Blueprint("blogadmin", __name__, url_prefix="/documents")
 
 
 def get_all_documents_json() -> list[dict]:
-    all_docs = db.session.scalars(
-        select(GuidanceDocument).where(GuidanceDocument.type == 0)
-    ).all()
+    #   https://stackoverflow.com/a/26124759/11493659
+    """
+    SELECT t1.*
+    FROM table_name AS t1
+    LEFT JOIN table_name AS t2
+    ON t1.firstname = t2.firstname
+    AND t1.lastname > t2.lastname
+    WHERE t2.id IS NULL;
+    """
+
+    t1 = aliased(GuidanceDocument)
+    t2 = aliased(GuidanceDocument)
+
+    # This statement returns rows for all the GuidanceDocuments of unique IDs.
+    # --------
+    # This is a "left join"- where we keep ALL the rows of the "left table", and join the right table
+    #  rows wherever we can, according to the criterion.
+    # In this case, that criterion is that the id matches, and that the right table row has a SMALLER "type".
+    # If the left table row has a type of 0, that is impossible so it won't match.
+    # We then use a WHERE clause to filter the joint table, to those rows where we COULDN'T join the right table.
+    # This means that, if a GuidanceDocument of type 0 (i.e. published) exists, it will be preferred.
+    stmt = (
+        select(t1)
+        .join_from(t1, t2, and_(t1.id == t2.id, t2.type < t1.type), isouter=True)
+        .where(t2.id.is_(None))
+    )
+
+    all_docs = db.session.scalars(stmt).all()
 
     final = []
     for doc in all_docs:
