@@ -350,7 +350,7 @@
 >
   <div
     style="scrollbar-color: var(--rock-100) var(--background);"
-    class="row-span-2 border-r-2 border-rock-300 bg-background p-2 overflow-y-scroll relative"
+    class="row-span-2 border-r-2 border-rock-300 bg-background p-2 overflow-y-scroll"
   >
     <Sidebar bind:attributesEditor bind:cssEditor />
   </div>
@@ -370,9 +370,11 @@
       <MoveNodes {docEl} />
     {/if}
 
-    <div class="doc w-3/4 max-w-[600px]" bind:this={docEl}>
-      <DocMeta {docEl} {docSaver} bind:this={docMeta} />
-      Loading document...
+    <div class="relative h-fit w-full flex justify-center">
+      <div class="doc w-3/4 max-w-[600px]" bind:this={docEl}>
+        <DocMeta {docEl} {docSaver} bind:this={docMeta} />
+        Loading document...
+      </div>
     </div>
   </div>
   <div

@@ -5,12 +5,36 @@
     <link rel="icon" type="image/svg+xml" href="/cog1-svgrepo-com.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ title }}</title>
-    <script type="module" crossorigin src="/static/blog/js/read-CoMw5o6N.js"></script>
-    <link rel="modulepreload" crossorigin href="/static/shared/js/svelte-Zn4dHZ_B.js">
-    <link rel="modulepreload" crossorigin href="/static/shared/js/this-CYvKrGOR.js">
-    <link rel="modulepreload" crossorigin href="/static/shared/js/await-BU4qrKyR.js">
-    <link rel="stylesheet" crossorigin href="/static/shared/css/tailwindinit.css">
-    <link rel="stylesheet" crossorigin href="/static/blog/css/read-CS2pPu5R.css">
+    <script
+      type="module"
+      crossorigin
+      src="/static/blog/js/read-CoMw5o6N.js"
+    ></script>
+    <link
+      rel="modulepreload"
+      crossorigin
+      href="/static/shared/js/svelte-Zn4dHZ_B.js"
+    />
+    <link
+      rel="modulepreload"
+      crossorigin
+      href="/static/shared/js/this-CYvKrGOR.js"
+    />
+    <link
+      rel="modulepreload"
+      crossorigin
+      href="/static/shared/js/await-BU4qrKyR.js"
+    />
+    <link
+      rel="stylesheet"
+      crossorigin
+      href="/static/shared/css/tailwindinit.css"
+    />
+    <link
+      rel="stylesheet"
+      crossorigin
+      href="/static/blog/css/read-CS2pPu5R.css"
+    />
   </head>
   <body>
     <div id="app" style="position: relative"></div>
@@ -27,9 +51,9 @@
         globalThis.csrfToken = "{{ csrf_token() }}";
 
         globalThis.blogreadID = "{{ id }}";
-        globalThis.blogreadTitle = "{{ title }}";
-        globalThis.blogreadDesc = "{{ description }}";
-        globalThis.blogreadBody = "{{ body }}";
+        globalThis.blogreadTitle = {{ title|tojson }};
+        globalThis.blogreadDesc = {{ description|tojson }};
+        globalThis.blogreadBody = {{ body|tojson }};
       } catch {}
     </script>
     <script

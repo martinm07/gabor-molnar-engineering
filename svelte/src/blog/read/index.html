@@ -7,7 +7,15 @@
     <title>{{ title }}</title>
   </head>
   <body>
-    <div id="app" style="position: relative"></div>
+    <div
+      id="app"
+      style="
+        position: relative;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      "
+    ></div>
     <input id="flask-server" type="hidden" value="%VITE_DEV_FLASK_SERVER%" />
     <script>
       globalThis.jinjaParsed = false;
@@ -21,9 +29,9 @@
         globalThis.csrfToken = "{{ csrf_token() }}";
 
         globalThis.blogreadID = "{{ id }}";
-        globalThis.blogreadTitle = "{{ title }}";
-        globalThis.blogreadDesc = "{{ description }}";
-        globalThis.blogreadBody = "{{ body }}";
+        globalThis.blogreadTitle = {{ title|tojson }};
+        globalThis.blogreadDesc = {{ description|tojson }};
+        globalThis.blogreadBody = {{ body|tojson }};
       } catch {}
     </script>
     <script

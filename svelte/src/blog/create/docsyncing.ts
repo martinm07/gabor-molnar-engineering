@@ -1066,6 +1066,7 @@ export function patchMutations(
   // Provided stringPosUpdateMap maps OLD stringPos --> BASE stringPos
   // We must update the mapping to NEW stringPos --> BASE stringPos
   const newStringPosForwardUpdateMap: Map<number, number> = new Map();
+  console.log("🎈🎈", p.stringPosForwardUpdateMap);
   p.stringPosForwardUpdateMap.forEach((baseStringPos, oldStringPos) => {
     // This gives us the node that the OLD stringPos referred to
     const referredNode = p.stringPosNodeMap.get(oldStringPos);

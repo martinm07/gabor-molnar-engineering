@@ -49,3 +49,4 @@ _LOCAL_*
 *.njsproj
 *.sln
 *.sw?
+.zed

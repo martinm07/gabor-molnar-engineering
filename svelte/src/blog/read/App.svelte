@@ -49,8 +49,17 @@
     const search = new URLSearchParams(window.location.search);
     const id = search.get("id") ?? 1;
     fetch_(`/documents/get?id=${id}`)
-      .then((resp) => resp.json())
+      .then((resp) => {
+        if (resp.ok) return resp.json();
+        return {
+          id: -1,
+          title: "404",
+          description: "Not found",
+          body: "Document not found",
+        };
+      })
       .then(({ id, title, description, body }) => {
+        // console.log(id, title, description, body);
         document.title = title;
         doc = {
           id,
@@ -66,7 +75,7 @@
   setContext("bbuttonClasses", bButtonclass);
 </script>
 
-{#if doc.title}
+<!-- {#if doc.title}
   <div
     class="absolute top-0 right-0 w-3/4 h-96 bg-rock-200 bg-opacity-50 -z-10"
     style="clip-path: polygon(100% 0, 0 0, 100% 100%);"
@@ -81,7 +90,7 @@
       {doc.description}
     </p>
   {/if}
-{/if}
+{/if} -->
 
 <div class="flex justify-center">
   <div
@@ -90,20 +99,22 @@
     {@html doc.body}
   </div>
 </div>
-<div
-  class="bg-rock-50 mt-20 p-5 border-t-2 border-rock-300 text-center relative"
->
+<div class="mt-auto">
   <div
-    class="absolute h-full w-1/3 left-0 bottom-0 bg-rock-100"
-    style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"
-  ></div>
-  <div
-    class="absolute h-full w-1/6 right-0 bottom-0 bg-rock-100"
-    style="clip-path: polygon(100% 0, 0% 100%, 100% 100%);"
-  ></div>
-  <LibraryButton {doc} />
-  <HeartButton {doc} />
-  <CommentButton {doc} />
+    class="bg-rock-50 mt-20 p-5 border-t-2 border-rock-300 text-center relative"
+  >
+    <div
+      class="absolute h-full w-1/3 left-0 bottom-0 bg-rock-100"
+      style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"
+    ></div>
+    <div
+      class="absolute h-full w-1/6 right-0 bottom-0 bg-rock-100"
+      style="clip-path: polygon(100% 0, 0% 100%, 100% 100%);"
+    ></div>
+    <LibraryButton {doc} />
+    <HeartButton {doc} />
+    <CommentButton {doc} />
+  </div>
 </div>
 
 <style>

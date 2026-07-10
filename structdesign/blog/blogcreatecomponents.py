@@ -438,7 +438,7 @@ def fill_comp_tag_names(tags: list[str] | None) -> list[SavedComponentTag]:
             select(SavedComponentTag).filter_by(name=tag_str)
         ).first()
         if not tag:
-            tag = SavedComponentTag(name=tag)
+            tag = SavedComponentTag(name=tag_str)
             db.session.add(tag)
         final.append(tag)
     return final

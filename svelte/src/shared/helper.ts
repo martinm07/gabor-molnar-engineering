@@ -1,7 +1,6 @@
 import { quartOut } from "svelte/easing";
 
 export function fetch_(input: string | URL | Request, init?: RequestInit) {
-  console.log(globalThis.jinjaParsed);
   if (globalThis.jinjaParsed) {
     if (
       input instanceof Request &&

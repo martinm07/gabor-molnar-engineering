@@ -115,9 +115,9 @@ export function generateCompContentStr(
     }
   });
 
-  console.log("-------------------");
-  console.log(htmlStr);
-  console.log(strUpdates);
+  // console.log("-------------------");
+  // console.log(htmlStr);
+  // console.log(strUpdates);
 
   // Sort so that the biggest index is first (avoiding index shifting)
   strUpdates.sort((a, b) => b.index - a.index);
@@ -126,8 +126,8 @@ export function generateCompContentStr(
     htmlStr = htmlStr.slice(0, index) + insert + htmlStr.slice(index);
   });
 
-  console.log(htmlStr);
-  console.log("-------------------");
+  // console.log(htmlStr);
+  // console.log("-------------------");
 
   return { content: htmlStr, parts: allPartsStrings.toSorted().join("|") };
 }
@@ -304,7 +304,7 @@ type CompPartsKey = keyof CompParts;
 const keysList: Array<CompPartsKey> = ["name", "content", "parts", "description", "tags"];
 
 export function updateCompEdit(identName: string, update: Partial<CompParts>) {
-  console.log(`Updating component edit with name "${identName}"`, update);
+  // console.log(`Updating component edit with name "${identName}"`, update);
 
   const currentLib = $state.snapshot(savedComponents);
   const newLib = compLibEdits.current;

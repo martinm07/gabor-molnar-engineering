@@ -286,6 +286,11 @@ export class SaveDoc {
     }
   }
 
+  /**
+   * Saves the component to persistent storage (locally). Used for saving both patches and full loads (distinguished by whether htmlStr is passed in or not).
+   * @param htmlStr Pass in the HTML string representing the component if it exists (which it should as this.makePatches() maintains it through updates). If it doesn't exist (i.e. when the component has been newly loaded in) then this function will generate it itself from the current document body, and populate this.docNodes and this.stringPosNodeMap in the process.
+   * @returns
+   */
   syncCompLocal(htmlStr?: string) {
     const componentID = getComponentID();
     const docEl = this.getDocEl();
@@ -309,6 +314,8 @@ export class SaveDoc {
         },
         false,
       );
+
+      generatePosNodes(this.docNodes, this.stringPosNodeMap);
     }
 
     const { content, parts } = generateCompContentStr(
