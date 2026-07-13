@@ -5,6 +5,7 @@ import {
   type SavedComponent,
   compLibEdits,
   compLibVer,
+  doc,
 } from "../store.svelte";
 import { editorState } from "../url.svelte";
 import { type DocNodeMap } from "../docsyncing";
@@ -19,57 +20,6 @@ import { fetch_, assign } from "/shared/helper";
 
 const encodeStr = (str: string) => encodeURI(str);
 const decodeStr = (str: string) => decodeURI(str);
-// export function generateCompContentStr(el: Node, includeRoot = false) {
-//   const walker = document.createTreeWalker(el, NodeFilter.SHOW_ALL);
-//   let content = "";
-//   const parts: string[] = [];
-//   const parents: Node[] = [];
-//   const siblingIndices: number[] = [0];
-//   let prev: Node | undefined = undefined;
-//   if (includeRoot) step(el);
-
-//   while (walker.nextNode()) {
-//     const node = walker.currentNode;
-//     step(node);
-//   }
-
-//   function step(node: Node) {
-//     // When we've escaped a parent, we need to add a closing tag
-//     if (node.previousSibling === parents.at(-1)) {
-//       content += "</>";
-//       parents.pop();
-//       siblingIndices.pop();
-//     }
-//     // When we haven't jumped to the next sibling, that means
-//     //  we've jumped inside the previous element, it is now a parent
-//     else if (prev && node.previousSibling !== prev) {
-//       parents.push(prev);
-//       siblingIndices.push(0);
-//     }
-
-//     // console.log(node, parents);
-
-//     if (node instanceof Text) {
-//       content += encodeStr(node.textContent ?? "");
-//     } else if (node instanceof Element) {
-//       let attrStr = "";
-//       for (let i = 0; i < node.attributes.length; i++) {
-//         const attr = node.attributes[i];
-//         if (attr.nodeName === "data-component") continue;
-//         attrStr += `:${attr.nodeName}="${encodeStr(attr.nodeValue ?? "")}"`;
-//       }
-//       siblingIndices[siblingIndices.length - 1]++;
-//       parts.push(siblingIndices.join(","));
-//       attrStr += `:data-component="${encodeStr(`${name}-[${siblingIndices.join(",")}]`)}"`;
-
-//       content += `<${node.tagName.toLowerCase()}${attrStr}>`;
-//       if (!node.hasChildNodes()) content += "</>";
-//     }
-//     prev = node;
-//   }
-
-//   return content;
-// }
 
 /**
  * Using 1-based indexing
@@ -77,6 +27,7 @@ const decodeStr = (str: string) => decodeURI(str);
 function getSiblingIndex(el: Element) {
   const parent = el.parentElement;
   if (!parent) return 1;
+  // TODO: Make this take into account not-body elements.
   const index = Array.from(parent.children).indexOf(el);
   if (index === -1)
     throw new Error("Somehow parent element didn't have element as child.");
@@ -132,53 +83,15 @@ export function generateCompContentStr(
   return { content: htmlStr, parts: allPartsStrings.toSorted().join("|") };
 }
 
-// setTimeout(() => {
-//   const el = document.querySelector("div:has(+ p)")!;
-//   // console.log(el);
-//   createNewComponent("new-comp", el);
-//   console.log(get(savedComponents));
-//   // console.log(decodeComponentStr(get(savedComponents)[0].content));
-// }, 1000);
+// FUN FACT: When the seperator given to .split() is a RegExp with capturing groups,
+//            those groups will be spliced into the result (even if it's 'undefined')
 
-// export function decodeComponentStr(str: string) {
-//   const fragment = document.createDocumentFragment();
-//   let activeLoc: Node | null = null;
-//   const regex = /(<[\s\S]+?>)|((?<=>)[\s\S]+?(?=<))/g;
-//   // console.log(str.match(regex));
-//   str.match(regex)?.forEach((substr) => {
-//     if (substr === "</>") activeLoc = activeLoc?.parentNode ?? null;
-//     // The substr is an element
-//     else if (substr.startsWith("<")) {
-//       // This regex matches colons only if there's an even number of double
-//       //  quote characters behind it spread throughout the string
-//       // FUN FACT: When the seperator given to .split() is a RegExp with capturing groups,
-//       //            those groups will be spliced into the result (even if it's 'undefined')
-//       // "Hello world".split(/o( )w/g) // Array(3) [ "Hell", " ", "orld" ]
-//       const items = substr.slice(1, -1).split(/(?<=^[^"]*(?:"[^"]*"[^"]*)*):/g);
-//       // console.log(substr, items);
-//       const newEl = document.createElement(items[0]);
-//       const allAttrs: { name: string; value: string }[] = items
-//         .slice(1)
-//         .map((item) => {
-//           return {
-//             name: item.split("=")[0],
-//             value: decodeStr(item.split("=")[1].slice(1, -1)),
-//           };
-//         });
-//       allAttrs.forEach((attr) => newEl.setAttribute(attr.name, attr.value));
-//       if (activeLoc) activeLoc.appendChild(newEl);
-//       else fragment.appendChild(newEl);
-//       activeLoc = newEl;
-//     } else {
-//       // The substr is a text node
-//       const newText = document.createTextNode(decodeStr(substr));
-//       if (activeLoc) activeLoc.appendChild(newText);
-//       else fragment.appendChild(newText);
-//     }
-//   });
-//   // console.log(fragment);
-//   return fragment;
-// }
+/**
+ * Converts component body string into a DocumentFragment that can be inserted into the DOM
+ * @param content Component body
+ * @param for_ Whether the resulting DocumentFragment is to be inserted into a document, or to be used in editing the component itself (in the component library editor). When being editing in the editor, all the data-component attributes are removed.
+ * @returns
+ */
 export function decodeComponentStr(
   content: string,
   for_: "document" | "component",
@@ -189,10 +102,16 @@ export function decodeComponentStr(
   const parsed = parseHTMLFragment(content, true, true);
   parsed.forEach((node) => tempDiv.appendChild(node));
 
-  if (for_ === "component")
+  if (for_ === "component") {
     getAllChildNodes(tempDiv).forEach((node) => {
       if (node instanceof HTMLElement) node.removeAttribute("data-component");
     });
+  } else if (for_ === "document") {
+    getAllChildNodes(tempDiv).forEach((node) => {
+      if (node instanceof HTMLElement)
+        node.setAttribute("data-compLibVer", doc.info.componentLibVer);
+    });
+  }
 
   while (tempDiv.firstChild) fragment.appendChild(tempDiv.firstChild);
   return fragment;
@@ -482,165 +401,161 @@ export function discardLibChanges() {
   location.reload();
 }
 
+////// UPGRADING DOCUMENT COMPONENT LIBRARY VERSION
+
+const parseElToCompPart = (
+  el: Element,
+):
+  | { isComponentPart: false; name: undefined; part: undefined }
+  | { isComponentPart: true; name: string; part: string } => {
+  const partStr = el.getAttribute("data-component");
+  if (!partStr) {
+    if (typeof partStr === "string")
+      console.warn("Element has data-component attribute with no value:", el);
+    return {
+      isComponentPart: false,
+      name: undefined,
+      part: undefined,
+    };
+  }
+
+  // data-component should be of the form e.g. "compname-[1,2]"
+  const parsed = /(.*)-\[(.+)\]/.exec(partStr);
+  let compName = parsed?.[1];
+  const part = parsed?.[2];
+
+  if (!parsed || !compName || !part) {
+    console.warn(
+      `data-component string "${partStr}" was not able to be parsed. For element:`,
+      el,
+    );
+    return {
+      isComponentPart: false,
+      name: undefined,
+      part: undefined,
+    };
+  }
+
+  // The nameMap is generated by the Python backend
+  // compName = nameMap[compName] ?? compName;
+
+  return {
+    isComponentPart: true,
+    name: compName,
+    part,
+  };
+};
+
 export function upgradeDoc(
   docContainer: HTMLElement,
   newCompLib: Omit<SavedComponent, "identName">[],
   info: CompLibUpgradeInfo,
 ) {
-  const nameMap = info.name_map;
+  // const nameMap = info.name_map;
 
   const walker = document.createTreeWalker(
     docContainer,
     NodeFilter.SHOW_ELEMENT,
   );
-  const toRemove: Element[] = [];
-  const toTransferChildren: { from: Element; to: Element }[] = [];
+  // const toRemove: Element[] = [];
+  // const toTransferChildren: { from: Element; to: Element }[] = [];
 
-  // interface ParsedCompCache {
-  //   partEls: Element[] | null;
-  //   name: string | null;
-  //   parts: string[] | null;
+  // const contentStrToPartEl = (content: string, part: string) => {
+  //   const tempDiv = document.createElement("div");
+  //   tempDiv.innerHTML = content;
+
+  //   const found = getAllChildNodes(tempDiv)
+  //     .slice(1)
+  //     .find(
+  //       (node) => node instanceof Element && parseElPartStr(node).part === part,
+  //     ) as Element;
+  //   if (!found)
+  //     throw new Error(
+  //       `Could not find part "${part}" in the given content string:\n\n${content}`,
+  //     );
+  //   return found;
+  // };
+
+  // function step(current: Element, next?: Element) {
+  //   const {
+  //     isComponentPart,
+  //     name: compName,
+  //     part: currentPart,
+  //   } = parseElPartStr(current);
+
+  //   if (!isComponentPart) {
+  //     return;
+  //   }
+
+  //   // First check if the next step is to the expected next component part
+  //   const compInfo = newCompLib.find((comp) => comp.name === compName);
+  //   if (!compInfo) {
+  //     toRemove.push(current);
+  //     return;
+  //   }
+
+  //   const checkParts = compInfo.parts.split("|");
+  //   const currentPartIndex = checkParts.indexOf(currentPart);
+  //   if (currentPartIndex !== -1 && currentPartIndex !== checkParts.length - 1) {
+  //     const currentNextPart = next ? parseElPartStr(next).part : undefined;
+  //     const realNextPart = checkParts[currentPartIndex + 1];
+  //     if (realNextPart !== currentNextPart) {
+  //       // Then we must add the next expected part
+  //       const elToAdd = contentStrToPartEl(compInfo.content, realNextPart);
+  //       // We are inserting the next expected part *after* the current element, so that
+  //       //  it is picked up in the next iteration of the TreeWalker, and this automatically
+  //       //  handles "islands" of newly added parts (imagine a train building its own train tracks as it goes).
+  //       if (currentPart + ",1" === realNextPart) current.prepend(elToAdd);
+  //       else {
+  //         const partParts = currentPart
+  //           .split(",")
+  //           .map((str) => Number.parseInt(str));
+  //         let nextRelativeParents = 0;
+  //         while (nextRelativeParents <= partParts.length) {
+  //           let partNew = partParts.slice(
+  //             0,
+  //             partParts.length - nextRelativeParents,
+  //           );
+  //           partNew[partParts.length - 1 - nextRelativeParents] += 1;
+  //           // prettier-ignore
+  //           // console.log(partNew.join(","), " =? ", realNextPart, partParts, nextRelativeParents);
+  //           if (partNew.join(",") === realNextPart) break;
+  //           nextRelativeParents++;
+  //         }
+  //         if (nextRelativeParents > partParts.length)
+  //           throw new Error(
+  //             `Could not determine where to place newly added component part. Going from "${currentPart}" to "${realNextPart}".`,
+  //           );
+  //         getNthParent(current, nextRelativeParents)?.after(elToAdd);
+  //       }
+  //     }
+  //   } else if (currentPartIndex === -1) {
+  //     // That means this component part must've been removed, and so we must remove this element
+  //     toRemove.push(current);
+  //     return;
+  //   }
+
+  //   const elToReplaceWith = contentStrToPartEl(compInfo.content, currentPart);
+  //   while (elToReplaceWith.firstChild)
+  //     elToReplaceWith.removeChild(elToReplaceWith.firstChild);
+
+  //   // We insert it before the current element, so that it is not picked up in the next iteration of the TreeWalker
+  //   current.before(elToReplaceWith);
+  //   toRemove.push(current);
+  //   toTransferChildren.push({ from: current, to: elToReplaceWith });
   // }
-  // const compCache: ParsedCompCache = {
-  //   partEls: null,
-  //   name: null,
-  //   parts: null,
+
+  // let node: Element;
+  // while ((node = walker.nextNode() as Element)) {
+  //   // const current = walker.currentNode as Element;
+  //   step(current, getNextElement(current));
   // }
-  // const findPartEl = (part: string) => compCache.partEls?.find((el) => {
-  //   const partStr = el.getAttribute("data-component");
-  //   if (!partStr) return false;
-  //   const elPart = /.*-\[(.+)\]/.exec(partStr)?.[1];
-  //   if (!elPart) return false;
 
-  //   return elPart === part;
-  // })
-
-  const parseElPartStr = (
-    el: Element,
-  ):
-    | { isPart: false; name: undefined; part: undefined }
-    | { isPart: true; name: string; part: string } => {
-    const partStr = el.getAttribute("data-component");
-    if (!partStr) {
-      return {
-        isPart: false,
-        name: undefined,
-        part: undefined,
-      };
-    }
-    let compName = /(.*)-\[.+\]/.exec(partStr)?.[1];
-    const part = /.*-\[(.+)\]/.exec(partStr)?.[1];
-    if (!compName || !part) {
-      console.warn(
-        `data-component string "${partStr}" was not able to be parsed.`,
-      );
-      return {
-        isPart: false,
-        name: undefined,
-        part: undefined,
-      };
-    }
-    compName = nameMap[compName] ?? compName;
-    return {
-      isPart: true,
-      name: compName,
-      part,
-    };
-  };
-
-  const contentStrToPartEl = (content: string, part: string) => {
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = content;
-
-    const found = getAllChildNodes(tempDiv)
-      .slice(1)
-      .find(
-        (node) => node instanceof Element && parseElPartStr(node).part === part,
-      ) as Element;
-    if (!found)
-      throw new Error(
-        `Could not find part "${part}" in the given content string:\n\n${content}`,
-      );
-    return found;
-  };
-
-  function step(current: Element, next?: Element) {
-    const {
-      isPart: currentIsPart,
-      name: compName,
-      part: currentPart,
-    } = parseElPartStr(current);
-    if (!currentIsPart) {
-      return;
-    }
-
-    // First check if the next step is to the expected next component part
-    const compInfo = newCompLib.find((comp) => comp.name === compName);
-    if (!compInfo) {
-      toRemove.push(current);
-      return;
-    }
-
-    const checkParts = compInfo.parts.split("|");
-    const currentPartIndex = checkParts.indexOf(currentPart);
-    if (currentPartIndex !== -1 && currentPartIndex !== checkParts.length - 1) {
-      const currentNextPart = next ? parseElPartStr(next).part : undefined;
-      const realNextPart = checkParts[currentPartIndex + 1];
-      if (realNextPart !== currentNextPart) {
-        // Then we must add the next expected part
-        const elToAdd = contentStrToPartEl(compInfo.content, realNextPart);
-        // We are inserting the next expected part *after* the current element, so that
-        //  it is picked up in the next iteration of the TreeWalker, and this automatically
-        //  handles "islands" of newly added parts (imagine a train building its own train tracks as it goes).
-        if (currentPart + ",1" === realNextPart) current.prepend(elToAdd);
-        else {
-          const partParts = currentPart
-            .split(",")
-            .map((str) => Number.parseInt(str));
-          let nextRelativeParents = 0;
-          while (nextRelativeParents <= partParts.length) {
-            let partNew = partParts.slice(
-              0,
-              partParts.length - nextRelativeParents,
-            );
-            partNew[partParts.length - 1 - nextRelativeParents] += 1;
-            // prettier-ignore
-            // console.log(partNew.join(","), " =? ", realNextPart, partParts, nextRelativeParents);
-            if (partNew.join(",") === realNextPart) break;
-            nextRelativeParents++;
-          }
-          if (nextRelativeParents > partParts.length)
-            throw new Error(
-              `Could not determine where to place newly added component part. Going from "${currentPart}" to "${realNextPart}".`,
-            );
-          getNthParent(current, nextRelativeParents)?.after(elToAdd);
-        }
-      }
-    } else if (currentPartIndex === -1) {
-      // That means this component part must've been removed, and so we must remove this element
-      toRemove.push(current);
-      return;
-    }
-
-    const elToReplaceWith = contentStrToPartEl(compInfo.content, currentPart);
-    while (elToReplaceWith.firstChild)
-      elToReplaceWith.removeChild(elToReplaceWith.firstChild);
-
-    // We insert it before the current element, so that it is not picked up in the next iteration of the TreeWalker
-    current.before(elToReplaceWith);
-    toRemove.push(current);
-    toTransferChildren.push({ from: current, to: elToReplaceWith });
-  }
-
-  while (walker.nextNode()) {
-    const current = walker.currentNode as Element;
-    step(current, getNextElement(current));
-  }
-
-  toTransferChildren.forEach(({ from, to }) => {
-    while (from.firstChild) to.appendChild(from.firstChild);
-  });
-  toRemove.forEach((el) => el.remove());
+  // toTransferChildren.forEach(({ from, to }) => {
+  //   while (from.firstChild) to.appendChild(from.firstChild);
+  // });
+  // toRemove.forEach((el) => el.remove());
+  throw new Error("Not implemented");
 }
 
 class Comps {

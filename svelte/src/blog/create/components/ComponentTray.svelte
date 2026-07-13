@@ -192,6 +192,10 @@
     return newComp;
   }
 
+  /**
+   * Adds currently selected component to document, by taking the first element of the current selection and replacing it with the DocumentFragment decoded from the component body string.
+   * @param i_ If provided, specifies the index of the component to add to the document. Otherwise, activeResultI is used.
+   */
   function selectComponentAdd(i_?: number) {
     if (editorState.mode !== "document") return;
     const i = i_ ?? activeResultI;

@@ -13,7 +13,7 @@
     autocompleteMode,
     type SavedComponent,
   } from "./store.svelte";
-  import { editorState, changePage } from "./url.svelte";
+  import { editorState } from "./url.svelte";
   import AddNode, { type IAddNode } from "./cursormodes/AddNode.svelte";
   import MultipleSelect, {
     type IMultipleSelect,
@@ -32,7 +32,6 @@
   import Autocomplete from "./editors/Autocomplete.svelte";
   import Topbar from "./Topbar.svelte";
   import SaveChanges from "./components/SaveChanges.svelte";
-  import ArrowArcLeft from "phosphor-svelte/lib/ArrowArcLeftIcon";
   import { HistoryManager } from "./history";
   import { type ICSSEditor } from "./editors/css/CSSEditor.svelte";
   import { onKeydown } from "./keyboard";
@@ -140,7 +139,7 @@
   // onDestroy(() => clearInterval(stopLogInterval));
 
   const LOG_PATCH_SYNC = false;
-  const LOG_DOC_HIST = true;
+  const LOG_DOC_HIST = false;
   const DO_SERVER_SYNC = true;
 
   const docNodes: DocNodeMap = new Map();
@@ -395,21 +394,5 @@
     </div>
   </div>
 </div>
-
-{#if editorState.documentRedirect && mode.sidebar === "edit"}
-  <button
-    aria-label="Return to document"
-    class="absolute aspect-square text-2xl p-2 top-2 left-2 rounded-lg border-2 border-rock-100 text-rock-600 hover:bg-rock-100 hover:active:bg-rock-200 hover:active:text-rock-700 hover:active:border-rock-200 hover:active:translate-y-1"
-    onclick={() => {
-      changePage(
-        editorState.mode === "component" ? "document" : "component",
-        editorState.documentRedirect!,
-        null,
-      );
-    }}
-  >
-    <ArrowArcLeft weight="bold" />
-  </button>
-{/if}
 
 <SaveChanges />

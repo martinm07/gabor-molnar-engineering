@@ -16,8 +16,10 @@
   } from "./store.svelte";
   import { watch } from "runed";
   import { request2AnimationFrames } from "/shared/helper";
-  import { editorState } from "./url.svelte";
+  import { changePage, editorState } from "./url.svelte";
   import UpdateDocLib from "./components/UpdateDocLib.svelte";
+  import ArrowArcLeftIcon from "phosphor-svelte/lib/ArrowArcLeftIcon";
+  import HouseIcon from "phosphor-svelte/lib/HouseIcon";
 
   const updateHighlight: () => void = getContext("updateHighlight");
   const removeFromSelection: (nodes?: Node[] | Node) => void = getContext(
@@ -75,6 +77,30 @@
 
   let editorAttrs: Attribute[] = $state([]);
 </script>
+
+{#if editorState.documentRedirect && mode.sidebar === "edit"}
+  <button
+    aria-label="Return to document"
+    class="absolute aspect-square text-2xl p-2 top-2 left-2 rounded-lg border-2 border-rock-100 text-rock-600 hover:bg-rock-100 hover:active:bg-rock-200 hover:active:text-rock-700 hover:active:border-rock-200 hover:active:translate-y-1"
+    onclick={() => {
+      changePage(
+        editorState.mode === "component" ? "document" : "component",
+        editorState.documentRedirect!,
+        null,
+      );
+    }}
+  >
+    <ArrowArcLeftIcon weight="bold" />
+  </button>
+{:else if mode.sidebar === "edit"}
+  <a
+    aria-label="Go to documents admin view"
+    class="absolute aspect-square text-2xl p-2 top-2 left-2 rounded-lg border-2 border-rock-100 text-rock-600 hover:bg-rock-100 hover:active:bg-rock-200 hover:active:text-rock-700 hover:active:border-rock-200 hover:active:translate-y-1"
+    href="/documents/admin"
+  >
+    <HouseIcon weight="bold" />
+  </a>
+{/if}
 
 <!-- SIDEBAR MODE: edit -->
 <div
