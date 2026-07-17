@@ -1,16 +1,13 @@
 <script lang="ts">
   import WarningDiamond from "phosphor-svelte/lib/WarningDiamondIcon";
   import ArrowRight from "phosphor-svelte/lib/ArrowRightIcon";
-  import { compLibVer } from "../store.svelte";
+  import { compLibVer, savedComponents } from "../store.svelte";
   import { changePage, editorState } from "../url.svelte";
   // import { type CompLibUpgradeInfo } from "../helper";
   import { getContext, onMount } from "svelte";
-  import {
-    upgradeDoc,
-    type CompLibUpgradeInfo,
-    type GetCompLibFetchReturn,
-  } from "./component.svelte";
+  import { comps, type GetCompLibFetchReturn } from "./component.svelte";
   import { fetch_ } from "/shared/helper";
+  import { upgradeDoc, type CompLibUpgradeInfo } from "./libraryupgrade";
 
   let isExpanded = $state(false);
 
@@ -68,7 +65,7 @@
     submitMsg = "Updating document content...";
 
     try {
-      upgradeDoc(getDocEl(), data.library, upgradeInfo);
+      upgradeDoc(getDocEl(), $state.snapshot(savedComponents), data.library, $state.snapshot(upgradeInfo));
     } catch (err) {
       submitStatus = "error";
       submitMsg =
@@ -185,18 +182,20 @@
             <span class="inline-block mx-1 last-of-type:hidden">,&nbsp;</span>
           {/each}
           {#each Object.entries(upgradeInfo.name_map) as [oldName, newName]}
-            <div
-              class="inline-flex items-center text-green-800"
-              title="Rename &quot;{oldName}&quot; to &quot;{newName}&quot;"
-            >
-              <div class="text-lg text-green-700 font-bold font-mono mr-1">
-                R
+            {#if oldName !== newName}
+              <div
+                class="inline-flex items-center text-green-800"
+                title="Rename &quot;{oldName}&quot; to &quot;{newName}&quot;"
+              >
+                <div class="text-lg text-green-700 font-bold font-mono mr-1">
+                  R
+                </div>
+                <div>{oldName}</div>
+                <ArrowRight class="mx-0.5" />
+                <div>{newName}</div>
               </div>
-              <div>{oldName}</div>
-              <ArrowRight class="mx-0.5" />
-              <div>{newName}</div>
-            </div>
-            <span class="inline-block mx-1 last-of-type:hidden">,&nbsp;</span>
+              <span class="inline-block mx-1 last-of-type:hidden">,&nbsp;</span>
+            {/if}
           {/each}
         </div>
       {/if}

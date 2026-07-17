@@ -17,6 +17,7 @@ import {
   parseHTMLFragment,
 } from "../helper";
 import { fetch_, assign } from "/shared/helper";
+import { extractPartsFromCompStr } from "./libraryupgrade";
 
 const encodeStr = (str: string) => encodeURI(str);
 const decodeStr = (str: string) => decodeURI(str);
@@ -28,12 +29,23 @@ function getSiblingIndex(el: Element) {
   const parent = el.parentElement;
   if (!parent) return 1;
   // TODO: Make this take into account not-body elements.
-  const index = Array.from(parent.children).indexOf(el);
+  const index = Array.from(parent.children)
+    .filter((el) => !el.classList.contains("not-body"))
+    .indexOf(el);
   if (index === -1)
     throw new Error("Somehow parent element didn't have element as child.");
   return index + 1;
 }
 
+/**
+ * Generates the component body string that can be saved to the server. It takes the HTML string representation of what is currently in the editor
+ *  and adds "data-component" attributes to the elements, to identify the different elements as part of the same component, while also identifying the specific part of the component they represent.
+ * @param topEl Element containing the component (it itself is not included as part of the component)
+ * @param htmlStr The HTML string representation of what is currently in the DOM
+ * @param nodeMap The mapping of DOM node objects to information about their position in htmlStr, that is generated alongisde htmlStr by the editor
+ * @param compName The name of the component
+ * @returns
+ */
 export function generateCompContentStr(
   topEl: HTMLElement,
   htmlStr: string,
@@ -60,7 +72,7 @@ export function generateCompContentStr(
 
       strUpdates.push({
         index: info.stringPos + info.startTagLen - (isVoidEl ? 3 : 1), // -1 because we want to insert before the closing ">"
-        insert: ` data-component="${compName}-[${partsStr}]"`,
+        insert: ` data-component="${compName}-[${partsStr}]" data-componentname="${compName}"`,
       });
       allPartsStrings.push(partsStr);
     }
@@ -105,6 +117,8 @@ export function decodeComponentStr(
   if (for_ === "component") {
     getAllChildNodes(tempDiv).forEach((node) => {
       if (node instanceof HTMLElement) node.removeAttribute("data-component");
+      if (node instanceof HTMLElement)
+        node.removeAttribute("data-componentname");
     });
   } else if (for_ === "document") {
     getAllChildNodes(tempDiv).forEach((node) => {
@@ -144,62 +158,26 @@ export function changeElToComp(el: Element, compName: string) {
         .map((str) => '"' + str + '"')
         .join("  ")}"`,
     );
-  const content = saved.content;
 
-  // This assumes that the order of the parts array will match the content string document order
-  const elIndex = saved.parts.split("|").findIndex((item) => item === part);
-  // This regex matches the first e.g. <tagName:attr1="value"> that has at
-  //  least an elIndex number of </> behind it in the string
-  // const regex = new RegExp(
-  //   String.raw`(?<=(?:[^]*<\/>[^]*){` +
-  //     String(elIndex) +
-  //     String.raw`})<[^/]+?>`,
-  // );
-
-  const regex = new RegExp(
-    String.raw`(?<=(?:<[^/][^]*){` + String(elIndex) + String.raw`})<[^/]*?>`,
-  );
-
-  const match = regex.exec(content)?.[0]?.slice(1, -1);
-  console.log(elIndex, match);
-  if (!match)
-    throw new Error(
-      `Could not find the provided part in the provided component name content`,
-    );
-  const newTagName = match.split(":")[0];
-  let el_ = el;
-  if (el.tagName !== newTagName.toUpperCase()) {
-    const newEl = document.createElement(newTagName);
-    while (el.firstChild) newEl.appendChild(el.firstChild);
-    el.replaceWith(newEl);
-
-    if (selection.hover === el) selection.hover = newEl;
-    if (selection.selected.some((item) => item === el))
-      // selection.selected.update((old) =>
-      //   old.map((item) => (item === el ? newEl : item)),
-      // );
-      selection.selected = selection.selected.map((item) =>
-        item === el ? newEl : item,
-      );
-
-    el_ = newEl;
+  const bodyStr = saved.content;
+  const compParts = extractPartsFromCompStr(bodyStr);
+  const partInfo = compParts.find((compPart) => compPart.part === part);
+  if (!partInfo) {
+    throw new Error(`Could not find the provided part in the provided component.`);
   }
 
-  const newAttrs: [string, string][] = match
-    .split(/(?<=^[^"]*(?:"[^"]*"[^"]*)*):/g)
-    .slice(1)
-    .map((str) => {
-      const parts = str.split("=");
-      return [parts[0], decodeStr(parts[1].slice(1, -1))];
-    });
-  newAttrs.forEach(([name, newVal]) => {
-    if (el_.getAttribute(name) !== newVal) el_.setAttribute(name, newVal);
-  });
-  // console.log(Array(...el_.attributes));
-  Array(...el_.attributes).forEach((attr) => {
-    if (!newAttrs.some(([name]) => name === attr.nodeName))
-      el_.removeAttribute(attr.nodeName);
-  });
+  // Replace the parsed children of the component part with the actual children of the element we're converting
+  while (partInfo.partEl.firstChild) partInfo.partEl.removeChild(partInfo.partEl.firstChild);
+  while (el.firstChild) partInfo.partEl.appendChild(el.firstChild);
+  // Replace element with component part in document
+  el.insertAdjacentElement("afterend", partInfo.partEl);
+  el.remove();
+
+  if (selection.hover === el) selection.hover = partInfo.partEl;
+  if (selection.selected.some((item) => item === el))
+      selection.selected = selection.selected.map((item) =>
+        item === el ? partInfo.partEl : item,
+      );
 }
 
 // The database integration will be as follows;
@@ -401,163 +379,6 @@ export function discardLibChanges() {
   location.reload();
 }
 
-////// UPGRADING DOCUMENT COMPONENT LIBRARY VERSION
-
-const parseElToCompPart = (
-  el: Element,
-):
-  | { isComponentPart: false; name: undefined; part: undefined }
-  | { isComponentPart: true; name: string; part: string } => {
-  const partStr = el.getAttribute("data-component");
-  if (!partStr) {
-    if (typeof partStr === "string")
-      console.warn("Element has data-component attribute with no value:", el);
-    return {
-      isComponentPart: false,
-      name: undefined,
-      part: undefined,
-    };
-  }
-
-  // data-component should be of the form e.g. "compname-[1,2]"
-  const parsed = /(.*)-\[(.+)\]/.exec(partStr);
-  let compName = parsed?.[1];
-  const part = parsed?.[2];
-
-  if (!parsed || !compName || !part) {
-    console.warn(
-      `data-component string "${partStr}" was not able to be parsed. For element:`,
-      el,
-    );
-    return {
-      isComponentPart: false,
-      name: undefined,
-      part: undefined,
-    };
-  }
-
-  // The nameMap is generated by the Python backend
-  // compName = nameMap[compName] ?? compName;
-
-  return {
-    isComponentPart: true,
-    name: compName,
-    part,
-  };
-};
-
-export function upgradeDoc(
-  docContainer: HTMLElement,
-  newCompLib: Omit<SavedComponent, "identName">[],
-  info: CompLibUpgradeInfo,
-) {
-  // const nameMap = info.name_map;
-
-  const walker = document.createTreeWalker(
-    docContainer,
-    NodeFilter.SHOW_ELEMENT,
-  );
-  // const toRemove: Element[] = [];
-  // const toTransferChildren: { from: Element; to: Element }[] = [];
-
-  // const contentStrToPartEl = (content: string, part: string) => {
-  //   const tempDiv = document.createElement("div");
-  //   tempDiv.innerHTML = content;
-
-  //   const found = getAllChildNodes(tempDiv)
-  //     .slice(1)
-  //     .find(
-  //       (node) => node instanceof Element && parseElPartStr(node).part === part,
-  //     ) as Element;
-  //   if (!found)
-  //     throw new Error(
-  //       `Could not find part "${part}" in the given content string:\n\n${content}`,
-  //     );
-  //   return found;
-  // };
-
-  // function step(current: Element, next?: Element) {
-  //   const {
-  //     isComponentPart,
-  //     name: compName,
-  //     part: currentPart,
-  //   } = parseElPartStr(current);
-
-  //   if (!isComponentPart) {
-  //     return;
-  //   }
-
-  //   // First check if the next step is to the expected next component part
-  //   const compInfo = newCompLib.find((comp) => comp.name === compName);
-  //   if (!compInfo) {
-  //     toRemove.push(current);
-  //     return;
-  //   }
-
-  //   const checkParts = compInfo.parts.split("|");
-  //   const currentPartIndex = checkParts.indexOf(currentPart);
-  //   if (currentPartIndex !== -1 && currentPartIndex !== checkParts.length - 1) {
-  //     const currentNextPart = next ? parseElPartStr(next).part : undefined;
-  //     const realNextPart = checkParts[currentPartIndex + 1];
-  //     if (realNextPart !== currentNextPart) {
-  //       // Then we must add the next expected part
-  //       const elToAdd = contentStrToPartEl(compInfo.content, realNextPart);
-  //       // We are inserting the next expected part *after* the current element, so that
-  //       //  it is picked up in the next iteration of the TreeWalker, and this automatically
-  //       //  handles "islands" of newly added parts (imagine a train building its own train tracks as it goes).
-  //       if (currentPart + ",1" === realNextPart) current.prepend(elToAdd);
-  //       else {
-  //         const partParts = currentPart
-  //           .split(",")
-  //           .map((str) => Number.parseInt(str));
-  //         let nextRelativeParents = 0;
-  //         while (nextRelativeParents <= partParts.length) {
-  //           let partNew = partParts.slice(
-  //             0,
-  //             partParts.length - nextRelativeParents,
-  //           );
-  //           partNew[partParts.length - 1 - nextRelativeParents] += 1;
-  //           // prettier-ignore
-  //           // console.log(partNew.join(","), " =? ", realNextPart, partParts, nextRelativeParents);
-  //           if (partNew.join(",") === realNextPart) break;
-  //           nextRelativeParents++;
-  //         }
-  //         if (nextRelativeParents > partParts.length)
-  //           throw new Error(
-  //             `Could not determine where to place newly added component part. Going from "${currentPart}" to "${realNextPart}".`,
-  //           );
-  //         getNthParent(current, nextRelativeParents)?.after(elToAdd);
-  //       }
-  //     }
-  //   } else if (currentPartIndex === -1) {
-  //     // That means this component part must've been removed, and so we must remove this element
-  //     toRemove.push(current);
-  //     return;
-  //   }
-
-  //   const elToReplaceWith = contentStrToPartEl(compInfo.content, currentPart);
-  //   while (elToReplaceWith.firstChild)
-  //     elToReplaceWith.removeChild(elToReplaceWith.firstChild);
-
-  //   // We insert it before the current element, so that it is not picked up in the next iteration of the TreeWalker
-  //   current.before(elToReplaceWith);
-  //   toRemove.push(current);
-  //   toTransferChildren.push({ from: current, to: elToReplaceWith });
-  // }
-
-  // let node: Element;
-  // while ((node = walker.nextNode() as Element)) {
-  //   // const current = walker.currentNode as Element;
-  //   step(current, getNextElement(current));
-  // }
-
-  // toTransferChildren.forEach(({ from, to }) => {
-  //   while (from.firstChild) to.appendChild(from.firstChild);
-  // });
-  // toRemove.forEach((el) => el.remove());
-  throw new Error("Not implemented");
-}
-
 class Comps {
   /**
    * The saved state of the currently selected component, or an empty object if not in component mode.
@@ -651,18 +472,6 @@ export interface GetCompLibFetchReturn {
   upgrade_content_list: string[];
   upgrade_remove_list: string[];
   upgrade_diff_msgs: {
-    version: string;
-    message: string;
-    description?: string;
-  }[];
-}
-
-export interface CompLibUpgradeInfo {
-  to_version: string;
-  name_map: { [oldName: string]: string };
-  content_list: string[];
-  remove_list: string[];
-  diff_msgs: {
     version: string;
     message: string;
     description?: string;

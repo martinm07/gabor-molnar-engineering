@@ -307,7 +307,7 @@ export class HistoryManager {
     /** Indices of child ephemeral nodes to remove from `subOffsets` and `subPosMapped` */
     const spliceIndices: number[] = [];
 
-    let i = 0;
+    // console.log("checkMap:", checkMap);
     let prevNodeOffset = 0;
     for (let i = 0; i < subOffsets.length; i++) {
       const offset = subOffsets[i];
@@ -331,7 +331,7 @@ export class HistoryManager {
             : "nextSibling";
 
           // prettier-ignore
-          console.log("offset: ", offset, "prevOffset: ", prevOffset, "subPos:", subOffsets, "startOffset:", startOffset);
+          console.log(`(child node ${i}) Handling ephemeral child  `, "offset: ", offset, "prevOffset: ", prevOffset, "subPos:", subOffsets, "startOffset:", startOffset);
 
           if (!ephemeralNodeMapOut.get(testPos)) {
             ephemeralNodeMapOut.set(testPos, {
@@ -368,8 +368,6 @@ export class HistoryManager {
 
       if (!isClosingTag) prevNodeOffset = mappedOffset;
       if (isEphemeralChild) spliceIndices.push(i);
-
-      i++;
     }
 
     // Sort from highest start index/offset first, to lowest

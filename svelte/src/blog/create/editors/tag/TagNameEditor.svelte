@@ -43,8 +43,7 @@
       changeElementInMasks(target, replacement);
       replacements.push(replacement);
     }
-    selection.selected = [];
-    request2AnimationFrames(() => (selection.selected = replacements));
+    selection.selected = replacements;
   }
 
   function parseTagStr(str: string) {

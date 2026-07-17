@@ -294,7 +294,7 @@ def get_component_library():
         comp_versions = []
 
     # Mapping from names in the requested library version (as keys) to names in the latest version (as values)
-    g.comp_name_map = {}
+    g.comp_name_map = {comp["name"]: comp["name"] for comp in components}
     # List of names (ident names, the names as they are in the requested library version)
     g.updated_contents = []
     # List of names (same as updated_contents)
@@ -394,9 +394,9 @@ def get_component_library():
     diff_msgs.extend(extra_diff_msgs)
 
     # Check for duds in the name map (where old_name == new_name)
-    for k, v in list(g.comp_name_map.items()):
-        if k == v:
-            g.comp_name_map.pop(k)
+    # for k, v in list(g.comp_name_map.items()):
+    #     if k == v:
+    #         g.comp_name_map.pop(k)
 
     # Check for duds in the content list (where old_content == new_content)
     # print(g.updated_contents)

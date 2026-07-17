@@ -165,9 +165,16 @@ function isVoidEl(el: Element) {
   return !el.outerHTML.endsWith(`</${el.tagName.toLowerCase()}>`);
 }
 
+/**
+ *
+ * @param startNode
+ * @param p
+ * @param includeContainer
+ * @returns
+ */
 export function reconstructHTMLString(
   startNode: Node,
-  p: { docNodes?: DocNodeMap; docContainer: Element; debug?: boolean },
+  p: { docNodes?: DocNodeMap; docContainer: Node; debug?: boolean },
   includeContainer: boolean = true,
 ): [finalStr: string, docNodes: DocNodeMap] {
   const docNodes: DocNodeMap = p.docNodes ?? new Map();
@@ -1066,7 +1073,6 @@ export function patchMutations(
   // Provided stringPosUpdateMap maps OLD stringPos --> BASE stringPos
   // We must update the mapping to NEW stringPos --> BASE stringPos
   const newStringPosForwardUpdateMap: Map<number, number> = new Map();
-  console.log("🎈🎈", p.stringPosForwardUpdateMap);
   p.stringPosForwardUpdateMap.forEach((baseStringPos, oldStringPos) => {
     // This gives us the node that the OLD stringPos referred to
     const referredNode = p.stringPosNodeMap.get(oldStringPos);

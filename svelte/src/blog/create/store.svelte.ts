@@ -1,7 +1,7 @@
 import { writable, type Writable } from "svelte/store";
 import { elsListConnected } from "./helper";
 import { PersistedState, useDebounce } from "runed";
-import type { CompLibUpgradeInfo } from "./components/component.svelte";
+import type { CompLibUpgradeInfo } from "./components/libraryupgrade";
 
 type CursorMode = "select" | "edit" | "add" | "move" | "noselect";
 type SidebarMode = "edit" | "addcomponent" | "viewcomponent" | "viewer";
