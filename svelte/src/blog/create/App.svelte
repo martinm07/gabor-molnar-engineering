@@ -33,7 +33,8 @@
   import Topbar from "./Topbar.svelte";
   import SaveChanges from "./components/SaveChanges.svelte";
   import { HistoryManager } from "./history";
-  import { type ICSSEditor } from "./editors/css/CSSEditor.svelte";
+  // import { type ICSSEditor } from "./editors/css/CSSEditor.svelte";
+  import { type IAllStyleEditors } from "./editors/css/AllStyleEditors.svelte";
   import { onKeydown } from "./keyboard";
   import { handleCollapsePrevention } from "./collapseprevention";
   import { loadDocument, loadComponent } from "./docloading.svelte";
@@ -131,7 +132,7 @@
     collectedMutations.push(mutation),
   );
 
-  let cssEditor: ICSSEditor | undefined = $state();
+  let cssEditor: IAllStyleEditors | undefined = $state();
 
   // const stopLogInterval = setInterval(() => {
   //   console.log("Focused element:", document.activeElement);
@@ -195,7 +196,7 @@
         .filter(
           (mutation) =>
             mutation.type === "attributes" &&
-            mutation.attributeName === "style",
+            (mutation.attributeName === "style" || mutation.attributeName?.startsWith("data-style-")),
         )
         .map((mutation) => mutation.target);
       const attributeMutationTargets = mutations

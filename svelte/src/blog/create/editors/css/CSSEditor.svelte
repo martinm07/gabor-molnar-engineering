@@ -197,19 +197,21 @@
   import { onDestroy, getContext } from "svelte";
   import { on } from "svelte/events";
   import { watch } from "runed";
-  import { cssStyles, autocompleteSuggestions } from "../../store.svelte";
+  import { autocompleteSuggestions } from "../../store.svelte";
   import {
     getCSSProps,
     splitStringAtChar,
     allowedPropNames,
   } from "./handlecss";
   import { ClonedSelection, closest, insertAfter } from "../../helper";
+    import type { StyleCache } from "./AllStyleEditors.svelte";
 
   let styles = $state("");
   let stylesEl: HTMLElement;
   const updateHighlight: () => void = getContext("updateHighlight");
   const getPrevSelection: () => ClonedSelection | null =
     getContext("getPrevSelection");
+  const styleCache: StyleCache = getContext("styleCache");
 
   const suggestCreateNewHistoryItem: () => void = getContext(
     "suggestCreateNewHistoryItem",
@@ -223,10 +225,11 @@
   // let prevStyleStrSelection: StyleStrSelection | null = null;
 
   interface Props {
+    syncAttrName: string;
     selected: Element[];
     disabled: boolean;
   }
-  let { selected, disabled }: Props = $props();
+  let { syncAttrName: syncAttrName, selected, disabled }: Props = $props();
 
   type StylesList = [k: string, v: string][];
 
@@ -238,12 +241,12 @@
   function getSelectionStyleStr(selection: Element[]): [string, StylesList] {
     let commonStyles: StylesList | undefined;
     for (const target of selection) {
-      let styles_ = $cssStyles.get(target);
+      let styles_ = styleCache.get(target, syncAttrName);
       if (!styles_) {
         const genStyles = getCSSProps(target);
-        $cssStyles.set(target, genStyles);
+        styleCache.set(target, syncAttrName, genStyles);
         target.setAttribute(
-          "style",
+          syncAttrName,
           genStyles.map((item) => item.join(":")).join(";"),
         );
         styles_ = genStyles;
@@ -326,10 +329,10 @@
       targetProps = [...targetProps, ...propsList];
 
       target.setAttribute(
-        "style",
+        syncAttrName,
         targetProps.map((item) => item.join(":")).join(";"),
       );
-      $cssStyles.set(target, targetProps);
+      styleCache.set(target, syncAttrName, targetProps);
 
       // If the element's innerText is just a single nbsp character, that indicates
       //  the user would like this element to be empty, but we don't allow that
@@ -361,7 +364,7 @@
       //        that isn't necessary. It might be worth to optimize (though at the moment this function
       //        is called sparingly thanks to the performedMutation check, so it isn't really necessary)
       const genStyles = getCSSProps(el, false);
-      $cssStyles.set(el, genStyles);
+      styleCache.set(el, syncAttrName, genStyles);
 
       const [styleStr] = getSelectionStyleStr(selected);
       updateDisplay(styleStr, true, true);

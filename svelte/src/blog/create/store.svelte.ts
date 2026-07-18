@@ -12,8 +12,9 @@ class Mode {
 }
 export const mode = new Mode();
 
-export const cssStyles: Writable<Map<Element, [k: string, v: string][]>> =
-  writable(new Map());
+// export const cssStyles: Writable<Map<Element, [k: string, v: string][]>> =
+//   writable(new Map());
+// export const
 
 class Selection {
   hover: Element | undefined = $state();

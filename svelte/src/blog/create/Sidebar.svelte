@@ -5,7 +5,7 @@
     type Attribute,
     type IAttributesEditor,
   } from "./editors/attributes/AttributesEditor.svelte";
-  import CssEditor, { type ICSSEditor } from "./editors/css/CSSEditor.svelte";
+  import AllStyleEditors, { type IAllStyleEditors } from "./editors/css/AllStyleEditors.svelte";
   import TagNameEditor from "./editors/tag/TagNameEditor.svelte";
   import {
     // nodeHoverTarget,
@@ -28,7 +28,7 @@
 
   interface Props {
     attributesEditor?: IAttributesEditor;
-    cssEditor?: ICSSEditor;
+    cssEditor?: IAllStyleEditors;
   }
 
   let { attributesEditor = $bindable(), cssEditor = $bindable() }: Props =
@@ -113,7 +113,8 @@
   class:hidden={selection.main.length === 0 || mode.sidebar !== "edit"}
   class="w-full h-fit p-2 text-center mt-8"
 >
-  <CssEditor selected={selection.main} {disabled} bind:this={cssEditor} />
+  <!-- <CssEditor selected={selection.main} {disabled} bind:this={cssEditor} /> -->
+  <AllStyleEditors />
 </div>
 <div class:hidden={selection.main.length === 0 || mode.sidebar !== "edit"}>
   <AttributesEditor

@@ -75,18 +75,18 @@
 
     submitMsg = "Syncing new document library version identifier...";
 
-    resp = await fetch_("/documents/update_document_complib", {
-      method: "post",
-      body: JSON.stringify({
-        id: editorState.resourceName,
-      }),
-    });
-    if (!resp.ok) {
-      submitStatus = "error";
-      submitMsg =
-        "Unexpected error occured while syncing new library version identifier.";
-      return;
-    }
+    // resp = await fetch_("/documents/update_document_complib", {
+    //   method: "post",
+    //   body: JSON.stringify({
+    //     id: editorState.resourceName,
+    //   }),
+    // });
+    // if (!resp.ok) {
+    //   submitStatus = "error";
+    //   submitMsg =
+    //     "Unexpected error occured while syncing new library version identifier.";
+    //   return;
+    // }
 
     submitStatus = "success";
   }
