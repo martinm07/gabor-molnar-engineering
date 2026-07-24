@@ -115,6 +115,28 @@ export const extractPartsFromCompStr = (bodyStr: string): CompPartInfo[] => {
   return final;
 };
 
+export const extractPartsFromCompEls = (
+  bodyNode: Node,
+): Omit<CompPartInfo, "partBody">[] => {
+  const final: Omit<CompPartInfo, "partBody">[] = [];
+  const walker = document.createTreeWalker(bodyNode, NodeFilter.SHOW_ELEMENT);
+
+  let el: Element;
+  while ((el = walker.nextNode() as Element)) {
+    const parsed = parseElToCompPart(el);
+
+    if (parsed.isComponentPart)
+      final.push({
+        attrValue: el.getAttribute("data-component")!,
+        part: parsed.part,
+        compName: parsed.name,
+        partEl: el,
+      });
+  }
+
+  return final;
+};
+
 interface AddedPartInfo {
   bodyStr: string;
   addedPart: string;
@@ -312,7 +334,7 @@ const handleRemovedComponents = (
       el.removeAttribute("data-component");
       el.removeAttribute("data-componentname");
       // Not inherited data- attributes about components
-      el.removeAttribute("data-compLibVer");
+      el.removeAttribute("data-complibver");
       el.removeAttribute("data-isCompContainer");
       el.removeAttribute("data-compPartBlacklist");
       // Signify that the component instance has been disinherited
@@ -366,10 +388,10 @@ const handleEditedCompParts = (
     );
     if (!editInfo) continue;
 
-    const dataCompLibVer = el.getAttribute("data-compLibVer");
+    const dataCompLibVer = el.getAttribute("data-complibver");
     if (dataCompLibVer === info.to_version) {
       // prettier-ignore
-      console.log("Skipping updating attributes of element", el, "due to element having data-compLibVer value of", info.to_version, "which indicates that it has already been upgraded.");
+      console.log("Skipping updating attributes of element", el, "due to element having data-complibver value of", info.to_version, "which indicates that it has already been upgraded.");
       continue;
     }
 
@@ -392,7 +414,7 @@ const handleEditedCompParts = (
       el.setAttribute(attr.name, attr.value);
     });
 
-    el.setAttribute("data-compLibVer", info.to_version);
+    el.setAttribute("data-complibver", info.to_version);
   }
 };
 
@@ -457,8 +479,16 @@ const handleAddedCompParts = (
       if (insertAs === "sibling") {
         const elsNextSibling = el.nextSibling;
         let siblingDataComponent: string | null;
-        if ((elsNextSibling instanceof Element) && (siblingDataComponent = elsNextSibling.getAttribute("data-component")) && siblingDataComponent === addDataComponent) {
-          console.log("Skipping inserting newly added component part as sibling to element because it already has an element of that component part as a next sibling:", el);
+        if (
+          elsNextSibling instanceof Element &&
+          (siblingDataComponent =
+            elsNextSibling.getAttribute("data-component")) &&
+          siblingDataComponent === addDataComponent
+        ) {
+          console.log(
+            "Skipping inserting newly added component part as sibling to element because it already has an element of that component part as a next sibling:",
+            el,
+          );
           continue;
         }
 
@@ -492,7 +522,10 @@ const handleAddedCompParts = (
         }
 
         if (alreadyInserted) {
-          console.log("Skipping inserting newly added component part to element because it already has an element of that component part as a child:", el);
+          console.log(
+            "Skipping inserting newly added component part to element because it already has an element of that component part as a child:",
+            el,
+          );
           continue;
         }
 

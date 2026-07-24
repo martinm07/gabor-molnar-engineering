@@ -100,6 +100,14 @@ export function onKeydown(e: KeyboardEvent, p: EditorInterfaceKeyboard) {
     //     "⚠ debugCreateNewHistoryItem IS NOW",
     //     debugCreateNewHistoryItem,
     //   );
+  } else if (e.key === "T") {
+    const el = document.getElementById("testingstuff");
+    el?.removeAttribute("lang");
+    // console.log("hi");
+    // el?.setAttribute("lang", "en-GB");
+    el?.setAttribute("lang", "fr");
+    // el?.removeAttribute("id");
+    // el?.setAttribute("id", "newid");
   } else return;
   // if (mode.sidebar === "component") mode.sidebar = "edit";
 }

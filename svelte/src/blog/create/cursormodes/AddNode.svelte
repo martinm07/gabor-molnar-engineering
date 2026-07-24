@@ -346,10 +346,8 @@
   import { type IEditText } from "./EditText.svelte";
   import { request2AnimationFrames } from "/shared/helper";
 
-  interface Props {
-    docEl: HTMLElement;
-  }
-  let { docEl }: Props = $props();
+  const getDocEl: () => HTMLElement = getContext("getDocEl");
+  const docEl = getDocEl();
 
   const editText: IEditText["startEdit"] = getContext("startEdit");
   const setSelection: (nodes?: Node[] | Node) => void =

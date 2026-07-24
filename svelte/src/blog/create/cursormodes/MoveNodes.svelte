@@ -11,10 +11,8 @@
     getContext("startAttributeUsage");
   const updateHighlight: () => void = getContext("updateHighlight");
 
-  interface Props {
-    docEl: HTMLElement;
-  }
-  let { docEl }: Props = $props();
+  const getDocEl: () => HTMLElement = getContext("getDocEl");
+  const docEl = getDocEl();
 
   let endPrevAttrMask: (() => void) | undefined;
   watch(

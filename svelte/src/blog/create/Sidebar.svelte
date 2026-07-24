@@ -5,7 +5,9 @@
     type Attribute,
     type IAttributesEditor,
   } from "./editors/attributes/AttributesEditor.svelte";
-  import AllStyleEditors, { type IAllStyleEditors } from "./editors/css/AllStyleEditors.svelte";
+  import AllStyleEditors, {
+    type IAllStyleEditors,
+  } from "./editors/css/AllStyleEditors.svelte";
   import TagNameEditor from "./editors/tag/TagNameEditor.svelte";
   import {
     // nodeHoverTarget,
@@ -20,6 +22,7 @@
   import UpdateDocLib from "./components/UpdateDocLib.svelte";
   import ArrowArcLeftIcon from "phosphor-svelte/lib/ArrowArcLeftIcon";
   import HouseIcon from "phosphor-svelte/lib/HouseIcon";
+  import { deepEqual } from "./helper";
 
   const updateHighlight: () => void = getContext("updateHighlight");
   const removeFromSelection: (nodes?: Node[] | Node) => void = getContext(
@@ -76,6 +79,17 @@
   let createEmptyBtnFocused = $state(false);
 
   let editorAttrs: Attribute[] = $state([]);
+  // $inspect(editorAttrs);
+  // watch(
+  //   () => $state.snapshot(editorAttrs),
+  //   (curr, prev) => {
+  //     if (!deepEqual(curr, prev) && curr.length > 0)
+  //       console.log(
+  //         curr.map((attr) => attr.name),
+  //         curr,
+  //       );
+  //   },
+  // );
 </script>
 
 {#if editorState.documentRedirect && mode.sidebar === "edit"}
@@ -114,14 +128,14 @@
   class="w-full h-fit p-2 text-center mt-8"
 >
   <!-- <CssEditor selected={selection.main} {disabled} bind:this={cssEditor} /> -->
-  <AllStyleEditors />
+  <AllStyleEditors {editorAttrs} />
 </div>
 <div class:hidden={selection.main.length === 0 || mode.sidebar !== "edit"}>
   <AttributesEditor
     selected={selection.main}
     {disabled}
     bind:this={attributesEditor}
-    bind:attributes={editorAttrs}
+    bind:editorAttrs
   />
 </div>
 <!-- SIDEBAR MODE: component -->
@@ -171,6 +185,7 @@
   >
 </div>
 <ComponentTray />
+
 <!-- SIDEBAR MODE: viewer -->
 <div class:hidden={mode.sidebar !== "viewer"}>
   TODO: The document DOM viewer (/headings viewer for easier navigation?)

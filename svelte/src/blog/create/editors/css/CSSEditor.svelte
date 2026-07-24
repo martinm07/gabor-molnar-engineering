@@ -204,7 +204,10 @@
     allowedPropNames,
   } from "./handlecss";
   import { ClonedSelection, closest, insertAfter } from "../../helper";
-    import type { StyleCache } from "./AllStyleEditors.svelte";
+  import {
+    attrNameToStatesToForce,
+    type StyleCache,
+  } from "./AllStyleEditors.svelte";
 
   let styles = $state("");
   let stylesEl: HTMLElement;
@@ -229,7 +232,7 @@
     selected: Element[];
     disabled: boolean;
   }
-  let { syncAttrName: syncAttrName, selected, disabled }: Props = $props();
+  let { syncAttrName, selected, disabled }: Props = $props();
 
   type StylesList = [k: string, v: string][];
 
@@ -238,12 +241,25 @@
    *  a style string with prop/value pairs that match on every element in `selection`.
    * @param selection A list of Elements for which to get the intersection of styles for.
    */
-  function getSelectionStyleStr(selection: Element[]): [string, StylesList] {
+  function getSelectionStyleStr(
+    selection: Element[],
+    statesToForce: ReadonlySet<string>,
+    inlineStyleAttribute: string,
+  ): [string, StylesList] {
     let commonStyles: StylesList | undefined;
     for (const target of selection) {
       let styles_ = styleCache.get(target, syncAttrName);
       if (!styles_) {
-        const genStyles = getCSSProps(target);
+        let genStyles: [k: string, v: string][];
+        if (target.hasAttribute("data-component")) genStyles = [];
+        else
+          genStyles = getCSSProps(
+            target,
+            true,
+            statesToForce,
+            inlineStyleAttribute,
+          );
+
         styleCache.set(target, syncAttrName, genStyles);
         target.setAttribute(
           syncAttrName,
@@ -277,7 +293,12 @@
   watch(
     () => selected,
     (targets) => {
-      const [styleStr, commonStyles] = getSelectionStyleStr(targets);
+      const statesToForce = attrNameToStatesToForce(syncAttrName);
+      const [styleStr, commonStyles] = getSelectionStyleStr(
+        targets,
+        statesToForce,
+        syncAttrName,
+      );
       prevSyncedStyles = commonStyles;
 
       let plainStr: string;
@@ -312,9 +333,9 @@
 
       let targetProps: StylesList;
 
-      if (target.getAttribute("style"))
+      if (target.getAttribute(syncAttrName))
         targetProps = splitStringAtChar(
-          target.getAttribute("style") ?? "",
+          target.getAttribute(syncAttrName) ?? "",
           ";",
         ).map((propStr) =>
           splitStringAtChar(propStr, ":").map((str) => str.trim()),
@@ -360,13 +381,24 @@
    */
   export function syncElementInlineStyles(x: Node | Node[]): void {
     const syncInlineStyles = (el: Element) => {
+      const statesToForce = attrNameToStatesToForce(syncAttrName);
+      const inlineStyleAttribute = syncAttrName;
+
       // NOTE: There is a lot of extra logic performed by this function (even with useStylesheets = false)
       //        that isn't necessary. It might be worth to optimize (though at the moment this function
       //        is called sparingly thanks to the performedMutation check, so it isn't really necessary)
-      const genStyles = getCSSProps(el, false);
+      let genStyles: [k: string, v: string][];
+      if (el.hasAttribute("data-component")) genStyles = [];
+      else
+        genStyles = getCSSProps(el, false, statesToForce, inlineStyleAttribute);
+
       styleCache.set(el, syncAttrName, genStyles);
 
-      const [styleStr] = getSelectionStyleStr(selected);
+      const [styleStr] = getSelectionStyleStr(
+        selected,
+        statesToForce,
+        inlineStyleAttribute,
+      );
       updateDisplay(styleStr, true, true);
     };
 

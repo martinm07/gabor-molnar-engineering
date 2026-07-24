@@ -57,10 +57,7 @@ export function getScrollParent(
     : /(auto|scroll)/;
 
   if (style.position === "fixed") return document.body;
-  for (
-    let parent: Element | null = element;
-    (parent = parent.parentElement);
-  ) {
+  for (let parent: Element | null = element; (parent = parent.parentElement);) {
     style = getComputedStyle(parent);
     if (excludeStaticParent && style.position === "static") continue;
     if (overflowRegex.test(style.overflow + style.overflowY + style.overflowX))
@@ -476,4 +473,74 @@ export function deepEqual(x: any, y: any): boolean {
     ? ok(x).length === ok(y).length &&
         ok(x).every((key) => deepEqual(x[key], y[key]))
     : x === y;
+}
+
+export class DynamicStylesheet<T> {
+  stylesheetPosMap: Map<T, number>;
+  stylesheet: CSSStyleSheet;
+
+  constructor() {
+    this.stylesheetPosMap = new Map();
+    this.stylesheet = new CSSStyleSheet();
+    document.adoptedStyleSheets.push(this.stylesheet);
+  }
+
+  setRule(rule: string, key: T) {
+    //  p { ... }   div { ... }   h1 { ... }
+    // |          |             |            |
+    // 0          1             2            3
+    // (we'll have indexes always refer to the rule that directly follows it)
+    try {
+      const index = this.stylesheetPosMap.get(key);
+      if (index === undefined) {
+        const newIndex = this.stylesheet.cssRules.length;
+
+        this.stylesheet.insertRule(rule, newIndex);
+
+        this.stylesheetPosMap.set(key, newIndex);
+      } else {
+        this.stylesheet.deleteRule(index);
+        this.stylesheet.insertRule(rule, index);
+      }
+    } catch (e) {
+      console.error(
+        `Failed to insert rule into stylesheet under the key`,
+        key,
+        ":",
+        rule,
+      );
+    }
+  }
+
+  removeRule(key: T) {
+    const index = this.stylesheetPosMap.get(key);
+    if (index === undefined) {
+      // prettier-ignore
+      console.error("Key not found in stylesheetPosMap when removing rule. Key: ", key, "in map:", this.stylesheetPosMap);
+      return;
+    }
+
+    this.stylesheet.deleteRule(index);
+    this.stylesheetPosMap.delete(key);
+    // We need to index shift all the subsequent entries in the map
+    this.stylesheetPosMap
+      .entries()
+      .filter(([_, id_]) => id_ > index)
+      .forEach(([key_, id_]) => {
+        this.stylesheetPosMap.set(key_, id_ - 1);
+      });
+  }
+
+  destroy() {
+    const i = document.adoptedStyleSheets.indexOf(this.stylesheet);
+    if (i === -1) {
+      console.error(
+        "Could not find style sheet in document.adoptedStyleSheets",
+        this.stylesheet,
+        document.adoptedStyleSheets,
+      );
+      return;
+    }
+    document.adoptedStyleSheets.splice(i, 1);
+  }
 }

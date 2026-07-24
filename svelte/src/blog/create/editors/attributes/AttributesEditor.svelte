@@ -51,11 +51,11 @@
   interface Props {
     selected: Element[];
     disabled: boolean;
-    attributes?: Attribute[];
+    editorAttrs?: Attribute[];
   }
-  let { selected, disabled, attributes = $bindable([]) }: Props = $props();
+  let { selected, disabled, editorAttrs = $bindable([]) }: Props = $props();
 
-  // let attributes: Attribute[] = $state([]);
+  let attributes: Attribute[] = $state([]);
   let prevAttributes: Attribute[];
 
   let performedMutation: boolean = false;
@@ -187,8 +187,10 @@
   export function syncElementAttributes(x: Node | Node[]): void {
     const syncAttributes = (el: Element) => {
       dataComponent.send("reset");
-      prevAttributes = attributesIntersection(selected).filter(
-        (el) => el.name !== "style" && el.name !== "contenteditable",
+      editorAttrs = attributesIntersection(selected);
+      // console.log("🎈🎈🎈 new editorAttrs:", editorAttrs);
+      prevAttributes = editorAttrs.filter((attr) =>
+        hiddenAttrsRegex.every((regex) => !regex.test(attr.name)),
       );
       attributes = [...prevAttributes];
     };
@@ -215,6 +217,21 @@
   //        to find the appropriate attribute intersection, we may inadvertently "clone" attributes
   //        over to newly selected elements.
 
+  const HIDDEN_ATTRIBUTES = [
+    "style",
+    "contenteditable",
+    "data-complibver",
+    "data-componentname",
+    "data-isCompContainer",
+    "data-compPartBlacklist",
+    "data-compDisinherited",
+    "data-style-.*",
+    "data-id",
+  ];
+  const hiddenAttrsRegex = HIDDEN_ATTRIBUTES.map(
+    (matchStr) => new RegExp("^" + matchStr + "$"),
+  );
+
   // Refresh 'attributes' state when the selection changes
   watch(
     () => selected,
@@ -222,8 +239,9 @@
       dataComponent.send("reset");
       // TODO: What we're doing with attribute masking and the 'draggable' attribute could also be done
       //        with contenteditable, instead of this check here
-      prevAttributes = attributesIntersection(selected).filter(
-        (el) => el.name !== "style" && el.name !== "contenteditable",
+      editorAttrs = attributesIntersection(selected);
+      prevAttributes = editorAttrs.filter((attr) =>
+        hiddenAttrsRegex.every((regex) => !regex.test(attr.name)),
       );
       attributes = [...prevAttributes];
     },
@@ -310,6 +328,11 @@
               });
           });
         });
+
+      // console.log("Attributes:", $state.snapshot(attributes));
+      // console.log("Removed attributes:", $state.snapshot(removeAttrs));
+      // console.log("Attribute masks:", $state.snapshot(maskedAttributes));
+
       syncMaskedAttributes(attributes);
       syncMaskedAttributes(removeAttrs, true);
 
@@ -319,8 +342,9 @@
         // console.log(removeAttrs, attributes);
         removeAttrs.forEach((attr) => {
           if (attr.name === "data-component") dataComponent.send("reset");
-          if (!attributeMasked(target, attr.name))
+          if (!attributeMasked(target, attr.name)) {
             target.removeAttribute(attr.name);
+          }
         });
         attributes.forEach((attr) => {
           if (target.getAttribute(attr.name) === attr.value) {
@@ -333,8 +357,9 @@
             else dataComponent.send("novalid");
             return;
           }
-          if (attr.valid && !attributeMasked(target, attr.name))
+          if (attr.valid && !attributeMasked(target, attr.name)) {
             target.setAttribute(attr.name, attr.value);
+          }
         });
       }
       updateHighlight();

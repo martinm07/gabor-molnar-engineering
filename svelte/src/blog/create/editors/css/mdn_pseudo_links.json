@@ -1,0 +1,94 @@
+[
+  {
+    "name": "__default__",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/Pseudo-classes"
+  },
+  {
+    "name": "hover",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:hover"
+  },
+  {
+    "name": "focus",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:focus"
+  },
+  {
+    "name": "focus-visible",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:focus-visible"
+  },
+  {
+    "name": "focus-within",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:focus-within"
+  },
+  {
+    "name": "active",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:active"
+  },
+  {
+    "name": "target",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:target"
+  },
+  {
+    "name": "target-within",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/Pseudo-classes"
+  },
+  {
+    "name": "visited",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:visited"
+  },
+  {
+    "name": "checked",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:checked"
+  },
+  {
+    "name": "indeterminate",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:indeterminate"
+  },
+  {
+    "name": "disabled",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:disabled"
+  },
+  {
+    "name": "enabled",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:enabled"
+  },
+  {
+    "name": "valid",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:valid"
+  },
+  {
+    "name": "invalid",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:invalid"
+  },
+  {
+    "name": "required",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:required"
+  },
+  {
+    "name": "optional",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:optional"
+  },
+  {
+    "name": "read-only",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:read-only"
+  },
+  {
+    "name": "read-write",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:read-write"
+  },
+  {
+    "name": "in-range",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:in-range"
+  },
+  {
+    "name": "out-of-range",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:out-of-range"
+  },
+  {
+    "name": "default",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:default"
+  },
+  {
+    "name": "placeholder-shown",
+    "url": "https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Selectors/:placeholder-shown"
+  }
+]

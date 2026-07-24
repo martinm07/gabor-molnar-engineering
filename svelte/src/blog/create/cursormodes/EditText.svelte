@@ -102,27 +102,27 @@
     editTarget = undefined;
   }
 
-  // UNUSED (but cool)
-  let cursor: HTMLElement;
-  function onClick() {
-    const caret = getSelection();
-    if (
-      !caret ||
-      !caret.focusNode ||
-      !(
-        caret.focusNode === caret.anchorNode &&
-        caret.focusOffset === caret.anchorOffset
-      )
-    )
-      return;
-    const range = document.createRange();
-    range.setStart(caret.focusNode, caret.focusOffset);
-    range.setEnd(caret.focusNode, caret.focusOffset);
-    const rect = range.getClientRects()[0];
-    cursor.style.top = `${rect.y + window.scrollY}px`;
-    cursor.style.left = `${rect.x + window.scrollX}px`;
-    cursor.style.height = `${rect.height}px`;
-  }
+  //// UNUSED (but cool)
+  // let cursor: HTMLElement;
+  // function onClick() {
+  //   const caret = getSelection();
+  //   if (
+  //     !caret ||
+  //     !caret.focusNode ||
+  //     !(
+  //       caret.focusNode === caret.anchorNode &&
+  //       caret.focusOffset === caret.anchorOffset
+  //     )
+  //   )
+  //     return;
+  //   const range = document.createRange();
+  //   range.setStart(caret.focusNode, caret.focusOffset);
+  //   range.setEnd(caret.focusNode, caret.focusOffset);
+  //   const rect = range.getClientRects()[0];
+  //   cursor.style.top = `${rect.y + window.scrollY}px`;
+  //   cursor.style.left = `${rect.x + window.scrollX}px`;
+  //   cursor.style.height = `${rect.height}px`;
+  // }
 
   // HANDLING THE CREATION OF NEW HISTORY ITEMS
 

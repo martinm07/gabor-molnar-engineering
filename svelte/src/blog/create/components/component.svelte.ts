@@ -17,7 +17,7 @@ import {
   parseHTMLFragment,
 } from "../helper";
 import { fetch_, assign } from "/shared/helper";
-import { extractPartsFromCompStr } from "./libraryupgrade";
+import { extractPartsFromCompEls } from "./libraryupgrade";
 
 const encodeStr = (str: string) => encodeURI(str);
 const decodeStr = (str: string) => decodeURI(str);
@@ -122,13 +122,50 @@ export function decodeComponentStr(
     });
   } else if (for_ === "document") {
     getAllChildNodes(tempDiv).forEach((node) => {
-      if (node instanceof HTMLElement)
-        node.setAttribute("data-compLibVer", doc.info.componentLibVer);
+      if (node instanceof HTMLElement) {
+        node.setAttribute("data-complibver", doc.info.componentLibVer);
+
+        Array.from(node.attributes).forEach((attr, i) => {
+          if (attr.name === "style") {
+            replaceAttrAtIndex(node, i, "data-dummycompstyle", attr.value);
+          } else if (attr.name.startsWith("data-style-")) {
+            replaceAttrAtIndex(
+              node,
+              i,
+              `data-dummycompstyle-${attr.name.slice("data-style-".length)}`,
+              attr.value,
+            );
+          }
+        });
+      }
     });
   }
 
   while (tempDiv.firstChild) fragment.appendChild(tempDiv.firstChild);
   return fragment;
+}
+
+const indexOfAttr = (el: Element, attributeName: string) =>
+  Array.from(el.attributes).findIndex((attr) => attr.name === attributeName);
+
+function replaceAttrAtIndex(
+  el: Element,
+  index: number,
+  name: string,
+  value: string,
+) {
+  const oldAttributes = Array.from(el.attributes);
+  if (index < 0 || index >= oldAttributes.length) {
+    console.error("Index out of range");
+    return;
+  }
+  oldAttributes.forEach((attr) => el.removeAttribute(attr.name));
+
+  const newAttribute = document.createAttribute(name);
+  newAttribute.value = value;
+  const newAttributes = oldAttributes.toSpliced(index, 1, newAttribute);
+
+  newAttributes.forEach((attr) => el.setAttribute(attr.name, attr.value));
 }
 
 export function componentNameValid(str: string) {
@@ -160,24 +197,37 @@ export function changeElToComp(el: Element, compName: string) {
     );
 
   const bodyStr = saved.content;
-  const compParts = extractPartsFromCompStr(bodyStr);
-  const partInfo = compParts.find((compPart) => compPart.part === part);
-  if (!partInfo) {
-    throw new Error(`Could not find the provided part in the provided component.`);
+  // We use decodeComponentStr() here, rather than a function like extractPartsFromCompStr() in libraryupgrade.ts,
+  //  so that we get all the same processing for component instances being added to a document as we have when adding a new node
+  //  that is an instance of a component, or any other situation. Whenever we're "inserting" a component instance into a document,
+  //  we should ALWAYS be using decodeComponentStr().
+  const decodedComp = decodeComponentStr(bodyStr, "document");
+  const compParts = extractPartsFromCompEls(decodedComp);
+
+  const partEl = compParts.find((compPart) => compPart.part === part)?.partEl;
+  if (!partEl) {
+    throw new Error(
+      `Could not find the provided part in the provided component.`,
+    );
   }
 
   // Replace the parsed children of the component part with the actual children of the element we're converting
-  while (partInfo.partEl.firstChild) partInfo.partEl.removeChild(partInfo.partEl.firstChild);
-  while (el.firstChild) partInfo.partEl.appendChild(el.firstChild);
+  while (partEl.firstChild) partEl.removeChild(partEl.firstChild);
+  while (el.firstChild) partEl.appendChild(el.firstChild);
   // Replace element with component part in document
-  el.insertAdjacentElement("afterend", partInfo.partEl);
+  el.insertAdjacentElement("afterend", partEl);
   el.remove();
 
-  if (selection.hover === el) selection.hover = partInfo.partEl;
+  if (selection.hover === el) selection.hover = partEl;
   if (selection.selected.some((item) => item === el))
-      selection.selected = selection.selected.map((item) =>
-        item === el ? partInfo.partEl : item,
-      );
+    selection.selected = selection.selected.map((item) =>
+      item === el ? partEl : item,
+    );
+}
+
+export function protectInheritedAttrs(el: Element) {
+  if (!el.hasAttribute("data-component")) return;
+  // console.log("Protecting inherited attributes of element", el);``
 }
 
 // The database integration will be as follows;

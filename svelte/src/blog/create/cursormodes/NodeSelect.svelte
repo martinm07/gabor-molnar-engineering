@@ -5,16 +5,18 @@
 </script>
 
 <script lang="ts">
-  import { onDestroy } from "svelte";
+  import { onDestroy, getContext } from "svelte";
   import { on } from "svelte/events";
   import { mode, selection } from "../store.svelte";
 
+  const getDocEl: () => HTMLElement = getContext("getDocEl");
+  const docEl = getDocEl();
+
   interface Props {
     shiftPressed: boolean;
-    docEl: HTMLElement;
   }
 
-  let { shiftPressed, docEl }: Props = $props();
+  let { shiftPressed }: Props = $props();
 
   let highlight: HTMLElement;
   let targetOriginal: Element | undefined;

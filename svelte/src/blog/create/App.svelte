@@ -20,7 +20,7 @@
   } from "./cursormodes/MultipleSelect.svelte";
   import MoveNodes from "./cursormodes/MoveNodes.svelte";
   import { type IAttributesEditor } from "./editors/attributes/AttributesEditor.svelte";
-  import { ClonedSelection } from "./helper";
+  import { ClonedSelection, DynamicStylesheet } from "./helper";
   import {
     type DocNodeMap,
     type StringPosNodeMap,
@@ -34,13 +34,17 @@
   import SaveChanges from "./components/SaveChanges.svelte";
   import { HistoryManager } from "./history";
   // import { type ICSSEditor } from "./editors/css/CSSEditor.svelte";
-  import { type IAllStyleEditors } from "./editors/css/AllStyleEditors.svelte";
+  import {
+    syncDataStyleAttrs,
+    type IAllStyleEditors,
+  } from "./editors/css/AllStyleEditors.svelte";
   import { onKeydown } from "./keyboard";
   import { handleCollapsePrevention } from "./collapseprevention";
   import { loadDocument, loadComponent } from "./docloading.svelte";
   import { SaveDoc } from "./docsaving.svelte";
   import { on } from "svelte/events";
   import DocMeta, { type IDocMeta } from "./DocMeta.svelte";
+  import { protectInheritedAttrs } from "./components/component.svelte";
 
   let documentID = $derived(
     editorState.mode === "document"
@@ -60,6 +64,7 @@
         multipleSelect,
         docEl,
         historyManager,
+        componentElStyles,
       });
     },
   );
@@ -172,6 +177,12 @@
   // For testing purposes only
   let debugCreateNewHistoryItem: boolean = false;
 
+  const dataStyles = new DynamicStylesheet<string>();
+  onDestroy(() => dataStyles.destroy());
+
+  const componentElStyles = new DynamicStylesheet<string>();
+  onDestroy(() => componentElStyles.destroy());
+
   // This observer is to
   //  1- disallow non-element nodes as direct children of docEl.
   //      AND enforce at least one element in the document (done by handleCollapsePrevention)
@@ -186,7 +197,7 @@
   const { stop } = useMutationObserver(
     () => docEl,
     (mutations) => {
-      // console.log("mutation observer triggered", unfilteredMutations);
+      // console.log("mutation observer triggered", mutations);
 
       // (1) and (2) and (3), essentially; prevent and clean up elements/nodes that can't be interacted with
       handleCollapsePrevention(mutations, docEl);
@@ -196,7 +207,8 @@
         .filter(
           (mutation) =>
             mutation.type === "attributes" &&
-            (mutation.attributeName === "style" || mutation.attributeName?.startsWith("data-style-")),
+            (mutation.attributeName === "style" ||
+              mutation.attributeName?.startsWith("data-style-")),
         )
         .map((mutation) => mutation.target);
       const attributeMutationTargets = mutations
@@ -205,6 +217,56 @@
 
       cssEditor?.syncElementInlineStyles(styleMutationTargets);
       attributesEditor?.syncElementAttributes(attributeMutationTargets);
+
+      //// We can use this to (potentially) improve performance, with elements being checked multiple times, if necessary
+      // const alreadyChecked: Set<Element> = new Set();
+
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((addedNode) => {
+          if (!(addedNode instanceof Element)) return;
+
+          const walker = document.createTreeWalker(
+            addedNode,
+            NodeFilter.SHOW_ELEMENT,
+          );
+          let current: Element | null = walker.currentNode as Element;
+          while (current) {
+            checkDataID(current);
+            syncDataStyleAttrs(current, dataStyles);
+            protectInheritedAttrs(current);
+
+            current = walker.nextNode() as Element | null;
+          }
+        });
+
+        if (mutation.type === "attributes") {
+          const el = mutation.target as Element;
+
+          checkDataID(
+            el,
+            mutation.attributeName as string,
+            mutation.oldValue as string,
+          );
+          syncDataStyleAttrs(el, dataStyles, mutation.attributeName as string);
+          protectInheritedAttrs(el);
+        }
+      });
+
+      function checkDataID(
+        el: Element,
+        modifiedAttribute?: string,
+        oldValue?: string,
+      ) {
+        if (
+          el.hasAttribute("data-id") ||
+          (modifiedAttribute && modifiedAttribute !== "data-id")
+        )
+          return;
+
+        const dataID = oldValue || crypto.randomUUID();
+        console.log("Setting data ID of element", el, dataID);
+        el.setAttribute("data-id", dataID);
+      }
 
       setTimeout(() => {
         docMeta?.informMetaUpdate(mutations);
@@ -220,6 +282,7 @@
     {
       subtree: true,
       attributes: true,
+      attributeOldValue: true,
       characterData: true,
       childList: true,
     },
@@ -364,10 +427,10 @@
   >
     {#if docEl}
       <EditText bind:this={editText} {docEl} />
-      <NodeSelect {shiftPressed} {docEl} bind:this={nodeSelect} />
+      <NodeSelect {shiftPressed} bind:this={nodeSelect} />
       <MultipleSelect bind:this={multipleSelect} />
-      <AddNode {docEl} bind:this={addNode} />
-      <MoveNodes {docEl} />
+      <AddNode bind:this={addNode} />
+      <MoveNodes />
     {/if}
 
     <div class="relative h-fit w-full flex justify-center">

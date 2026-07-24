@@ -20,12 +20,7 @@ interface CSSPropertyInfo {
   inherited: boolean; // True if inherited from an ancestor
   _ruleOrderIndex?: number; // Global order of appearance for tie-breaking
   _ruleOrigin?:
-    | "user-agent"
-    | "user"
-    | "author"
-    | "inline"
-    | "animation"
-    | "transition"; // Rule origin
+    "user-agent" | "user" | "author" | "inline" | "animation" | "transition"; // Rule origin
   originalPropertyName?: string; // Original declared property name
 }
 
@@ -39,12 +34,7 @@ export interface CSSRuleAnalysis {
   stylesheetUrl: string;
   layerName?: string; // Name of the @layer, if any
   origin:
-    | "user-agent"
-    | "user"
-    | "author"
-    | "inline"
-    | "animation"
-    | "transition";
+    "user-agent" | "user" | "author" | "inline" | "animation" | "transition";
   orderIndex: number; // Global order of appearance for tie-breaking
   conditionalContexts: ConditionalContext[]; // Stack of conditional contexts
 }
@@ -79,7 +69,39 @@ let processedSheets = new Set<string>();
 
 // prettier-ignore
 // Tiny Simple Hash (https://stackoverflow.com/a/52171480/11493659)
-const TSH=(s: string)=>{for(var i=0,h=9;i<s.length;)h=Math.imul(h^s.charCodeAt(i++),9**9);return h^h>>>9}
+const TSH=(s: string)=>{for(var i=0,h=9;i<s.length;)h=Math.imul(h^s.charCodeAt(i++),9**9);return h^h>>>9};
+
+const SIMULATION_ID = Math.random().toString(36).slice(2);
+
+// Pseudo-classes whose truthiness we're willing to force. Extend as needed.
+const FORCEABLE_STATE_PSEUDOS = new Set([
+  "hover",
+  "focus",
+  "focus-visible",
+  "focus-within",
+  "active",
+  "target",
+  "target-within",
+  "visited",
+  "checked",
+  "indeterminate",
+  "disabled",
+  "enabled",
+  "valid",
+  "invalid",
+  "required",
+  "optional",
+  "read-only",
+  "read-write",
+  "in-range",
+  "out-of-range",
+  "default",
+  "placeholder-shown",
+]);
+
+function markerClassFor(pseudo: string): string {
+  return `__pseudosim_${pseudo.replace(/-/g, "_")}_${SIMULATION_ID}__`;
+}
 
 /**
  * Gathers all CSS rules from the document's stylesheets and detached stylesheets,
@@ -314,7 +336,10 @@ export async function getAllCSSRules(
  * @param element - The HTML element to extract inline styles from.
  * @returns A CSSRuleAnalysis object representing the inline styles, or null if no inline styles exist.
  */
-function getInlineStylesForElement(element: Element): CSSRuleAnalysis | null {
+function getInlineStylesForElement(
+  element: Element,
+  inlineStyleAttribute: string = "style",
+): CSSRuleAnalysis | null {
   const htmlElement = element as HTMLElement;
 
   // Check if the element has a style attribute
@@ -323,7 +348,7 @@ function getInlineStylesForElement(element: Element): CSSRuleAnalysis | null {
   }
 
   const properties: CSSPropertyInfo[] = [];
-  const declarationBlockText = element.getAttribute("style") ?? "";
+  const declarationBlockText = element.getAttribute(inlineStyleAttribute) ?? "";
 
   // NOTE: We don't use element.style for actually reading from it what properties were set
   //        (instead we use the literal text found from getAttribute) because .style does some
@@ -535,6 +560,45 @@ function areConditionalContextsMet(
 }
 
 /**
+ * Replaces every occurrence of the given pseudo-classes in a selector with a
+ * unique, real class selector. Pseudo-classes NOT in `statesToForce` (including
+ * other state pseudo-classes) are left untouched, so `.matches()` still evaluates
+ * them against the element's *actual* current DOM state.
+ */
+function rewriteSelectorForStates(
+  selectorText: string,
+  statesToForce: ReadonlySet<string>,
+): string {
+  if (statesToForce.size === 0) return selectorText;
+
+  let ast: csstree.CssNode;
+  try {
+    ast = csstree.parse(selectorText, { context: "selectorList" });
+  } catch {
+    return selectorText; // fall back; matches() will just fail on it later
+  }
+
+  csstree.walk(ast, {
+    visit: "PseudoClassSelector",
+    enter(node, item, list) {
+      if (!list) return;
+      const name = node.name.toLowerCase();
+      if (statesToForce.has(name)) {
+        list.replace(
+          item,
+          list.createItem({
+            type: "ClassSelector",
+            name: markerClassFor(name),
+          } as csstree.ClassSelector),
+        );
+      }
+    },
+  });
+
+  return csstree.generate(ast);
+}
+
+/**
  * Filters the global list of CSS rules to find those that match a given HTML element.
  *
  * @param element - The HTML element to match rules against.
@@ -544,27 +608,50 @@ function areConditionalContextsMet(
 function getMatchingRulesForElement(
   element: Element,
   allRules: CSSRuleAnalysis[],
+  statesToForce: ReadonlySet<string> = new Set(),
 ): CSSRuleAnalysis[] {
-  return allRules.filter((rule) => {
-    try {
-      // First check if the selector matches
-      if (!element.matches(rule.selector)) {
+  const markerClasses = Array.from(statesToForce, markerClassFor);
+
+  const hasClassAttribute = element.hasAttribute("class");
+
+  try {
+    return allRules.filter((rule) => {
+      try {
+        // First check if the selector matches
+        if (statesToForce.size) {
+          const testSelector = rewriteSelectorForStates(
+            rule.selector,
+            FORCEABLE_STATE_PSEUDOS,
+          );
+
+          const matchesWithout = element.matches(testSelector);
+          if (markerClasses.length) element.classList.add(...markerClasses);
+          const matchesWith = element.matches(testSelector);
+          if (!matchesWith || matchesWithout) return false;
+        } else {
+          if (!element.matches(rule.selector)) {
+            return false;
+          }
+        }
+
+        // Then check if all conditional contexts are met
+        return areConditionalContextsMet(rule.conditionalContexts, element);
+      } catch (e) {
+        // Handle invalid selectors gracefully, e.g., log error to console
+        console.warn(
+          `Skipping rule with invalid selector "${rule.selector}" for element`,
+          element,
+          ". Error:",
+          e,
+        );
         return false;
       }
-
-      // Then check if all conditional contexts are met
-      return areConditionalContextsMet(rule.conditionalContexts, element);
-    } catch (e) {
-      // Handle invalid selectors gracefully, e.g., log error to console
-      console.warn(
-        `Skipping rule with invalid selector "${rule.selector}" for element`,
-        element,
-        ". Error:",
-        e,
-      );
-      return false;
-    }
-  });
+    });
+  } finally {
+    if (markerClasses.length && hasClassAttribute)
+      element.classList.remove(...markerClasses);
+    else if (markerClasses.length) element.removeAttribute("class");
+  }
 }
 
 /**
@@ -577,10 +664,16 @@ function getMatchingRulesForElement(
 export function resolveCascadeForElement(
   element: Element,
   allRules: CSSRuleAnalysis[],
+  statesToForce: ReadonlySet<string> = new Set(),
+  inlineStyleAttribute: string = "style",
 ): ElementStyleAnalysis {
-  const matchingRules = getMatchingRulesForElement(element, allRules);
+  const matchingRules = getMatchingRulesForElement(
+    element,
+    allRules,
+    statesToForce,
+  );
 
-  const inlineStyles = getInlineStylesForElement(element);
+  const inlineStyles = getInlineStylesForElement(element, inlineStyleAttribute);
   if (inlineStyles) matchingRules.push(inlineStyles);
 
   const finalProperties: { [key: string]: CSSPropertyInfo } = {};

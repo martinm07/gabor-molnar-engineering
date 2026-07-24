@@ -2,8 +2,9 @@ import {
   decodeComponentStr,
   type GetCompLibFetchReturn,
 } from "./components/component.svelte";
+import { extractPartsFromCompStr } from "./components/libraryupgrade";
 import type { IMultipleSelect } from "./cursormodes/MultipleSelect.svelte";
-import { closestClass, parseHTMLFragment } from "./helper";
+import { closestClass, DynamicStylesheet, parseHTMLFragment } from "./helper";
 import type { HistoryManager } from "./history";
 import {
   allComponentTags,
@@ -25,6 +26,7 @@ interface EditorInterfaceLoading {
   multipleSelect?: IMultipleSelect;
   docEl?: HTMLElement;
   historyManager?: HistoryManager;
+  componentElStyles?: DynamicStylesheet<string>;
 }
 
 const getDocumentID = () =>
@@ -138,7 +140,7 @@ export async function loadDocument(p: EditorInterfaceLoading) {
   };
 
   compLibVer.currentVer = componentLibVer;
-  const compLibInfo = await setSavedComponentLibrary(componentLibVer);
+  const compLibInfo = await getSavedComponentLibrary(componentLibVer);
 
   if (!compLibInfo)
     console.error("Couldn't fetch info about component library");
@@ -152,6 +154,34 @@ export async function loadDocument(p: EditorInterfaceLoading) {
     };
     compLibVer.latestVer = compLibInfo.upgrade_to_version;
   }
+
+  // Add component styles to dynamic stylesheet
+
+  console.log($state.snapshot(savedComponents));
+
+  if (p.componentElStyles) {
+    savedComponents.forEach((comp) => {
+      const parts = extractPartsFromCompStr(comp.content);
+      // console.log($state.snapshot(comp), $state.snapshot(parts));
+      parts.forEach((part) => {
+        Array.from(part.partEl.attributes).forEach((attr) => {
+          if (attr.name === "data-dummycompstyle") {
+            const rule = `[data-component="${part.attrValue}"] { ${attr.value} }`;
+            p.componentElStyles!.setRule(rule, part.attrValue);
+          } else if (attr.name.startsWith("data-dummycompstyle-")) {
+            const pseudoClass = attr.name.slice("data-dummycompstyle-".length);
+            const rule = `[data-component="${part.attrValue}"]:${pseudoClass} { ${attr.value} }`;
+            p.componentElStyles!.setRule(
+              rule,
+              `${part.attrValue}-${pseudoClass}`,
+            );
+          }
+        });
+      });
+    });
+  }
+
+  console.log(savedComponents);
 
   doc.info = {
     id: `${documentID}`,
@@ -176,7 +206,7 @@ export async function loadDocument(p: EditorInterfaceLoading) {
   }
 }
 
-async function setSavedComponentLibrary(ver?: string) {
+async function getSavedComponentLibrary(ver?: string) {
   console.log("getting saved components library");
 
   const URL = `/documents/get_component_library${typeof ver === "string" ? "?ver=" + ver : ""}`;
@@ -228,7 +258,7 @@ export async function loadComponent(p: EditorInterfaceLoading) {
   const componentID = getComponentID();
   if (componentID === null) return;
 
-  await setSavedComponentLibrary();
+  await getSavedComponentLibrary();
 
   const comp = savedComponents.find((comp) => comp.name === componentID);
   const editMatch = compLibEdits.current.find(

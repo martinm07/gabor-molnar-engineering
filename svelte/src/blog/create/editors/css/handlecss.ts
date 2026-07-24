@@ -61,10 +61,17 @@ const isInlineStyle = (ruleSpecificity: SpecificityVal) =>
   specificityGreater(ruleSpecificity, [0, Infinity, 0, 0]);
 // console.log(specificityGreater([0, 1, 0, 0], [0, Infinity, 0, 0]));
 
-export function getCSSProps(el: Element, useStylesheets: boolean = true) {
+export function getCSSProps(
+  el: Element,
+  useStylesheets: boolean = true,
+  statesToForce: ReadonlySet<string> = new Set(),
+  inlineStyleAttribute: string = "style"
+) {
   let { matchingRules: rules } = resolveCascadeForElement(
     el,
     useStylesheets ? allRules : [],
+    statesToForce,
+    inlineStyleAttribute
   );
 
   // 1) Do not consider a rule or its properties if it was inherited,
@@ -74,8 +81,7 @@ export function getCSSProps(el: Element, useStylesheets: boolean = true) {
   rules = rules.filter(
     (rule) =>
       isInlineStyle(rule.specificity) ||
-      (!alwaysApplies(rule.selector) &&
-        !appliesByPseudoClass(el, rule.selector)),
+      !alwaysApplies(rule.selector),
   );
 
   // Get flat list of all properties (we are no longer considering the selector after step 1)
