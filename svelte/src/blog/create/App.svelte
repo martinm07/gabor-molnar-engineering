@@ -5,6 +5,7 @@
   } from "./cursormodes/NodeSelect.svelte";
   import EditText, { type IEditText } from "./cursormodes/EditText.svelte";
   import Sidebar from "./Sidebar.svelte";
+  import Topbar from "./Topbar.svelte";
   import { PersistedState, useMutationObserver, watch } from "runed";
   import { onDestroy, setContext } from "svelte";
   import {
@@ -28,22 +29,20 @@
     processMutations,
     patchMutations,
     type DocPatch,
-  } from "./docsyncing";
+  } from "./documents/docsyncing";
   import Autocomplete from "./editors/Autocomplete.svelte";
-  import Topbar from "./Topbar.svelte";
   import SaveChanges from "./components/SaveChanges.svelte";
-  import { HistoryManager } from "./history";
-  // import { type ICSSEditor } from "./editors/css/CSSEditor.svelte";
+  import { HistoryManager } from "./documents/history";
   import {
     syncDataStyleAttrs,
     type IAllStyleEditors,
   } from "./editors/css/AllStyleEditors.svelte";
-  import { onKeydown } from "./keyboard";
-  import { handleCollapsePrevention } from "./collapseprevention";
-  import { loadDocument, loadComponent } from "./docloading.svelte";
-  import { SaveDoc } from "./docsaving.svelte";
+  import { onKeydown } from "./documents/keyboard";
+  import { handleCollapsePrevention } from "./documents/collapseprevention";
+  import { loadDocument, loadComponent } from "./documents/docloading.svelte";
+  import { SaveDoc } from "./documents/docsaving.svelte";
   import { on } from "svelte/events";
-  import DocMeta, { type IDocMeta } from "./DocMeta.svelte";
+  import DocMeta, { type IDocMeta } from "./documents/DocMeta.svelte";
   import { protectInheritedAttrs } from "./components/component.svelte";
 
   let documentID = $derived(

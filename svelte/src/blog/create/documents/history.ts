@@ -1,4 +1,3 @@
-import { decode, encode } from "he";
 import {
   encodeHTMLText,
   decodeHTMLText,
@@ -7,9 +6,8 @@ import {
   type DocPatchDom,
   type StringPosNodeMap,
 } from "./docsyncing";
-import { closestClass, insertAfter, parseHTMLFragment } from "./helper";
-import { selection } from "./store.svelte";
-import { get } from "svelte/store";
+import { closestClass, insertAfter, parseHTMLFragment } from "../helper";
+import { selection } from "../store.svelte";
 
 export type DocHistoryStack = DocHistoryItem[];
 

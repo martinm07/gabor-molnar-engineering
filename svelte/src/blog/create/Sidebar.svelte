@@ -157,22 +157,6 @@
         el.classList.remove("temp-added");
         el.removeAttribute("class");
       });
-      // We want to trigger the AttributeEditor to refetch the attributes
-      //  of the newly added element after removing its class, which it does
-      //  whenever the selection changes - and so we artifically trigger a change
-      //  this way (NOTE: Svelte is being smart and doesn't trigger updates to the $derived
-      //                  `selection` unless a change actually happens, so we need to actually
-      //                  change the selection for a frame).
-      // TODO: In general, the CSS editor and attributes editor don't update on DOM mutations
-      //        to the selected elements, which means the user view of what attributes and styles
-      //        are on the selection could easily become outdated if there is JavaScript manipulating
-      //        the document in some way. It would be a good idea to have them listen for DOM `attributes`
-      //        mutations on the currently selected elements for refetches.
-      const selTemp = selection.selected;
-      selection.selected = [];
-      requestAnimationFrame(() => {
-        selection.selected = selTemp;
-      });
 
       mode.sidebar = "edit";
     }}

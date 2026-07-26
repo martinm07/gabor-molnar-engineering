@@ -1,10 +1,10 @@
 import {
   decodeComponentStr,
   type GetCompLibFetchReturn,
-} from "./components/component.svelte";
-import { extractPartsFromCompStr } from "./components/libraryupgrade";
-import type { IMultipleSelect } from "./cursormodes/MultipleSelect.svelte";
-import { closestClass, DynamicStylesheet, parseHTMLFragment } from "./helper";
+} from "../components/component.svelte";
+import { extractPartsFromCompStr } from "../components/libraryupgrade";
+import type { IMultipleSelect } from "../cursormodes/MultipleSelect.svelte";
+import { closestClass, DynamicStylesheet, parseHTMLFragment } from "../helper";
 import type { HistoryManager } from "./history";
 import {
   allComponentTags,
@@ -18,8 +18,8 @@ import {
   mode,
   savedComponents,
   type SavedComponent,
-} from "./store.svelte";
-import { editorState } from "./url.svelte";
+} from "../store.svelte";
+import { editorState } from "../url.svelte";
 import { assign, fetch_, request2AnimationFrames } from "/shared/helper";
 
 interface EditorInterfaceLoading {
@@ -180,8 +180,6 @@ export async function loadDocument(p: EditorInterfaceLoading) {
       });
     });
   }
-
-  console.log(savedComponents);
 
   doc.info = {
     id: `${documentID}`,

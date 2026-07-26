@@ -1,4 +1,4 @@
-import { reconstructHTMLString } from "../docsyncing";
+import { reconstructHTMLString } from "../documents/docsyncing";
 import type { SavedComponent } from "../store.svelte";
 import { decodeComponentStr } from "./component.svelte";
 

@@ -6,8 +6,10 @@
   import ComponentMetaEdit, {
     dClassComponentMetaEdit,
   } from "./components/ComponentMetaEdit.svelte";
-  import DocMetaEdit, { dClassDocMetaEdit } from "./DocMetaEdit.svelte";
-  import MediaTray, { dClassMediaTray } from "./MediaTray.svelte";
+  import DocMetaEdit, {
+    dClassDocMetaEdit,
+  } from "./documents/DocMetaEdit.svelte";
+  import MediaTray, { dClassMediaTray } from "./documents/MediaTray.svelte";
 
   import TreeView from "phosphor-svelte/lib/TreeViewIcon";
   import SquaresFour from "phosphor-svelte/lib/SquaresFourIcon";
@@ -61,12 +63,10 @@
 <svelte:body
   onclick={(e) => {
     // Note, <svg> is NOT considered a HTMLElement, but is considered an Element
-    if (
-      !(
-        e.target instanceof Element &&
-        (e.target.closest(".topbar") || !e.target.isConnected)
-      )
-    )
+    if (!(
+      e.target instanceof Element &&
+      (e.target.closest(".topbar") || !e.target.isConnected)
+    ))
       dropdown = "none";
   }}
 />

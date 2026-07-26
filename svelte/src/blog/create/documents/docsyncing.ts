@@ -1,5 +1,5 @@
-import { closestClass, getNodeParents } from "./helper";
-import { maskedAttributes } from "./store.svelte";
+import { closestClass, getNodeParents } from "../helper";
+import { maskedAttributes } from "../store.svelte";
 import { fetch_ } from "/shared/helper";
 import he from "he";
 

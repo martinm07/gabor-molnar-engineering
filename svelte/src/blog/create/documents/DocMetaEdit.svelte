@@ -1,5 +1,6 @@
 <script module lang="ts">
-  export const dClassDocMetaEdit = "absolute w-[96%] left-[2%] h-[calc(100vh-4rem)] bg-white z-10 top-12 border-2 border-t-0 rounded-b-lg border-rock-300 overflow-y-scroll shadow-[0_30px_5px_20px_var(--background-50)]"; //t
+  export const dClassDocMetaEdit =
+    "absolute w-[96%] left-[2%] h-[calc(100vh-4rem)] bg-white z-10 top-12 border-2 border-t-0 rounded-b-lg border-rock-300 overflow-y-scroll shadow-[0_30px_5px_20px_var(--background-50)]"; //t
 </script>
 
 <script lang="ts">
@@ -8,11 +9,11 @@
     allDocumentTags,
     autocompleteSuggestions,
     doc,
-  } from "./store.svelte";
+  } from "../store.svelte";
   import FitContentWrapTextarea from "/shared/components/FitContentWrapTextarea.svelte";
-  import { TagsEditor } from "./components/ComponentMetaEdit.svelte";
+  import { TagsEditor } from "../components/ComponentMetaEdit.svelte";
   import { fetch_ } from "/shared/helper";
-  import { deepEqual } from "./helper";
+  import { deepEqual } from "../helper";
 
   function validateTitle(title: string) {
     if (title.length === 0) return "Title required";
@@ -215,8 +216,7 @@
     class="border-2 border-rock-300 rounded grow h-28 p-1 bg-background focus:bg-white outline-none focus:ring-4 ring-steel-200 text-rock-600 font-mono"
     name="edit-thumbnail"
     id="edit-thumbnail"
-    bind:value={doc.info.thumbnail}
-  ></textarea>
+    bind:value={doc.info.thumbnail}></textarea>
 </div>
 
 <div class="flex px-4 mt-5 max-w-3xl mx-auto">
@@ -261,7 +261,11 @@
       {:else}
         {let respText = $state("")}
         {const _ = resp.text().then((text) => (respText = text))}
-        <div class="text-red-700 font-bold">({resp.status}) Something went wrong. Message:<br /><span class="font-normal">{respText}</span></div>
+        <div class="text-red-700 font-bold">
+          ({resp.status}) Something went wrong. Message:<br /><span
+            class="font-normal">{respText}</span
+          >
+        </div>
       {/if}
     {:catch}
       <div class="text-red-700 font-bold">Something went wrong.</div>
@@ -270,7 +274,7 @@
 </div>
 
 <style>
-  @reference "../../shared/tailwindinit.css";
+  @reference "../../../shared/tailwindinit.css";
 
   :global {
     #edit-tags-doc span.space {

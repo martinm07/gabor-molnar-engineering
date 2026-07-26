@@ -8,7 +8,7 @@ import {
   doc,
 } from "../store.svelte";
 import { editorState } from "../url.svelte";
-import { type DocNodeMap } from "../docsyncing";
+import { type DocNodeMap } from "../documents/docsyncing";
 import {
   getAllChildNodes,
   getNextElement,

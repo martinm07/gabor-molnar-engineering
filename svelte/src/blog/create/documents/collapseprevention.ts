@@ -3,8 +3,8 @@ import {
   getAllTextNodes,
   lastChild,
   nextElementSibling,
-} from "./helper";
-import { mode } from "./store.svelte";
+} from "../helper";
+import { mode } from "../store.svelte";
 import { request2AnimationFrames } from "/shared/helper";
 
 function removeTextContent(node: Node) {

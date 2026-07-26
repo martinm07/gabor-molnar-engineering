@@ -1,9 +1,10 @@
-import type { IAddNode } from "./cursormodes/AddNode.svelte";
-import type { IEditText } from "./cursormodes/EditText.svelte";
-import type { IMultipleSelect } from "./cursormodes/MultipleSelect.svelte";
-import { parseHTMLFragment } from "./helper";
-import { selection, mode } from "./store.svelte";
+import type { IAddNode } from "../cursormodes/AddNode.svelte";
+import type { IEditText } from "../cursormodes/EditText.svelte";
+import type { IMultipleSelect } from "../cursormodes/MultipleSelect.svelte";
 import type { HistoryManager } from "./history";
+
+import { parseHTMLFragment } from "../helper";
+import { selection, mode } from "../store.svelte";
 
 interface EditorInterfaceKeyboard {
   multipleSelect?: IMultipleSelect;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reconstructHTMLString } from "../docsyncing";
+import { reconstructHTMLString } from "../documents/docsyncing";
 
 describe("reconstructHTMLStr", () => {
   it("handles basic elements", () => {

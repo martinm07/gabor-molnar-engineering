@@ -37,7 +37,7 @@
     changeElToComp,
     componentNameValid,
   } from "../../components/component.svelte";
-  import type { TempMutationRecord } from "../../docsyncing";
+  import type { TempMutationRecord } from "../../documents/docsyncing";
   import { closest } from "../../helper";
 
   const updateHighlight: () => void = getContext("updateHighlight");

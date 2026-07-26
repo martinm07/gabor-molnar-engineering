@@ -3,7 +3,7 @@ import {
   comps,
   generateCompContentStr,
   updateCompEdit,
-} from "./components/component.svelte";
+} from "../components/component.svelte";
 import {
   reconstructHTMLString,
   patchMutations,
@@ -19,8 +19,8 @@ import {
   localSave,
   localSaveEntryIsDoc,
   pruneLocalSave,
-} from "./store.svelte";
-import { editorState } from "./url.svelte";
+} from "../store.svelte";
+import { editorState } from "../url.svelte";
 import { fetch_ } from "/shared/helper";
 
 const getDocumentID = () =>

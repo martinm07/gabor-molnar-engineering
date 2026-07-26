@@ -11,10 +11,9 @@
     docMetaFields,
     type DocumentInfo,
     type TDocMetaFields,
-  } from "./store.svelte";
-  import { getContext } from "svelte";
+  } from "../store.svelte";
   import type { SaveDoc } from "./docsaving.svelte";
-  import { deepEqual } from "./helper";
+  import { deepEqual } from "../helper";
 
   interface Props {
     docEl: HTMLElement;

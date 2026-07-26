@@ -15,7 +15,7 @@
     fetchedMediaFiles,
     fileStates,
     mediaFiles,
-  } from "./store.svelte";
+  } from "../store.svelte";
   import { untrack } from "svelte";
   import { fly } from "svelte/transition";
 
