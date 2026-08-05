@@ -1,6 +1,10 @@
-import { closestClass, getNodeParents } from "../helper";
+import {
+  getNodeParents,
+  isHistoryNotBody,
+  isHistoryNotBodyContainer,
+  isNotBody,
+} from "../helper";
 import { maskedAttributes } from "../store.svelte";
-import { fetch_ } from "/shared/helper";
 import he from "he";
 
 export type DocNodeEntry =
@@ -25,6 +29,8 @@ export type DocPatchStr = {
   value: string;
   start: number;
   length: number;
+  // This stores what needs to change about the patch for us to ignore history-not-body elements
+  correction: number;
 };
 export type DocPatchDom = {
   forwardStart: number;
@@ -132,7 +138,7 @@ function getNodeSourceRepresentation(node: Node): string {
   }
 }
 
-function getElementString(
+export function getElementString(
   el: Element,
 ): [startingTag: string, closingTag: string | null] {
   // Serialize the HTML opening tag into a string, taking into account attribute masks
@@ -174,10 +180,18 @@ function isVoidEl(el: Element) {
  */
 export function reconstructHTMLString(
   startNode: Node,
-  p: { docNodes?: DocNodeMap; docContainer: Node; debug?: boolean },
-  includeContainer: boolean = true,
+  p: {
+    docNodes?: DocNodeMap;
+    docContainer: Node;
+    includeContainer?: boolean;
+    includeHistoryNotBodyEls?: boolean;
+    debug?: boolean;
+  },
 ): [finalStr: string, docNodes: DocNodeMap] {
   const docNodes: DocNodeMap = p.docNodes ?? new Map();
+  let includeContainer = p.includeContainer ?? true;
+  const includeHistoryNotBodyEls = p.includeHistoryNotBodyEls ?? true;
+
   for (const parentEl of getNodeParents(startNode, p.docContainer)) {
     if (isVoidEl(parentEl)) {
       if (p.debug)
@@ -197,7 +211,11 @@ export function reconstructHTMLString(
     startNode,
     NodeFilter.SHOW_ALL,
     (node) => {
-      if (isNotBody(node)) return NodeFilter.FILTER_REJECT;
+      if (
+        isNotBody(node) ||
+        (!includeHistoryNotBodyEls && isHistoryNotBody(node))
+      )
+        return NodeFilter.FILTER_REJECT;
       else return NodeFilter.FILTER_ACCEPT;
     },
   );
@@ -451,10 +469,24 @@ function handleNodeAdd(
     );
   };
 
-  p.docNodes.forEach((val) => {
+  let historyNotBodyCorrection = isHistoryNotBody(node) ? -1 : 0;
+
+  p.docNodes.forEach((val, el) => {
     if (val.stringPos < startIndex && isPrevNode(val, startIndex))
       prevNode = val;
     else if (val.stringPos >= startIndex) val.stringPos += fullString.length;
+
+    // While we're looping through docNodes, we make use of the opportunity to also handle history-not-body elements
+    //  (finding the corrections to string positions that would be needed for patches to work in a HTML string without these elements).
+    if (
+      historyNotBodyCorrection !== -1 &&
+      isHistoryNotBodyContainer(el) &&
+      val.stringPos < startIndex
+    ) {
+      // Note it doesn't matter that is after doing the index shifting, as we only index shift elements that appear later;
+      //  any relevant history-not-body elements will be those that appear before the position we're inserting the node into the string.
+      historyNotBodyCorrection += val.stringLen;
+    }
   });
   // Any provided DOM patches, plus the list of already generated patches by this function, must be index shifted.
   [...(p.currentPatches ?? []), ...newPatches].forEach((patch) => {
@@ -510,6 +542,7 @@ function handleNodeAdd(
     value: fullString,
     start: startIndex,
     length: 0,
+    correction: historyNotBodyCorrection,
   };
   const domPatch: DocPatch["dom"] = {
     forwardStart: prevNode?.stringPos ?? -1,
@@ -559,6 +592,7 @@ function handleNodeRemove(
   //  and this object isn't replaced, the type the DOM patch resolves to is "removeFirstChild"
   //  (so that when undoing, the prevNode can be set to the parent el of the document and the function knows we should be adding the node as a first child to that)
   let prevNodeInfo = { stringPos: -1, stringLen: Infinity, startTagLen: -1, isEl: true, parentList: [] } as DocNodeEntry;
+  // let prevNode
 
   const isPrevNode = (candidate: DocNodeEntry, node: DocNodeEntry) => {
     return (
@@ -570,6 +604,16 @@ function handleNodeRemove(
 
   const subPosStarts: number[] = [];
   const subPosEnds: number[] = [];
+
+  // We also need to check all the parents to see if one is a history-not-body element,
+  //  because when handleNodeRemove has been called on this node, it has already been disconnected from the DOM
+  //  (and it's technically possible for any of its parents to also be disconnected, say a later mutation is removing the parent of this node,
+  //   then both are "independently disconnected" from the DOM and from each other).
+  let historyNotBodyCorrection = [node, ...nodeInfo.parentList].some(
+    (nodeOrParent) => isHistoryNotBody(nodeOrParent),
+  )
+    ? -1
+    : 0;
 
   // Also delete all the children. Cannot exactly rely on getAllChildNodes, because
   //  there may have been removals also happening that stop what is considered a child
@@ -598,6 +642,18 @@ function handleNodeRemove(
       isPrevNode(val, nodeInfo)
     ) {
       prevNodeInfo = val;
+    }
+
+    // While we're looping through docNodes, we make use of the opportunity to also handle history-not-body elements
+    //  (finding the corrections to string positions that would be needed for patches to work in a HTML string without these elements).
+    if (
+      historyNotBodyCorrection !== -1 &&
+      isHistoryNotBodyContainer(key) &&
+      val.stringPos < nodeInfo.stringPos
+    ) {
+      // Note it doesn't matter that is after doing the index shifting, as we only index shift elements that appear later;
+      //  any relevant history-not-body elements will be those that appear before the position we're inserting the node into the string.
+      historyNotBodyCorrection += val.stringLen;
     }
   });
 
@@ -665,6 +721,7 @@ function handleNodeRemove(
     value: "",
     start: nodeInfo.stringPos,
     length: nodeInfo.stringLen,
+    correction: historyNotBodyCorrection,
   };
   const domPatch: DocPatch["dom"] = {
     forwardStart: nodeInfo.stringPos,
@@ -727,11 +784,25 @@ function handleAttributeChange(
   const [newStartTag] = getElementString(el);
   const lenDiff = newStartTag.length - nodeInfo.startTagLen;
 
+  let historyNotBodyCorrection = isHistoryNotBody(el) ? -1 : 0;
+
+  // Note, this can't be in the lenDiff !== 0 because patches still need their historyNotBodyCorrection factor calculated
+  p.docNodes.forEach((val, key) => {
+    if (val.stringPos >= nodeInfo.stringPos + nodeInfo.startTagLen)
+      val.stringPos += lenDiff;
+
+    // While we're looping through docNodes, we make use of the opportunity to also handle history-not-body elements
+    //  (finding the corrections to string positions that would be needed for patches to work in a HTML string without these elements).
+    if (
+      historyNotBodyCorrection !== -1 &&
+      isHistoryNotBodyContainer(key) &&
+      val.stringPos < nodeInfo.stringPos
+    ) {
+      historyNotBodyCorrection += val.stringLen;
+    }
+  });
+
   if (lenDiff !== 0) {
-    p.docNodes.forEach((val) => {
-      if (val.stringPos >= nodeInfo.stringPos + nodeInfo.startTagLen)
-        val.stringPos += lenDiff;
-    });
     // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
     p.currentPatches?.forEach((patch) => {
       if (
@@ -761,6 +832,7 @@ function handleAttributeChange(
     value: newStartTag,
     start: nodeInfo.stringPos,
     length: nodeInfo.startTagLen,
+    correction: historyNotBodyCorrection,
   };
   const domPatch: DocPatch["dom"] = {
     forwardStart: nodeInfo.stringPos,
@@ -815,11 +887,24 @@ function handleCharacterDataChange(
   const newNodeStr = getNodeSourceRepresentation(node);
   const lenDiff = newNodeStr.length - nodeInfo.stringLen;
 
+  let historyNotBodyCorrection = isHistoryNotBody(node) ? -1 : 0;
+
+  // Note, this can't be in the lenDiff !== 0 because patches still need their historyNotBodyCorrection factor calculated
+  p.docNodes.forEach((val, key) => {
+    if (val.stringPos >= nodeInfo.stringPos + nodeInfo.stringLen)
+      val.stringPos += lenDiff;
+
+    // While we're looping through docNodes, we make use of the opportunity to also handle history-not-body elements
+    //  (finding the corrections to string positions that would be needed for patches to work in a HTML string without these elements).
+    if (
+      historyNotBodyCorrection !== -1 &&
+      isHistoryNotBodyContainer(key) &&
+      val.stringPos < nodeInfo.stringPos
+    ) {
+      historyNotBodyCorrection += val.stringLen;
+    }
+  });
   if (lenDiff !== 0) {
-    p.docNodes.forEach((val) => {
-      if (val.stringPos >= nodeInfo.stringPos + nodeInfo.stringLen)
-        val.stringPos += lenDiff;
-    });
     // If a list of DOM patches was provided, the stringPos entries in those objects also need to be index shifted
     p.currentPatches?.forEach((patch) => {
       if (
@@ -850,6 +935,7 @@ function handleCharacterDataChange(
     value: newNodeStr,
     start: nodeInfo.stringPos,
     length: nodeInfo.stringLen,
+    correction: historyNotBodyCorrection,
   };
   const domPatch: DocPatch["dom"] = {
     forwardStart: nodeInfo.stringPos,
@@ -950,6 +1036,55 @@ export function processMutations(
   mutations: MutationRecord[],
 ): TempMutationRecord[] {
   const final: TempMutationRecord[] = mutations.flatMap((record) => {
+    handleAddEmptyTextNode: if (
+      record.type === "characterData" &&
+      record.oldValue === "" &&
+      record.target.textContent !== ""
+    ) {
+      if (!record.target.parentNode) {
+        console.error(
+          "When handling characterData mutation on formerly empty text node in processMutations(), the node somehow didn't have a parent",
+        );
+        break handleAddEmptyTextNode;
+      }
+      console.log(
+        "🎈🎈🎈 Converting characterData add-type mutation to childList mutation to simulate adding a text node formerly had a length of 0",
+      );
+      return {
+        target: record.target.parentNode,
+        type: "childList",
+        attributeName: null,
+        oldValue: null,
+        removedNode: null,
+        addedNode: record.target,
+        previousSibling: record.previousSibling,
+      };
+    }
+
+    handleRemoveEmptyTextNode: if (
+      record.type === "characterData" &&
+      record.target.textContent === ""
+    ) {
+      if (!record.target.parentNode) {
+        console.error(
+          "When handling characterData mutation on formerly empty text node in processMutations(), the node somehow didn't have a parent",
+        );
+        break handleRemoveEmptyTextNode;
+      }
+      console.log(
+        "🎈🎈🎈 Converting characterData mutation to childList remove-type mutation to simulate removing a text node that now has a length of 0",
+      );
+      return {
+        target: record.target.parentNode,
+        type: "childList",
+        attributeName: null,
+        oldValue: null,
+        removedNode: record.target,
+        addedNode: null,
+        previousSibling: record.previousSibling,
+      };
+    }
+
     const total =
       record.type === "childList"
         ? record.addedNodes.length + record.removedNodes.length
@@ -971,9 +1106,6 @@ export function processMutations(
 
   return final;
 }
-
-const isNotBody = (node?: Node | null) =>
-  Boolean(closestClass(node, "not-body"));
 
 const truePreviousSibling = (node?: Node | null): Node | null => {
   if (isNotBody(node))
@@ -1166,9 +1298,23 @@ export function patchMutations(
   // We do this instead of assigning an empty Map to ensure the reference to stringPosNodeMap in App.svelte doesn't break
   p.stringPosNodeMap.forEach((_, key) => p.stringPosNodeMap.delete(key));
 
-  p.docNodes.forEach((info, node) =>
-    p.stringPosNodeMap.set(info.stringPos, node),
-  );
+  const filteredPatches: DocPatch[] = [];
+  const corrections: { start: number; len: number }[] = [];
+
+  p.docNodes.forEach((info, node) => {
+    p.stringPosNodeMap.set(info.stringPos, node);
+
+    if (isHistoryNotBody(node)) {
+      corrections.push({
+        start: info.stringPos,
+        len: info.stringLen,
+      });
+    }
+  });
+
+  patches.forEach((patch) => {
+    // Patch could be remove-type, and hence refer to a node that doesn't exist in the latest HTML string
+  });
 
   return [
     patches,
@@ -1190,7 +1336,10 @@ export function generatePosNodes(
   docNodes.forEach((info, node) => stringPosNodeMap.set(info.stringPos, node));
 }
 
-export function applyPatches(docStr: string, patches: DocPatch[]) {
+export function applyPatches(
+  docStr: string,
+  patches: { str_: { start: number; length: number; value: string } }[],
+) {
   // debugger;
   for (const patch of patches) {
     // debugger;

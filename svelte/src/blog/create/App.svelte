@@ -4,8 +4,8 @@
     type INodeSelect,
   } from "./cursormodes/NodeSelect.svelte";
   import EditText, { type IEditText } from "./cursormodes/EditText.svelte";
-  import Sidebar from "./Sidebar.svelte";
-  import Topbar from "./Topbar.svelte";
+  import Sidebar from "./ui/Sidebar.svelte";
+  import Topbar from "./ui/Topbar.svelte";
   import { PersistedState, useMutationObserver, watch } from "runed";
   import { onDestroy, setContext } from "svelte";
   import {
@@ -13,6 +13,7 @@
     selection,
     autocompleteMode,
     type SavedComponent,
+    doc,
   } from "./store.svelte";
   import { editorState } from "./url.svelte";
   import AddNode, { type IAddNode } from "./cursormodes/AddNode.svelte";
@@ -145,6 +146,7 @@
 
   const LOG_PATCH_SYNC = false;
   const LOG_DOC_HIST = false;
+  const LOG_DOC_SAVING = false;
   const DO_SERVER_SYNC = true;
 
   const docNodes: DocNodeMap = new Map();
@@ -166,6 +168,7 @@
   setContext("suggestCreateNewHistoryItem", () =>
     historyManager.suggestCreateNewHistoryItem(),
   );
+  setContext("bookmarkState", () => historyManager.bookmarkState());
 
   // --- References to these won't stay fresh; since they're constantly being reassigned by patchMutations()
   /** For mapping what used to be the most up-to-date node string position values, to the new up-to-date locations. */
@@ -181,6 +184,7 @@
 
   const componentElStyles = new DynamicStylesheet<string>();
   onDestroy(() => componentElStyles.destroy());
+  setContext("getComponentElStyles", () => componentElStyles);
 
   // This observer is to
   //  1- disallow non-element nodes as direct children of docEl.
@@ -196,10 +200,80 @@
   const { stop } = useMutationObserver(
     () => docEl,
     (mutations) => {
-      // console.log("mutation observer triggered", mutations);
+      console.log("mutation observer triggered", mutations);
 
       // (1) and (2) and (3), essentially; prevent and clean up elements/nodes that can't be interacted with
-      handleCollapsePrevention(mutations, docEl);
+
+      // Note, collapse prevention can mess with undo/redo, due to potential-locations.
+      // The behaviour of handleCollapsePrevention() can change depending on if there are potential-locations present,
+      //  which don't sync to the document's HTML string and hence aren't included by undo/redo. This may cause the function
+      //  to "correct" the resulting HTML document after an undo or redo, issuing a DOM mutation in the same microtask
+      //  and hence getting ignored by HistoryManager.addToHistoryStack because flagHistoryStateChange is true
+      //  (not that we'd want to lose all the history we have arbitrarily like that anyway).
+      // Anyway, we shouldn't really want collapse prevention the user is actively editing (which would they aren't "in history"- i.e.
+      //  actively undoing/redoing), so we just disable it when that's true.
+      if (!historyManager.isInHistory)
+        handleCollapsePrevention(mutations, docEl);
+
+      //// We can use this to (potentially) improve performance, with elements being checked multiple times, if necessary
+      const alreadyChecked: Set<Element> = new Set();
+
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((addedNode) => {
+          if (!(addedNode instanceof Element)) return;
+
+          const walker = document.createTreeWalker(
+            addedNode,
+            NodeFilter.SHOW_ELEMENT,
+          );
+          let current: Element | null = walker.currentNode as Element;
+          while (current) {
+            if (!alreadyChecked.has(current)) {
+              checkDataID(current);
+              syncDataStyleAttrs(current, dataStyles);
+              if (!mode.disabled) protectInheritedAttrs(current);
+              alreadyChecked.add(current);
+            }
+
+            current = walker.nextNode() as Element | null;
+          }
+        });
+
+        if (mutation.type === "attributes") {
+          const el = mutation.target as Element;
+
+          if (!alreadyChecked.has(el)) {
+            checkDataID(
+              el,
+              mutation.attributeName as string,
+              mutation.oldValue as string,
+            );
+            syncDataStyleAttrs(
+              el,
+              dataStyles,
+              mutation.attributeName as string,
+            );
+            if (!mode.disabled) protectInheritedAttrs(el);
+            alreadyChecked.add(el);
+          }
+        }
+      });
+
+      function checkDataID(
+        el: Element,
+        modifiedAttribute?: string,
+        oldValue?: string,
+      ) {
+        if (
+          el.hasAttribute("data-id") ||
+          (modifiedAttribute && modifiedAttribute !== "data-id")
+        )
+          return;
+
+        const dataID = oldValue || crypto.randomUUID();
+        // console.log("Setting data ID of element", el, dataID);
+        el.setAttribute("data-id", dataID);
+      }
 
       // 4) inform the CSS editor and Attribute editor about updates
       const styleMutationTargets = mutations
@@ -217,71 +291,25 @@
       cssEditor?.syncElementInlineStyles(styleMutationTargets);
       attributesEditor?.syncElementAttributes(attributeMutationTargets);
 
-      //// We can use this to (potentially) improve performance, with elements being checked multiple times, if necessary
-      // const alreadyChecked: Set<Element> = new Set();
-
-      mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((addedNode) => {
-          if (!(addedNode instanceof Element)) return;
-
-          const walker = document.createTreeWalker(
-            addedNode,
-            NodeFilter.SHOW_ELEMENT,
-          );
-          let current: Element | null = walker.currentNode as Element;
-          while (current) {
-            checkDataID(current);
-            syncDataStyleAttrs(current, dataStyles);
-            protectInheritedAttrs(current);
-
-            current = walker.nextNode() as Element | null;
-          }
-        });
-
-        if (mutation.type === "attributes") {
-          const el = mutation.target as Element;
-
-          checkDataID(
-            el,
-            mutation.attributeName as string,
-            mutation.oldValue as string,
-          );
-          syncDataStyleAttrs(el, dataStyles, mutation.attributeName as string);
-          protectInheritedAttrs(el);
-        }
-      });
-
-      function checkDataID(
-        el: Element,
-        modifiedAttribute?: string,
-        oldValue?: string,
-      ) {
-        if (
-          el.hasAttribute("data-id") ||
-          (modifiedAttribute && modifiedAttribute !== "data-id")
-        )
-          return;
-
-        const dataID = oldValue || crypto.randomUUID();
-        console.log("Setting data ID of element", el, dataID);
-        el.setAttribute("data-id", dataID);
-      }
-
-      setTimeout(() => {
-        docMeta?.informMetaUpdate(mutations);
-      });
-
       // 5) collect mutations for further processing at the end of the event cycle
       // This lets us have certain expectations when creating patches, such as
       //  "if we encounter an element not connected to the DOM, then some mutation in the provided set removes it"
       //   -> Theoretically, this should only be relevant when within this MutationObserver callback we remove the node.
       //      As otherwise, the mutations ARE grouped together.
-      collectedMutations.push(...processMutations(mutations));
+      const processed = processMutations(mutations);
+      collectedMutations.push(...processed);
+
+      // We use a setTimeout, to guarantee that Svelte has time to reflect changes from doc.info into the document-meta-data elements of DocMeta.svelte,
+      //  BEFORE this function calls to reflect the changes in the document-meta-data into doc.info
+      // setTimeout(() => docMeta?.informMetaUpdate(processed));
+
+      docMeta?.informMetaUpdate(processed);
     },
     {
       subtree: true,
       attributes: true,
       attributeOldValue: true,
+      characterDataOldValue: true,
       characterData: true,
       childList: true,
     },
@@ -320,15 +348,16 @@
     docNodes,
     stringPosNodeMap,
     doServerSync: DO_SERVER_SYNC,
+    debug: LOG_DOC_SAVING,
   });
 
   const patchInterval = setInterval(() => {
     if (!docEl || collectedMutations.length === 0) return;
 
     if (LOG_PATCH_SYNC)
-      console.group(
+      console.groupCollapsed(
         `Patch syncing ${collectedMutations.length} mutations:`,
-        collectedMutations,
+        [...collectedMutations],
       );
 
     let patches: DocPatch[];
@@ -412,9 +441,11 @@
 >
   <div
     style="scrollbar-color: var(--rock-100) var(--background);"
-    class="row-span-2 border-r-2 border-rock-300 bg-background p-2 overflow-y-scroll"
+    class="row-span-2 border-r-2 border-rock-300 bg-background overflow-y-scroll"
   >
-    <Sidebar bind:attributesEditor bind:cssEditor />
+    <div class="h-fit relative p-2">
+      <Sidebar bind:attributesEditor bind:cssEditor />
+    </div>
   </div>
   <div
     class="topbar flex relative border-b-2 border-rock-300 bg-rock-50 bg-opacity-85"
@@ -433,9 +464,12 @@
     {/if}
 
     <div class="relative h-fit w-full flex justify-center">
-      <div class="doc w-3/4 max-w-[600px]" bind:this={docEl}>
+      <!-- The document itself should have a single containing element, that can have the styles
+               width: min(75%, 600px); margin: 0 auto;
+           for example. -->
+      <div class="doc w-full" bind:this={docEl}>
         <DocMeta {docEl} {docSaver} bind:this={docMeta} />
-        Loading document...
+        <div class="w-3/4 max-w-[600px] mx-auto">Loading document...</div>
       </div>
     </div>
   </div>
@@ -459,3 +493,17 @@
 </div>
 
 <SaveChanges />
+
+{#if doc.is404}
+  <div
+    class="fixed flex bottom-3 right-3 bg-orange-200 rounded px-4 py-2 text-orange-800 text-lg/6 font-bold"
+  >
+    <div class="mr-1">!!!</div>
+    <div>
+      This document (ID {doc.info.id}) does not exist on the server.<br />
+      <span class="italic font-normal text-base"
+        >Changes will be saved locally, but can't be saved on the server.</span
+      >
+    </div>
+  </div>
+{/if}

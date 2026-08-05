@@ -531,6 +531,15 @@ export class DynamicStylesheet<T> {
       });
   }
 
+  clear() {
+    Array.from(this.stylesheetPosMap.entries())
+      .toSorted((a, b) => b[1] - a[1])
+      .forEach(([key, index]) => {
+        this.stylesheet.deleteRule(index);
+        this.stylesheetPosMap.delete(key);
+      });
+  }
+
   destroy() {
     const i = document.adoptedStyleSheets.indexOf(this.stylesheet);
     if (i === -1) {
@@ -544,3 +553,19 @@ export class DynamicStylesheet<T> {
     document.adoptedStyleSheets.splice(i, 1);
   }
 }
+
+export const isNotBody = (node?: Node | null) =>
+  Boolean(closestClass(node, "not-body"));
+
+export const isHistoryNotBody = (node?: Node | null) =>
+  Boolean(closestClass(node, "history-not-body"));
+
+export const isNotBodyContainer = (node?: Node | null) =>
+  node instanceof Element &&
+  node.classList.contains("not-body") &&
+  !isNotBody(node.parentElement);
+
+export const isHistoryNotBodyContainer = (node?: Node | null) =>
+  node instanceof Element &&
+  node.classList.contains("history-not-body") &&
+  !isHistoryNotBody(node.parentElement);

@@ -65,23 +65,23 @@ export function getCSSProps(
   el: Element,
   useStylesheets: boolean = true,
   statesToForce: ReadonlySet<string> = new Set(),
-  inlineStyleAttribute: string = "style"
+  inlineStyleAttribute: string = "style",
 ) {
   let { matchingRules: rules } = resolveCascadeForElement(
     el,
     useStylesheets ? allRules : [],
     statesToForce,
-    inlineStyleAttribute
+    inlineStyleAttribute,
   );
+
+  // if (statesToForce.has("hover")) console.log("🎈🎈🎈", rules);
 
   // 1) Do not consider a rule or its properties if it was inherited,
   //     or applies to every element,
   //     or applies by a pseudo class (e.g. ":hover" or ":focus")
 
   rules = rules.filter(
-    (rule) =>
-      isInlineStyle(rule.specificity) ||
-      !alwaysApplies(rule.selector),
+    (rule) => isInlineStyle(rule.specificity) || !alwaysApplies(rule.selector),
   );
 
   // Get flat list of all properties (we are no longer considering the selector after step 1)

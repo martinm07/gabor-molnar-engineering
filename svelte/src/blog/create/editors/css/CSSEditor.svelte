@@ -143,7 +143,24 @@
     return final;
   }
 
-  function parseStylesStr(
+  /**
+   * Take the intersection of styles to have the same name and value
+   * @param s1 The first list of styles
+   * @param s2 The second list of styles
+   */
+  export function stylesIntersection(
+    s1: StylesList,
+    s2: StylesList,
+  ): StylesList {
+    const final: StylesList = [];
+    for (const kvPair of s1) {
+      if (s2.some(([k, v]) => k === kvPair[0] && v === kvPair[1]))
+        final.push(kvPair);
+    }
+    return final;
+  }
+
+  export function parseStylesStr(
     inp?: HTMLElement | string,
   ): [string, StylesList, string] {
     let str = typeof inp === "string" ? inp : (inp?.textContent ?? "");
@@ -230,9 +247,8 @@
   interface Props {
     syncAttrName: string;
     selected: Element[];
-    disabled: boolean;
   }
-  let { syncAttrName, selected, disabled }: Props = $props();
+  let { syncAttrName, selected }: Props = $props();
 
   type StylesList = [k: string, v: string][];
 
@@ -249,16 +265,14 @@
     let commonStyles: StylesList | undefined;
     for (const target of selection) {
       let styles_ = styleCache.get(target, syncAttrName);
-      if (!styles_) {
+      if (!styles_ && target.hasAttribute(syncAttrName)) {
         let genStyles: [k: string, v: string][];
-        if (target.hasAttribute("data-component")) genStyles = [];
-        else
-          genStyles = getCSSProps(
-            target,
-            true,
-            statesToForce,
-            inlineStyleAttribute,
-          );
+        genStyles = getCSSProps(
+          target,
+          target.hasAttribute("data-component") ? false : true,
+          statesToForce,
+          inlineStyleAttribute,
+        );
 
         styleCache.set(target, syncAttrName, genStyles);
         target.setAttribute(
@@ -268,7 +282,7 @@
         styles_ = genStyles;
       }
       commonStyles = commonStyles
-        ? stylesIntersection(commonStyles, styles_)
+        ? stylesIntersection(commonStyles, styles_ ?? [])
         : styles_;
     }
 
@@ -278,16 +292,6 @@
       .map((style) => `${style[0]}:${style[1]};`)
       .join(""); // NOTE: Changed from " " to ""
     return [styleStr, commonStyles];
-  }
-
-  // Take the intersection of styles to have the same name and value
-  function stylesIntersection(s1: StylesList, s2: StylesList): StylesList {
-    const final: StylesList = [];
-    for (const kvPair of s1) {
-      if (s2.some(([k, v]) => k === kvPair[0] && v === kvPair[1]))
-        final.push(kvPair);
-    }
-    return final;
   }
 
   watch(
@@ -381,6 +385,7 @@
    */
   export function syncElementInlineStyles(x: Node | Node[]): void {
     const syncInlineStyles = (el: Element) => {
+      // console.log("Syncing styles for element", el);
       const statesToForce = attrNameToStatesToForce(syncAttrName);
       const inlineStyleAttribute = syncAttrName;
 
@@ -388,9 +393,7 @@
       //        that isn't necessary. It might be worth to optimize (though at the moment this function
       //        is called sparingly thanks to the performedMutation check, so it isn't really necessary)
       let genStyles: [k: string, v: string][];
-      if (el.hasAttribute("data-component")) genStyles = [];
-      else
-        genStyles = getCSSProps(el, false, statesToForce, inlineStyleAttribute);
+      genStyles = getCSSProps(el, false, statesToForce, inlineStyleAttribute);
 
       styleCache.set(el, syncAttrName, genStyles);
 
@@ -851,10 +854,8 @@
     beforeInputFindRemovedColons(e);
   }}
   onkeydown={onKeydown}
-  class="styles-display font-mono inline-block text-left text-rock-700 bg-steel-100 p-2 rounded focus:outline-none text-sm [.disabled]:opacity-50 [.disabled]:pointer-events-none"
-  aria-disabled={disabled}
-  tabindex={disabled ? -1 : 0}
-  class:disabled
+  class="styles-display font-mono inline-block text-left text-rock-700 bg-steel-100 p-2 rounded focus:outline-none text-sm"
+  tabindex="0"
 >
   {@html styles}
 </div>

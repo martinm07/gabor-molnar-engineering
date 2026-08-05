@@ -2,7 +2,7 @@
   import { fly } from "svelte/transition";
   import { compLibEdits } from "../store.svelte";
   import { editorState } from "../url.svelte";
-  import { saveLibChanges, discardLibChanges } from "./component.svelte";
+  import { saveLibChanges, discardLibChanges } from "./libraryeditor.svelte";
   import { tada } from "/shared/helper";
   import TrashIcon from "phosphor-svelte/lib/TrashIcon";
 
@@ -80,8 +80,7 @@
           id="lib-change-desc"
           placeholder="More complete description of changes and their intents (Optional)"
           class="border-2 rounded border-rock-300 grow max-w-96 bg-white text-rock-800 px-3 py-1.5 outline-none focus:ring-4 ring-steel-200"
-          bind:value={commitDesc}
-        ></textarea>
+          bind:value={commitDesc}></textarea>
       </div>
     </form>
     <button

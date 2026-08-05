@@ -12,9 +12,8 @@
 
   interface Props {
     selected: Element[];
-    disabled: boolean;
   }
-  let { selected, disabled }: Props = $props();
+  let { selected }: Props = $props();
 
   const changeElementInMasks: (oldEl: Element, newEl: Element) => void =
     getContext("changeElementInMasks");
@@ -211,21 +210,19 @@
   onkeydown={onKeydown}
   contenteditable="true"
   class:invalid={!tagNameURL}
-  class="tagname-display bg-steel-100 p-2 rounded font-mono text-lg font-bold text-rock-700 focus:outline-none [.disabled]:opacity-50 [.disabled]:pointer-events-none"
-  aria-disabled={disabled}
+  class="tagname-display bg-steel-100 p-2 rounded font-mono text-lg font-bold text-rock-700 focus:outline-none"
   role="textbox"
   spellcheck="false"
-  class:disabled
-  tabindex={disabled ? -1 : 0}
+  tabindex="0"
 >
   &#60;<span>{tagName}</span>&#62;
 </span><a
   href={tagNameURL}
   target="_blank"
-  class:disabled={!tagNameURL || disabled}
-  aria-disabled={!tagNameURL || disabled}
+  class:disabled={!tagNameURL}
+  aria-disabled={!tagNameURL}
   class="text-xl hover:opacity-60 [.disabled]:opacity-50 [.disabled]:pointer-events-none text-rock-700 inline-block ml-1"
-  tabindex={!tagNameURL || disabled ? -1 : 0}
+  tabindex={!tagNameURL ? -1 : 0}
   aria-label="Open MDN link"
 >
   <ion-icon name="help-circle-outline"></ion-icon>

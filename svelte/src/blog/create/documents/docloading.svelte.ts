@@ -1,8 +1,9 @@
 import {
   decodeComponentStr,
+  loadComponentLibrary,
   type GetCompLibFetchReturn,
 } from "../components/component.svelte";
-import { extractPartsFromCompStr } from "../components/libraryupgrade";
+import { extractPartsFromCompStr } from "../components/component.svelte";
 import type { IMultipleSelect } from "../cursormodes/MultipleSelect.svelte";
 import { closestClass, DynamicStylesheet, parseHTMLFragment } from "../helper";
 import type { HistoryManager } from "./history";
@@ -10,7 +11,8 @@ import {
   allComponentTags,
   allDocumentTags,
   compLibEdits,
-  compLibVer,
+  compLib,
+  compPartToInheritedAttrs,
   doc,
   localSave,
   localSaveEntryIsDoc,
@@ -18,6 +20,7 @@ import {
   mode,
   savedComponents,
   type SavedComponent,
+  type SavedComponentOptionalIdentName,
 } from "../store.svelte";
 import { editorState } from "../url.svelte";
 import { assign, fetch_, request2AnimationFrames } from "/shared/helper";
@@ -43,7 +46,8 @@ function loadDocBody(body: Node[], p: EditorInterfaceLoading) {
 
   // The first elements of docEl can include "non-body" elements (such as containing metadata), which shouldn't be removed here
   //  (we're removing body elements to replace them with new body elements)
-  const isBody = (node: Node) => !closestClass(node, "not-body");
+  const isBody = (node: Node) =>
+    !closestClass(node, "not-body") && !closestClass(node, "history-not-body");
   while (p.docEl?.lastChild && isBody(p.docEl.lastChild))
     p.docEl.removeChild(p.docEl.lastChild);
   body.forEach((node) => p.docEl?.appendChild(node));
@@ -98,6 +102,8 @@ export async function loadDocument(p: EditorInterfaceLoading) {
 
   let data;
   if (!resp.ok) {
+    if (resp.status === 404) doc.is404 = true;
+
     console.warn(
       `Fetching document failed. Will attempt to use local store. Document ID: "${documentID}"`,
     );
@@ -108,6 +114,7 @@ export async function loadDocument(p: EditorInterfaceLoading) {
       );
       // savedComponents.splice(0, savedComponents.length);
       data = {
+        id: documentID,
         body: "",
         component_lib_ver: "",
       };
@@ -115,16 +122,11 @@ export async function loadDocument(p: EditorInterfaceLoading) {
       throw new Error("Entry wasn't for a document.");
     else
       data = {
+        id: savedInfo.id,
         body: savedInfo.body,
         component_lib_ver: savedInfo.compLibVer,
       };
   } else data = await resp.json();
-
-  // const data = await resp.json();
-
-  console.log(data["body"]);
-  const parsedBody = parseHTMLFragment(data["body"], true, true);
-  loadDocBody(parsedBody, p);
 
   const componentLibVer = data["component_lib_ver"];
   if (typeof componentLibVer !== "string")
@@ -139,62 +141,48 @@ export async function loadDocument(p: EditorInterfaceLoading) {
     compLibVer: data["component_lib_ver"],
   };
 
-  compLibVer.currentVer = componentLibVer;
-  const compLibInfo = await getSavedComponentLibrary(componentLibVer);
-
-  if (!compLibInfo)
-    console.error("Couldn't fetch info about component library");
-  else {
-    compLibVer.upgradeInfo = {
-      to_version: compLibInfo.upgrade_to_version,
-      name_map: compLibInfo.upgrade_name_map,
-      content_list: compLibInfo.upgrade_content_list,
-      remove_list: compLibInfo.upgrade_remove_list,
-      diff_msgs: compLibInfo.upgrade_diff_msgs,
-    };
-    compLibVer.latestVer = compLibInfo.upgrade_to_version;
-  }
-
-  // Add component styles to dynamic stylesheet
-
+  const { componentLibrary, compLibVerInfo } =
+    await getSavedComponentLibrary(componentLibVer);
+  loadComponentLibrary(componentLibrary, "document", p.componentElStyles);
   console.log($state.snapshot(savedComponents));
 
-  if (p.componentElStyles) {
-    savedComponents.forEach((comp) => {
-      const parts = extractPartsFromCompStr(comp.content);
-      // console.log($state.snapshot(comp), $state.snapshot(parts));
-      parts.forEach((part) => {
-        Array.from(part.partEl.attributes).forEach((attr) => {
-          if (attr.name === "data-dummycompstyle") {
-            const rule = `[data-component="${part.attrValue}"] { ${attr.value} }`;
-            p.componentElStyles!.setRule(rule, part.attrValue);
-          } else if (attr.name.startsWith("data-dummycompstyle-")) {
-            const pseudoClass = attr.name.slice("data-dummycompstyle-".length);
-            const rule = `[data-component="${part.attrValue}"]:${pseudoClass} { ${attr.value} }`;
-            p.componentElStyles!.setRule(
-              rule,
-              `${part.attrValue}-${pseudoClass}`,
-            );
-          }
-        });
-      });
-    });
+  localSave.current[`L:${componentLibVer}`] = {
+    version: componentLibVer,
+    lastUsed: Date.now(),
+    comps: savedComponents,
+  };
+
+  if (!compLibVerInfo)
+    console.error("Couldn't fetch info about component library");
+  else {
+    compLib.upgradeInfo = {
+      to_version: compLibVerInfo.upgrade_to_version,
+      name_map: compLibVerInfo.upgrade_name_map,
+      content_list: compLibVerInfo.upgrade_content_list,
+      remove_list: compLibVerInfo.upgrade_remove_list,
+      diff_msgs: compLibVerInfo.upgrade_diff_msgs,
+    };
+    compLib.latestVer = compLibVerInfo.upgrade_to_version;
   }
 
   doc.info = {
     id: `${documentID}`,
 
-    title: data["title"],
-    description: data["description"],
-    tags: data["tags"],
-    accent: data["accent"],
-    thumbnail: data["thumbnail"],
-    status: data["status"],
+    title: data["title"] ?? "",
+    description: data["description"] ?? "",
+    tags: data["tags"] ?? [],
+    accent: data["accent"] ?? "",
+    thumbnail: data["thumbnail"] ?? "",
+    status: data["status"] ?? "",
 
     body: data["body"],
     componentLibVer: data["component_lib_ver"],
   };
-  doc.infoFetched = true;
+  if (resp.ok) doc.infoFetched = true;
+
+  console.log(data["body"]);
+  const parsedBody = parseHTMLFragment(data["body"], true, true);
+  loadDocBody(parsedBody, p);
 
   const tagsResp = await fetch_("/documents/get_all_tags");
   if (tagsResp.ok) {
@@ -204,7 +192,10 @@ export async function loadDocument(p: EditorInterfaceLoading) {
   }
 }
 
-async function getSavedComponentLibrary(ver?: string) {
+async function getSavedComponentLibrary(ver?: string): Promise<{
+  componentLibrary: SavedComponentOptionalIdentName[];
+  compLibVerInfo?: GetCompLibFetchReturn;
+}> {
   console.log("getting saved components library");
 
   const URL = `/documents/get_component_library${typeof ver === "string" ? "?ver=" + ver : ""}`;
@@ -219,44 +210,34 @@ async function getSavedComponentLibrary(ver?: string) {
       console.error(
         `Wasn't able to find requested version of component library stored locally. Version: "${ver ?? "latest"}"`,
       );
-      savedComponents.splice(0, savedComponents.length);
-      return;
+      return { componentLibrary: [] };
     } else if (!localSaveEntryIsLib(savedInfo))
       throw new Error(`Entry wasn't for a component library.`);
 
-    savedComponents.splice(0, savedComponents.length, ...savedInfo.comps);
-    return;
+    return { componentLibrary: savedInfo.comps };
   }
 
   const data: GetCompLibFetchReturn = await resp.json();
   console.log(data);
-  //// The response from the server has every field as a string, so we must
-  ////  do these conversions for 'tags' and 'parts'.
-  // data.forEach((comp) => {
-  //   comp["tags"] = (comp["tags"] as unknown as string).split(",");
-  //   comp["parts"] = (comp["parts"] as unknown as string).split("|");
-  // });
-  // savedComponents.update(() => data);
 
-  const components = data.library.map((comp) =>
-    Object.assign(comp, { identName: comp.name }),
-  );
-  savedComponents.splice(0, savedComponents.length, ...components);
-
-  localSave.current[`L:${ver ?? "latest"}`] = {
-    version: ver ?? "latest",
-    lastUsed: Date.now(),
-    comps: components,
+  return {
+    componentLibrary: data.library,
+    compLibVerInfo: data,
   };
-
-  return data;
 }
 
 export async function loadComponent(p: EditorInterfaceLoading) {
   const componentID = getComponentID();
   if (componentID === null) return;
 
-  await getSavedComponentLibrary();
+  const { componentLibrary } = await getSavedComponentLibrary();
+  loadComponentLibrary(componentLibrary, "component");
+
+  localSave.current[`L:latest`] = {
+    version: "latest",
+    lastUsed: Date.now(),
+    comps: $state.snapshot(savedComponents),
+  };
 
   const comp = savedComponents.find((comp) => comp.name === componentID);
   const editMatch = compLibEdits.current.find(
@@ -319,7 +300,7 @@ export async function loadComponent(p: EditorInterfaceLoading) {
       latestSavedLib.definedTags = data;
   }
 
-  // Find the current (latest) version of the component library
+  // Find the current (latest) version string of the component library
   const verResp = await fetch_("/documents/savedcomponents_currentversion");
   recoverVer: if (!verResp.ok) {
     console.warn(
@@ -330,18 +311,15 @@ export async function loadComponent(p: EditorInterfaceLoading) {
       console.error(
         `Wasn't able to find latest version of component library stored locally.`,
       );
-      compLibVer.latestVer = null;
-      compLibVer.currentVer = null;
+      compLib.latestVer = null;
       break recoverVer;
     } else if (!localSaveEntryIsLib(savedInfo))
       throw new Error(`Entry wasn't for a component library.`);
 
-    compLibVer.latestVer = savedInfo.version;
-    compLibVer.currentVer = savedInfo.version;
+    compLib.latestVer = savedInfo.version;
   } else {
     const latestVer = await verResp.text();
-    compLibVer.latestVer = latestVer;
-    compLibVer.currentVer = latestVer;
+    compLib.latestVer = latestVer;
 
     const latestSavedLib = localSave.current["L:latest"];
     if (latestSavedLib && localSaveEntryIsLib(latestSavedLib)) {

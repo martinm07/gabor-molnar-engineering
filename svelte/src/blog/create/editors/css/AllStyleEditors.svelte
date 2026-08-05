@@ -126,18 +126,18 @@
   import type { DynamicStylesheet } from "../../helper";
 
   interface Props {
-    editorAttrs: Attribute[];
+    currentAttrs: Attribute[];
   }
-  let { editorAttrs }: Props = $props();
+  let { currentAttrs }: Props = $props();
 
-  let disabled = $derived(
+  let selectionHasComponents = $derived(
     editorState.mode === "document" &&
       selection.main.some((el) => el.getAttribute("data-component")),
   );
 
   const cssEditors: ICSSEditor[] = $state([]);
   let pseudoStylesList = $derived(
-    editorAttrs
+    currentAttrs
       .filter((attr) => attr.name.startsWith("data-style-"))
       .map((attr) => {
         return {
@@ -151,16 +151,17 @@
   setContext("styleCache", styleCache);
 
   export function syncElementInlineStyles(nodes: Node[]) {
-    cssEditors.forEach((cssEditor) => cssEditor.syncElementInlineStyles(nodes));
+    cssEditors.forEach(
+      (cssEditor) => cssEditor && cssEditor.syncElementInlineStyles(nodes),
+    );
   }
 
-  let pseudoStylesListOpen = $state(true);
+  let pseudoStylesListOpen = $state(false);
 </script>
 
 <CSSEditor
   syncAttrName="style"
   selected={selection.main}
-  {disabled}
   bind:this={cssEditors[0]}
 />
 
@@ -215,7 +216,6 @@
       <CSSEditor
         syncAttrName={`data-style-${attr.name}`}
         selected={selection.main}
-        {disabled}
         bind:this={cssEditors[i + 1]}
       />
     </div>
@@ -230,10 +230,7 @@
   {/each}
   {let showAddForm = $state(false)}
   {#if !showAddForm}
-    <div
-      class="h-px w-full bg-rock-300 text-center [.disabled]:pointer-events-none [.disabled]:opacity-50 mt-6"
-      class:disabled
-    >
+    <div class="h-px w-full bg-rock-300 text-center mt-6">
       <button
         class="inline-block bg-background text-rock-400 text-xl -translate-y-1/2 px-2 hover:text-rock-200"
         onclick={() => (showAddForm = true)}>+</button

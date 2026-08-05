@@ -1,15 +1,13 @@
 <script lang="ts">
   import { circInOut } from "svelte/easing";
-  import { compLibVer, mode } from "./store.svelte";
-  import { editorState } from "./url.svelte";
+  import { compLib, mode } from "../store.svelte";
+  import { editorState } from "../url.svelte";
 
   import ComponentMetaEdit, {
     dClassComponentMetaEdit,
-  } from "./components/ComponentMetaEdit.svelte";
-  import DocMetaEdit, {
-    dClassDocMetaEdit,
-  } from "./documents/DocMetaEdit.svelte";
-  import MediaTray, { dClassMediaTray } from "./documents/MediaTray.svelte";
+  } from "../components/ComponentMetaEdit.svelte";
+  import DocMetaEdit, { dClassDocMetaEdit } from "./DocMetaEdit.svelte";
+  import MediaTray, { dClassMediaTray } from "./MediaTray.svelte";
 
   import TreeView from "phosphor-svelte/lib/TreeViewIcon";
   import SquaresFour from "phosphor-svelte/lib/SquaresFourIcon";
@@ -81,7 +79,9 @@
     class="complib-btn relative aspect-square rounded hover:bg-rock-200/70 h-full flex items-center justify-center text-2xl text-rock-800 [.active]:border border-rock-300 [.active]:bg-background [.active]:hover:bg-rock-200/70 mr-0.5"
     aria-label="View component library"
     class:active={mode.sidebar === "viewcomponent"}
-    class:warn={compLibVer.isVersFetched && !compLibVer.isLibUpToDate}
+    class:warn={compLib.isVersFetched &&
+      !compLib.isLibUpToDate &&
+      editorState.mode === "document"}
     onclick={() => {
       if (mode.sidebar === "viewcomponent") mode.sidebar = "edit";
       else mode.sidebar = "viewcomponent";
@@ -155,7 +155,7 @@
 {/if}
 
 <style>
-  @reference "../../shared/tailwindinit.css";
+  @reference "/shared/tailwindinit.css";
 
   .complib-btn.warn::after {
     content: "!";

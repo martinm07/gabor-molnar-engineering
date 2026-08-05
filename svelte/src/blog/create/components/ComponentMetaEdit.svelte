@@ -330,7 +330,11 @@
   import { fade } from "svelte/transition";
   import { allComponentTags } from "../store.svelte";
   import { editorState } from "../url.svelte";
-  import { comps, updateCompEdit, type CompParts } from "./component.svelte";
+  import {
+    comps,
+    updateCompEdit,
+    type CompParts,
+  } from "./libraryeditor.svelte";
   import { useDebounce, watch } from "runed";
   import {
     calculateTotalOffset,
@@ -503,8 +507,7 @@
       name="edit-description"
       id="edit-description"
       placeholder="Component description."
-      bind:value={descriptionState.inputVal}
-    ></textarea>
+      bind:value={descriptionState.inputVal}></textarea>
     {#if descriptionState.inputErr !== null}
       <div
         class="absolute text-red-400 font-bold text-sm bottom-2 translate-y-full ml-3"
@@ -558,7 +561,7 @@
 </div>
 
 <style>
-  @reference "../../../shared/tailwindinit.css";
+  @reference "/shared/tailwindinit.css";
 
   :global {
     #edit-tags-comp span:not(.space) {

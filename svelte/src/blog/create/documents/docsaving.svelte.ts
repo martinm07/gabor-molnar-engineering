@@ -1,9 +1,6 @@
 import { useDebounce } from "runed";
-import {
-  comps,
-  generateCompContentStr,
-  updateCompEdit,
-} from "../components/component.svelte";
+import { generateCompContentStr } from "../components/component.svelte";
+import { comps, updateCompEdit } from "../components/libraryeditor.svelte";
 import {
   reconstructHTMLString,
   patchMutations,
@@ -12,9 +9,9 @@ import {
   type StringPosNodeMap,
   type DocPatchStr,
   generatePosNodes,
+  applyPatches,
 } from "./docsyncing";
 import {
-  compLibVer,
   doc,
   localSave,
   localSaveEntryIsDoc,
@@ -22,6 +19,7 @@ import {
 } from "../store.svelte";
 import { editorState } from "../url.svelte";
 import { fetch_ } from "/shared/helper";
+import { isHistoryNotBodyContainer } from "../helper";
 
 const getDocumentID = () =>
   editorState.mode === "document"
@@ -39,6 +37,7 @@ interface SaveDocConstructor {
   docNodes: DocNodeMap;
   stringPosNodeMap: StringPosNodeMap;
   doServerSync?: boolean;
+  debug?: boolean;
 }
 
 export class SaveDoc {
@@ -58,9 +57,13 @@ export class SaveDoc {
 
   makePatches: () => ReturnType<typeof patchMutations>;
   getDocEl: () => HTMLElement | undefined;
+  syncingHTMLStr = "";
 
   docNodes: DocNodeMap;
   stringPosNodeMap: StringPosNodeMap;
+
+  debug: boolean = false;
+  private appHTMLStr = "";
 
   constructor(p: SaveDocConstructor) {
     if (SERVER_SYNC_INTERVAL_TIME > 0)
@@ -81,6 +84,7 @@ export class SaveDoc {
     this.stringPosNodeMap = p.stringPosNodeMap;
     this.makePatches = p.makePatches;
     this.doServerSync = p.doServerSync ?? true;
+    this.debug = p.debug ?? false;
   }
 
   /**
@@ -125,6 +129,8 @@ export class SaveDoc {
       } else {
         this.prevDocumentType = editorState.mode;
         this.prevDocumentID = editorState.resourceName;
+
+        this.appHTMLStr = syncedHTMLStr;
         return [[], new Map(), new Map(), syncedHTMLStr];
       }
     }
@@ -133,7 +139,7 @@ export class SaveDoc {
       this.makePatches();
 
     if (editorState.mode === "document") {
-      this.syncDocLocal(htmlStr);
+      // this.syncDocLocal(htmlStr);
       this.serverSyncPatchesQueue.push(...patches.map((patch) => patch.str_));
     } else if (editorState.mode === "component") {
       this.syncCompLocal(htmlStr);
@@ -141,6 +147,8 @@ export class SaveDoc {
 
     this.prevDocumentType = editorState.mode;
     this.prevDocumentID = editorState.resourceName;
+
+    this.appHTMLStr = htmlStr;
     return [patches, historyForwardMap, historyBackwardMap, htmlStr];
   }
 
@@ -150,14 +158,14 @@ export class SaveDoc {
   }
 
   /**
-   * Generates the full HTML string for the currently active document body, and syncs it to the server.\
-   * Also updates the local save through calling `syncDocLocal`.\
-   * \
+   * Generates the full HTML string for the currently active document body, and syncs it to the server.
+   * Also updates the local save through calling `syncDocLocal`.
+   *
    * This is done so that when we generate patches for this HTML string later, we can be confident that the HTML string stored on the server
-   *  has the same formatting and everything i.e. it is exactly identical to the string we're making patches for locally (and not just *functionally* identical).\
-   * \
+   * has the same formatting and everything i.e. it is exactly identical to the string we're making patches for locally (and not just *functionally* identical).
+   *
    * Note: ONLY syncs the document body― not any other document info, as it is expected this will only be called upon initial document loading (and so won't
-   *  used for syncing any actual changes).\
+   * used for syncing any actual changes).
    * TODO: Can add option to sync other document info as well.
    */
   syncDocFull() {
@@ -165,25 +173,47 @@ export class SaveDoc {
     const docEl = this.getDocEl();
     if (documentID === null || !docEl) return;
 
-    const [htmlStr] = reconstructHTMLString(
-      docEl,
-      {
-        docNodes: this.docNodes,
-        docContainer: docEl,
-      },
-      false,
-    );
-
+    const [htmlStr] = reconstructHTMLString(docEl, {
+      docNodes: this.docNodes,
+      docContainer: docEl,
+      includeContainer: false,
+      includeHistoryNotBodyEls: true,
+    });
     generatePosNodes(this.docNodes, this.stringPosNodeMap);
 
-    this.syncDocLocal(htmlStr);
+    let filteredHTMLStr = htmlStr;
+
+    const changes: { start: number; len: number }[] = [];
+    this.docNodes.forEach((nodeInfo, node) => {
+      if (isHistoryNotBodyContainer(node))
+        changes.push({
+          start: nodeInfo.stringPos,
+          len: nodeInfo.stringLen,
+        });
+    });
+
+    changes.sort((a, b) => b.start - a.start);
+
+    changes.forEach(
+      (change) =>
+        (filteredHTMLStr =
+          filteredHTMLStr.slice(0, change.start) +
+          filteredHTMLStr.slice(change.start + change.len)),
+    );
+
+    if (this.debug) {
+      console.log("🎈🎈🎈 Syncing htmlStr:\n\n", filteredHTMLStr);
+    }
+
+    this.syncingHTMLStr = filteredHTMLStr;
+    this.syncDocLocal();
 
     if (this.doServerSync)
       fetch_("/documents/sync_document_full", {
         method: "post",
         body: JSON.stringify({
           id: documentID,
-          body: htmlStr,
+          body: filteredHTMLStr,
         }),
         keepalive: true,
       });
@@ -201,17 +231,48 @@ export class SaveDoc {
     if (documentID === null || !this.doServerSync) return;
 
     const createFetch = () => {
+      const patches = this.serverSyncPatchesQueue
+        .filter((patch) => {
+          return patch.correction !== -1;
+        })
+        .map((patch) => {
+          return {
+            index: patch.start - patch.correction,
+            length: patch.length,
+            value: patch.value,
+          };
+        });
+
+      // We also use the patches to find what we can store locally for the document
+      this.syncingHTMLStr = applyPatches(
+        this.syncingHTMLStr,
+        patches.map((patch) => {
+          return {
+            str_: {
+              start: patch.index,
+              length: patch.length,
+              value: patch.value,
+            },
+          };
+        }),
+      );
+      this.syncDocLocal();
+
+      if (this.debug) {
+        console.log("Patches:", structuredClone(this.serverSyncPatchesQueue));
+        console.log("App HTML string:\n-------------\n", this.appHTMLStr);
+        console.log(
+          "New server HTML string (probably):\n---------------\n",
+          this.syncingHTMLStr,
+        );
+      }
+
       const resp = fetch_("/documents/sync_document_patch", {
         method: "post",
         body: JSON.stringify({
           id: documentID,
-          patches: this.serverSyncPatchesQueue.map((patch) => {
-            return {
-              index: patch.start,
-              length: patch.length,
-              value: patch.value,
-            };
-          }),
+          patches,
+          complibver: doc.info.componentLibVer,
         }),
       });
       this.serverSyncPatchesQueue.splice(0, this.serverSyncPatchesQueue.length);
@@ -229,7 +290,7 @@ export class SaveDoc {
     const resp = await fetch_("/documents/update_document_metadata", {
       method: "post",
       body: JSON.stringify({
-        id: info.id,
+        id: info.id.trim(),
         title: info.title,
         description: info.description,
         tags: info.tags,
@@ -253,7 +314,7 @@ export class SaveDoc {
     doc.info.status = data["status"];
   }
 
-  syncDocLocal(htmlStr: string) {
+  syncDocLocal() {
     const documentID = getDocumentID();
     const docEl = this.getDocEl();
     if (documentID === null || !docEl) return;
@@ -267,21 +328,22 @@ export class SaveDoc {
 
     const savedInfo = localSave.current[`D:${documentID}`];
     if (!savedInfo) {
-      if (!compLibVer.currentVer)
+      if (!doc.info.componentLibVer)
         throw new Error(
           `Tried creating entry in localSave for document of ID "${documentID}" in syncDocLocal, but couldn't as compLibVer.currentVer is null.`,
         );
       localSave.current[`D:${documentID}`] = {
         id: `${documentID}`,
         lastUsed: Date.now(),
-        body: htmlStr,
-        compLibVer: compLibVer.currentVer,
+        body: this.syncingHTMLStr,
+        compLibVer: doc.info.componentLibVer,
       };
     } else if (!localSaveEntryIsDoc(savedInfo))
       throw new Error("Entry wasn't for a document.");
     else {
       savedInfo.lastUsed = Date.now();
-      savedInfo.body = htmlStr;
+      savedInfo.body = this.syncingHTMLStr;
+      savedInfo.compLibVer = doc.info.componentLibVer;
       pruneLocalSave();
     }
   }
@@ -306,14 +368,12 @@ export class SaveDoc {
     //  the DOM.
     let nodeMap: DocNodeMap | undefined;
     if (htmlStr === undefined) {
-      [htmlStr, nodeMap] = reconstructHTMLString(
-        docEl,
-        {
-          docNodes: this.docNodes, // TODO: Should this be included here?
-          docContainer: docEl,
-        },
-        false,
-      );
+      [htmlStr, nodeMap] = reconstructHTMLString(docEl, {
+        docNodes: this.docNodes, // TODO: Should this be included here?
+        docContainer: docEl,
+        includeContainer: false,
+        includeHistoryNotBodyEls: false,
+      });
 
       generatePosNodes(this.docNodes, this.stringPosNodeMap);
     }

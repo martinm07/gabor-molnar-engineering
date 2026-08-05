@@ -18,6 +18,80 @@
     referenceUrl: string;
     valid: boolean;
   }
+
+  const HIDDEN_ATTRIBUTES = [
+    "style",
+    "contenteditable",
+    "data-complibver",
+    "data-componentname",
+    "data-isCompContainer",
+    "data-compPartBlacklist",
+    "data-compDisinherited",
+    "data-style-.*",
+    "data-dummycompstyle.*",
+    "data-override-.*",
+    "data-id",
+  ];
+
+  const hiddenAttrsRegex = HIDDEN_ATTRIBUTES.map(
+    (matchStr) => new RegExp("^" + matchStr + "$"),
+  );
+
+  export function isHiddenAttribute(attrName: string) {
+    return hiddenAttrsRegex.some((regex) => regex.test(attrName));
+  }
+
+  export function getAttributesRespectingMasks(el: Element): PropsList {
+    const domAttributes = Array.from(el.attributes);
+
+    const applyingMasks = maskedAttributes
+      .filter((mask) => mask.affectedEls.some(([el_]) => el === el_))
+      .map(({ name, value, affectedEls }) => {
+        return {
+          name,
+          realValue: value,
+          editorValue: affectedEls.find(([el_]) => el === el_)![1],
+        };
+      });
+    if (applyingMasks.length === 0)
+      return domAttributes.map((attr) => [attr.name, attr.value]);
+
+    const final: { name: string; value: string }[] = [];
+
+    for (const attr of domAttributes) {
+      const attrMask = applyingMasks.find((mask) => mask.name === attr.name);
+      if (attrMask && typeof attrMask.editorValue === "string") {
+        final.push({
+          name: attr.name,
+          value: attrMask.editorValue,
+        });
+      } else if (attrMask) {
+        continue;
+      } else {
+        final.push({
+          name: attr.name,
+          value: attr.value,
+        });
+      }
+    }
+
+    applyingMasks.forEach((mask) => {
+      if (typeof mask.realValue === "string") return;
+      // This mask is for REMOVING an attribute that should otherwise be on the element.
+      // That (should, assuming the mask is doing its job) mean that the attribute isn't on the element,
+      //  and so we just append the editor value
+      // (that should be sensible, as when the mask is removed it will do the same thing; append the attribute).
+      if (!el.hasAttribute(mask.name) && typeof mask.editorValue === "string") {
+        final.push({
+          name: mask.name,
+          value: mask.editorValue,
+        });
+      }
+    });
+
+    return final.map((attr) => [attr.name, attr.value]);
+    // maskedAttributes.filter((mask) => !domAttributes.some((attr) => attr.name === mask.name) && mask.affectedEls.some((item) => item[0] === el))
+  }
 </script>
 
 <script lang="ts">
@@ -25,12 +99,15 @@
   import { watch, FiniteStateMachine } from "runed";
   import tagAttributes from "./tag_attributes.json";
   import FitContentWrapTextarea from "/shared/components/FitContentWrapTextarea.svelte";
+  import FitContentInput from "/shared/components/FitContentInput.svelte";
   import {
     autocompleteSuggestions,
     selection,
     savedComponents,
     maskedAttributes,
     type MaskAttribute,
+    compPartToInheritedAttrs,
+    type PropsList,
   } from "../../store.svelte";
   import { editorState } from "../../url.svelte";
   import {
@@ -50,15 +127,12 @@
 
   interface Props {
     selected: Element[];
-    disabled: boolean;
-    editorAttrs?: Attribute[];
+    currentAttrs?: Attribute[];
   }
-  let { selected, disabled, editorAttrs = $bindable([]) }: Props = $props();
+  let { selected, currentAttrs = $bindable([]) }: Props = $props();
 
   let attributes: Attribute[] = $state([]);
   let prevAttributes: Attribute[];
-
-  let performedMutation: boolean = false;
 
   let attributesEl: HTMLElement;
 
@@ -139,47 +213,59 @@
       .filter((mask) => mask.name === name)
       .some((mask) => mask.affectedEls.some(([el_]) => el === el_));
   }
-  function getAttributes(el: Element): Attribute[] {
-    const attrs = Array(...el.attributes);
-    const maskedAttrVals: Map<string, string | null | undefined> = new Map();
-    // Filter masks to ones that affect the provided element and then populate the
-    //  map with attribute names as keys and user-facing attribute values as values.
-    maskedAttributes
-      .filter((mask) => mask.affectedEls.some(([el_]) => el === el_))
-      .forEach((mask) =>
-        maskedAttrVals.set(
-          mask.name,
-          mask.affectedEls.find(([el_]) => el === el_)?.[1],
-        ),
+
+  function attributesIntersection(
+    els: Element[],
+  ): [currentAttrs: Attribute[], editorAttrs: Attribute[]] {
+    if (els.length === 0) return [[], []];
+
+    const allAttrsCurrent: Attribute[][] = [];
+    const allAttrsEditor: Attribute[][] = [];
+
+    els.forEach((el) => {
+      const attrs: Attribute[] = getAttributesRespectingMasks(el).map(
+        ([name, value]) => {
+          return {
+            name,
+            value,
+            valid: true,
+            referenceUrl: "",
+          };
+        },
       );
+      let attrsEditor: Attribute[];
 
-    const toAttribute = (name: string, value: string) => {
-      return {
-        name,
-        value: value!,
-        referenceUrl: "",
-        valid: true,
-      };
-    };
+      let elDataComponent: string | null;
+      let numInherited: number | undefined;
+      if (
+        (elDataComponent = el.getAttribute("data-component")) &&
+        (numInherited = compPartToInheritedAttrs.get(elDataComponent)?.length)
+      ) {
+        attrsEditor = attrs
+          .toSpliced(0, numInherited)
+          .filter((attr) => !isHiddenAttribute(attr.name));
+      } else {
+        attrsEditor = attrs.filter((attr) => !isHiddenAttribute(attr.name));
+      }
 
-    const maskedAttrValsEntries = Array(...maskedAttrVals.entries());
-    const finalMasked: Attribute[] = maskedAttrValsEntries
-      .filter(([_, value]) => typeof value === "string")
-      .map(([name, value]) => toAttribute(name, value!));
-    const finalNormal: Attribute[] = attrs
-      .filter(
-        (attr) =>
-          typeof attr.nodeValue === "string" &&
-          !maskedAttrValsEntries.some(([name]) => attr.nodeName === name),
-      )
-      .map((attr) => toAttribute(attr.nodeName, attr.nodeValue!));
-    return [...finalMasked, ...finalNormal];
+      allAttrsCurrent.push(attrs);
+      allAttrsEditor.push(attrsEditor);
+    });
+
+    const reducedCurrentAttrs = allAttrsCurrent.reduce((prev, curr) =>
+      prev.filter((attr) =>
+        curr.some((a) => attr.name === a.name && attr.value === a.value),
+      ),
+    );
+    const reducedEditorAttrs = allAttrsEditor.reduce((prev, curr) =>
+      prev.filter((attr) =>
+        curr.some((a) => attr.name === a.name && attr.value === a.value),
+      ),
+    );
+
+    return [reducedCurrentAttrs, reducedEditorAttrs];
   }
 
-  function declareMutation() {
-    performedMutation = true;
-    requestAnimationFrame(() => (performedMutation = false));
-  }
   /**
    * This function is pretty much only for being called in App.svelte, in the
    *  MutationObserver whenever it sees a mutation to an element's inline styles.
@@ -187,18 +273,10 @@
   export function syncElementAttributes(x: Node | Node[]): void {
     const syncAttributes = (el: Element) => {
       dataComponent.send("reset");
-      editorAttrs = attributesIntersection(selected);
-      // console.log("🎈🎈🎈 new editorAttrs:", editorAttrs);
-      prevAttributes = editorAttrs.filter((attr) =>
-        hiddenAttrsRegex.every((regex) => !regex.test(attr.name)),
-      );
+
+      [currentAttrs, prevAttributes] = attributesIntersection(selected);
       attributes = [...prevAttributes];
     };
-
-    if (performedMutation) {
-      // console.log("Skipping syncElementAttributes; performedMutation is true");
-      return;
-    }
 
     if (x instanceof Node) {
       if (!(x instanceof Element)) return;
@@ -217,21 +295,6 @@
   //        to find the appropriate attribute intersection, we may inadvertently "clone" attributes
   //        over to newly selected elements.
 
-  const HIDDEN_ATTRIBUTES = [
-    "style",
-    "contenteditable",
-    "data-complibver",
-    "data-componentname",
-    "data-isCompContainer",
-    "data-compPartBlacklist",
-    "data-compDisinherited",
-    "data-style-.*",
-    "data-id",
-  ];
-  const hiddenAttrsRegex = HIDDEN_ATTRIBUTES.map(
-    (matchStr) => new RegExp("^" + matchStr + "$"),
-  );
-
   // Refresh 'attributes' state when the selection changes
   watch(
     () => selected,
@@ -239,10 +302,11 @@
       dataComponent.send("reset");
       // TODO: What we're doing with attribute masking and the 'draggable' attribute could also be done
       //        with contenteditable, instead of this check here
-      editorAttrs = attributesIntersection(selected);
-      prevAttributes = editorAttrs.filter((attr) =>
-        hiddenAttrsRegex.every((regex) => !regex.test(attr.name)),
-      );
+      // currentAttrs = attributesIntersection(selected);
+      // prevAttributes = currentAttrs.filter(
+      //   (attr) => !isHiddenAttribute(attr.name),
+      // );
+      [currentAttrs, prevAttributes] = attributesIntersection(selected);
       attributes = [...prevAttributes];
     },
   );
@@ -336,18 +400,26 @@
       syncMaskedAttributes(attributes);
       syncMaskedAttributes(removeAttrs, true);
 
-      // Sync attributes to the DOM
       prevAttributes = $state.snapshot(attributes);
+
+      // Sync attributes to the DOM
       for (const target of selected) {
         // console.log(removeAttrs, attributes);
         removeAttrs.forEach((attr) => {
           if (attr.name === "data-component") dataComponent.send("reset");
-          if (!attributeMasked(target, attr.name)) {
+          if (
+            !attributeMasked(target, attr.name) &&
+            target.hasAttribute(attr.name) &&
+            !isHiddenAttribute(attr.name)
+          ) {
             target.removeAttribute(attr.name);
           }
         });
         attributes.forEach((attr) => {
-          if (target.getAttribute(attr.name) === attr.value) {
+          if (
+            isHiddenAttribute(attr.name) ||
+            target.getAttribute(attr.name) === attr.value
+          ) {
             if (attr.name === "data-component") dataComponent.send("reset");
             return;
           }
@@ -358,25 +430,28 @@
             return;
           }
           if (attr.valid && !attributeMasked(target, attr.name)) {
+            //
+            const targetDataComponent = target.getAttribute("data-component");
+            let numInherited: number | undefined;
+            if (
+              targetDataComponent &&
+              (numInherited =
+                compPartToInheritedAttrs.get(targetDataComponent)?.length)
+            ) {
+              const attrI = Array.from(target.attributes).findIndex(
+                (a) => a.name === attr.name,
+              );
+              if (attrI !== -1 && attrI < numInherited)
+                target.removeAttribute(attr.name);
+            }
+
             target.setAttribute(attr.name, attr.value);
           }
         });
       }
       updateHighlight();
-      declareMutation();
     },
   );
-
-  function attributesIntersection(els: Element[]) {
-    if (els.length === 0) return [];
-    return els
-      .map((el) => getAttributes(el))
-      .reduce((p, c) =>
-        c.filter((attr) =>
-          p.some((a) => attr.name === a.name && attr.value === a.value),
-        ),
-      );
-  }
 
   function allAvailableAttributes() {
     if (selected.length === 0) return [];
@@ -420,7 +495,7 @@
 
     const node = caret.focusNode;
     if (
-      node instanceof HTMLTextAreaElement &&
+      node instanceof HTMLInputElement &&
       node.classList.contains("attrname-input")
     ) {
       $autocompleteSuggestions = (
@@ -517,21 +592,20 @@
   {#each attributes as attr, i}
     <li
       class:invalid={attr.name && !attr.valid}
-      class:disabled={disabled && attr.name !== "data-component"}
-      class="group font-mono text-rock-700 text-sm text-balance text-center pb-2 mb-2 border-b border-rock-300 last-of-type:border-0"
+      class="group font-mono text-rock-700 text-sm text-balance flex items-center justify-center flex-wrap pb-2 mb-2 border-b border-rock-300 last-of-type:border-0"
     >
-      <FitContentWrapTextarea
-        class="attrname-input resize-none text-wrap bg-steel-100 font-bold focus:outline-none max-w-[calc(100%-8px)] p-1 rounded box-content group-[.invalid]:text-rock-500 group-[.invalid]:underline decoration-wavy decoration-red-700 disabled:opacity-50"
+      <FitContentInput
+        class="attrname-input m-0.5 text-wrap bg-steel-100 font-bold focus:outline-none max-w-[calc(100%-8px)] p-1 rounded box-content group-[.invalid]:text-rock-500 group-[.invalid]:underline decoration-wavy decoration-red-700 disabled:opacity-50"
         bind:value={attr.name}
         placeholder="attribute"
-        {disabled}
+        disabled={attr.name === "data-component"}
         oninput={(e) => {
           calledOnInput = true;
           handleInputForHistory(e);
         }}
       />
       <FitContentWrapTextarea
-        class="resize-none text-wrap bg-steel-100 focus:outline-none max-w-[calc(100%-8px)] p-1 rounded box-content disabled:opacity-50 [.unsynced]:underline decoration-dotted decoration-2 decoration-blue-400 [.invalid]:text-rock-500 {attr.name ===
+        class="resize-none m-0.5 text-wrap bg-steel-100 focus:outline-none max-w-[calc(100%-8px)] p-1 rounded box-content [.unsynced]:underline decoration-dotted decoration-2 decoration-blue-400 [.invalid]:text-rock-500 {attr.name ===
           'data-component' && dataComponent.current.includes('diff')
           ? 'unsynced'
           : ''} {attr.name === 'data-component' &&
@@ -542,7 +616,6 @@
           : ''}"
         bind:value={attr.value}
         placeholder="value"
-        disabled={disabled && attr.name !== "data-component"}
         oninput={(e) => {
           if (attr.name === "data-component")
             handleComponentAutocomplete(e.target);
@@ -552,15 +625,14 @@
       />
       <div
         class="inline-flex [.disabled]:opacity-50 [.disabled]:pointer-events-none"
-        class:disabled
       >
         <a
           class="text-xl inline-flex items-center justify-center hover:opacity-60 [.disabled]:pointer-events-none [.disabled]:opacity-45"
           class:disabled={!attr.valid}
           href={attr.referenceUrl}
           target="_blank"
-          aria-disabled={!attr.valid || disabled}
-          tabindex={!attr.valid || disabled ? -1 : 0}
+          aria-disabled={!attr.valid}
+          tabindex={!attr.valid ? -1 : 0}
           aria-label="Open MDN docs"
         >
           <ion-icon name="help-circle-outline"></ion-icon>
@@ -569,8 +641,6 @@
           type="button"
           class="text-xl text-red-700 inline-flex items-center justify-center hover:opacity-60"
           onclick={() => attributes.splice(i, 1)}
-          aria-disabled={disabled}
-          tabindex={disabled ? -1 : 0}
           aria-label="Remove attribute"
           ><ion-icon name="close-circle-outline"></ion-icon></button
         >
@@ -643,10 +713,7 @@
     </li>
   {/each}
 </ul>
-<div
-  class="h-px w-full bg-rock-300 text-center [.disabled]:pointer-events-none [.disabled]:opacity-50"
-  class:disabled
->
+<div class="h-px w-full bg-rock-300 text-center">
   <button
     class="inline-block bg-background text-rock-400 text-xl -translate-y-1/2 px-2 hover:text-rock-200"
     onclick={() =>

@@ -5,6 +5,7 @@ import {
   type DocNodeMap,
   type DocPatchDom,
   type StringPosNodeMap,
+  reconstructHTMLString,
 } from "./docsyncing";
 import { closestClass, insertAfter, parseHTMLFragment } from "../helper";
 import { selection } from "../store.svelte";
@@ -1113,6 +1114,27 @@ export class HistoryManager {
     }
   }
 
+  /**
+   * Allows the caller to restore the document to a state it was in previously (at the time when the method is called).
+   * @returns A function to call when wanting to restore the document to the bookmarked state
+   */
+  bookmarkState() {
+    const docEl = this.getDocContainer();
+    if (!docEl) throw new Error("docEl is undefined from getDocContainer()");
+    const [savedHTMLStr] = reconstructHTMLString(docEl, {
+      docContainer: docEl,
+      includeContainer: false,
+    });
+    console.log("Bookmarked state as HTML string:\n\n", savedHTMLStr);
+
+    return () => {
+      const parsedDoc = parseHTMLFragment(savedHTMLStr, true, true);
+      console.log("Restoring bookmarked state. Parsed:", parsedDoc);
+      while (docEl.firstChild) docEl.removeChild(docEl.firstChild);
+      parsedDoc.forEach((node) => docEl.appendChild(node));
+    };
+  }
+
   claimCaretState(caretState: EditorCaret) {
     this.log("Claimed the caret state! Setting it to: ", caretState);
     this.claimedCaretState = caretState;
@@ -1129,19 +1151,6 @@ export class HistoryManager {
     this.flagSuggestNewHistoryItem = false;
     this.flagHistoryStateChange = false;
   }
-
-  /**
-   * When we add nodes back in (either as part of undo/redo) any previously separate but adjacent child Text nodes
-   *  will invariably be treated as a single added Text node (they "coalesce").\
-   * We can handle this whenever we try to "do something" with the node- adding something next to it, removing it
-   *  (but in that case the node was ephemeral, and so was never added in the first place- we don't need to concern ourselves with remove calls),
-   *  or changing its characterData (though that doesn't call this method)- by using the "expectedLen" field on the
-   *  add/remove patches to split the Text node into two. Luckily this means we'll never need to update posNodes,
-   *  though we will need to update tempPosNodes (which is the responsibility of the caller).
-   * @param node The preceding node that an add/remove-type patch is trying to use to add something in
-   * @param expectedLen The expected length of the node in terms of its "he encoded" string
-   * @returns A tuple of both nodes that resulted from the split (the second one possibly being null).
-   */
 
   private removeNode(referredNode: Node, patch: DocPatchDom) {
     if (!referredNode.isConnected) {
@@ -1381,7 +1390,9 @@ export class HistoryManager {
           // When adding an element at the "start" of the document, it should be after these elements.
           let notBodyEl: Element | undefined;
           for (const child of docEl.children) {
-            const isNotBody = Boolean(closestClass(child, "not-body"));
+            const isNotBody =
+              closestClass(child, "not-body") ||
+              closestClass(child, "history-not-body");
             if (!isNotBody) break;
             notBodyEl = child;
           }
@@ -1514,7 +1525,9 @@ export class HistoryManager {
           // When adding an element at the "start" of the document, it should be after these elements.
           let notBodyEl: Element | undefined;
           for (const child of docEl.children) {
-            const isNotBody = Boolean(closestClass(child, "not-body"));
+            const isNotBody =
+              closestClass(child, "not-body") ||
+              closestClass(child, "history-not-body");
             if (!isNotBody) break;
             notBodyEl = child;
           }
@@ -1597,6 +1610,10 @@ export class HistoryManager {
     this.editorHooks.resetSelection();
 
     this.hist.index++;
+  }
+
+  get isInHistory() {
+    return this.hist.index > 0;
   }
 
   private get log() {

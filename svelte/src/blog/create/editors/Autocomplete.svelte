@@ -234,9 +234,7 @@
     if (e.target.closest(".styles-display")) {
       $autocompleteMode = "css";
       $autocompleteSuggestions = [];
-    } else if (
-      e.target.closest(".attributes-display li textarea:first-child")
-    ) {
+    } else if (e.target.closest(".attributes-display li input:first-child")) {
       $autocompleteMode = "attributes";
       $autocompleteSuggestions = [];
     } else if (e.target.closest(".tagname-display")) {

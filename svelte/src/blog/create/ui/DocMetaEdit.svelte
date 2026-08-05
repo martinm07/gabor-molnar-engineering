@@ -274,7 +274,7 @@
 </div>
 
 <style>
-  @reference "../../../shared/tailwindinit.css";
+  @reference "/shared/tailwindinit.css";
 
   :global {
     #edit-tags-doc span.space {

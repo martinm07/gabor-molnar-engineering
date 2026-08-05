@@ -1,6 +1,8 @@
 import {
   closestClass,
   getAllTextNodes,
+  isHistoryNotBody,
+  isNotBody,
   lastChild,
   nextElementSibling,
 } from "../helper";
@@ -47,7 +49,8 @@ function nodeWhitespaceRestricted(node: Node, strict = true) {
   if (node instanceof HTMLElement) {
     return (
       (strict ? node.innerText : node.innerText.trim()) === "" &&
-      !closestClass(node, "not-body")
+      !closestClass(node, "not-body") &&
+      !closestClass(node, "history-not-body")
     );
   } else if (node instanceof Text) {
     return (strict ? node.textContent : node.textContent?.trim()) === "";
@@ -133,27 +136,46 @@ export function handleCollapsePrevention(
     const target = mutation.target;
 
     // Don't do anything with the element/node if it has anything to do with "non-body" elements
-    if (closestClass(target, "not-body")) continue;
+    if (
+      closestClass(target, "not-body") ||
+      closestClass(target, "history-not-body")
+    )
+      continue;
 
     // 1)
     mutation.addedNodes.forEach((added) => {
       if (added.nodeType !== Node.ELEMENT_NODE && added.parentElement === docEl)
-        added.parentElement.removeChild(added);
+        docEl.removeChild(added);
     });
+
     request2AnimationFrames(() => {
-      // console.log("Checking for empty document", docEl);
-      if (docEl?.childElementCount === 0) {
-        const div = document.createElement("div");
-        div.innerHTML =
-          "Without at least one node, it is impossible to add anything - as it relies on adding things RELATIVE to OTHER nodes.";
+      // An empty document is one that doesn't have any Element children that aren't .not-body or .history-not-body
+      if (
+        docEl &&
+        !docEl?.childNodes
+          .entries()
+          .some(
+            ([, node]) =>
+              node instanceof Element &&
+              !isHistoryNotBody(node) &&
+              !isNotBody(node),
+          )
+      ) {
+        const div = document.createElement("main");
+        div.style.width = "75%";
+        div.style.maxWidth = "600px";
+        div.style.margin = "0 auto";
+
+        div.innerHTML = "<em>Empty document.</em>";
         docEl.appendChild(div);
       }
     });
 
     // 2) Handle newly added nodes, making sure they aren't collapsed
-    if (mutation.type === "childList") {
-      mutation.addedNodes.forEach(addNBSP);
-    }
+
+    Array.from(mutation.addedNodes)
+      .filter((node) => !isNotBody(node) && !isHistoryNotBody(node))
+      .forEach(addNBSP);
 
     const el =
       mutation.type === "characterData" ? target.parentElement : target;

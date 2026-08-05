@@ -47,6 +47,8 @@ export function onKeydown(e: KeyboardEvent, p: EditorInterfaceKeyboard) {
       selection.hover.remove();
       p.historyManager?.suggestCreateNewHistoryItem();
     }
+  } else if (e.key === "c" && selection.island.length > 0) {
+    mode.sidebar = "changetocomponent";
   } else if (
     e.key === "Escape" &&
     !document.querySelector(".autocomplete-display button") &&
@@ -54,6 +56,7 @@ export function onKeydown(e: KeyboardEvent, p: EditorInterfaceKeyboard) {
   ) {
     if (mode.sidebar === "addcomponent")
       selection.selected.forEach((el) => el.remove());
+    if (mode.sidebar === "changetocomponent") mode.sidebar = "edit";
 
     if (mode.cursor === "select") p.multipleSelect?.removeSelection();
     mode.cursor = "select";

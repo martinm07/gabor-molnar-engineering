@@ -1,13 +1,32 @@
 <script lang="ts">
   import WarningDiamond from "phosphor-svelte/lib/WarningDiamondIcon";
   import ArrowRight from "phosphor-svelte/lib/ArrowRightIcon";
-  import { compLibVer, savedComponents } from "../store.svelte";
+  import ArrowBendUpLeftIcon from "phosphor-svelte/lib/ArrowBendUpLeftIcon";
+  import CheckIcon from "phosphor-svelte/lib/CheckIcon";
+  import {
+    compLib,
+    doc,
+    mode,
+    savedComponents,
+    type SavedComponent,
+  } from "../store.svelte";
   import { changePage, editorState } from "../url.svelte";
-  // import { type CompLibUpgradeInfo } from "../helper";
   import { getContext, onMount } from "svelte";
-  import { comps, type GetCompLibFetchReturn } from "./component.svelte";
+  import {
+    loadComponentLibrary,
+    type GetCompLibFetchReturn,
+  } from "./component.svelte";
   import { fetch_ } from "/shared/helper";
   import { upgradeDoc, type CompLibUpgradeInfo } from "./libraryupgrade";
+  import type { DynamicStylesheet } from "../helper";
+  import { watch, watchOnce } from "runed";
+
+  const getDocEl: () => HTMLElement = getContext("getDocEl");
+  const bookmarkState: () => () => void = getContext("bookmarkState");
+  const getComponentElStyles: () => DynamicStylesheet<string> = getContext(
+    "getComponentElStyles",
+  );
+  const componentElStyles = getComponentElStyles();
 
   let isExpanded = $state(false);
 
@@ -30,12 +49,25 @@
     return final;
   }
 
-  let upgradeInfo: CompLibUpgradeInfo | null = $derived(compLibVer.upgradeInfo);
+  let upgradeInfo: CompLibUpgradeInfo | null = $derived(compLib.upgradeInfo);
 
   let submitStatus: "error" | "idle" | "success" | "none" = $state("none");
   let submitMsg: string = $state("");
 
-  const getDocEl: () => HTMLElement = getContext("getDocEl");
+  let restoreState: () => void | undefined;
+  let oldComponentLibrary: SavedComponent[] | undefined;
+
+  let fetchedCompLibVer = false;
+  let oldCompLibVer: string = $state("");
+  watch(
+    () => doc.info.componentLibVer,
+    () => {
+      if (fetchedCompLibVer || !doc.info.componentLibVer) return;
+      oldCompLibVer = doc.info.componentLibVer;
+      fetchedCompLibVer = true;
+    },
+  );
+
   async function upgradeLibrarySubmit() {
     if (!upgradeInfo) {
       submitStatus = "error";
@@ -64,40 +96,56 @@
 
     submitMsg = "Updating document content...";
 
+    mode.disabled = true;
+    mode.inCompLibUpgrade = true;
+    restoreState = bookmarkState();
+
+    oldCompLibVer = doc.info.componentLibVer;
+    oldComponentLibrary = $state.snapshot(savedComponents);
+
     try {
+      doc.info.componentLibVer = upgradeInfo.to_version;
+
       upgradeDoc(
         getDocEl(),
-        $state.snapshot(savedComponents),
+        oldComponentLibrary,
         data.library,
         $state.snapshot(upgradeInfo),
       );
+
+      // componentElStyles.clear();
+      // data.library.forEach((comp) =>
+      //   setComponentStyles(comp, componentElStyles),
+      // );
+      loadComponentLibrary(data.library, "document", componentElStyles);
     } catch (err) {
       submitStatus = "error";
       submitMsg =
         "INTERNAL ERROR" + (err instanceof Error ? ": " + err.message : "");
+
+      mode.disabled = false;
+      setTimeout(() => (mode.inCompLibUpgrade = false));
+      doc.info.componentLibVer = oldCompLibVer;
+
+      // componentElStyles.clear();
+      // savedComponents.forEach((comp) =>
+      //   setComponentStyles(comp, componentElStyles),
+      // );
+      loadComponentLibrary(oldComponentLibrary, "document", componentElStyles);
+
       throw err;
     }
 
     submitMsg = "Syncing new document library version identifier...";
-
-    resp = await fetch_("/documents/update_document_complib", {
-      method: "post",
-      body: JSON.stringify({
-        id: editorState.resourceName,
-      }),
-    });
-    if (!resp.ok) {
-      submitStatus = "error";
-      submitMsg =
-        "Unexpected error occured while syncing new library version identifier.";
-      return;
-    }
-
     submitStatus = "success";
   }
 </script>
 
-<div class="bg-yellow-50 rounded border-2 border-yellow-300">
+<div
+  class="bg-yellow-50 rounded border-2 border-yellow-300"
+  class:hidden={editorState.mode !== "document" ||
+    !mode.sidebar.includes("component")}
+>
   <button
     class="peer w-full flex items-center justify-around text-lg font-serif text-yellow-700 hover:cursor-pointer hover:bg-yellow-100 py-1 group"
     onclick={() => (isExpanded = !isExpanded)}
@@ -135,12 +183,47 @@
           </div>
         {:else if submitStatus === "success"}
           <div class="font-bold text-green-700">Upgrade successful!</div>
+          <div class="text-green-700 italic">
+            Reload the page or click below to confirm the changes.
+          </div>
+          <div class="flex text-xl mt-2">
+            <button
+              class="flex items-center mx-1 border-2 rounded border-yellow-900 bg-yellow-700 text-yellow-100 px-3 py-1 font-bold hover:bg-yellow-800 transition-colors active:bg-yellow-900 active:translate-y-0.5"
+              onclick={() => {
+                restoreState();
+                if (oldComponentLibrary)
+                  loadComponentLibrary(
+                    oldComponentLibrary,
+                    "document",
+                    componentElStyles,
+                  );
+                else
+                  console.error(
+                    "oldComponentLibrary undefined when restoring document to before library upgrade.",
+                  );
+
+                submitStatus = "none";
+                submitMsg = "";
+
+                // componentElStyles.clear();
+                // savedComponents.forEach((comp) =>
+                //   setComponentStyles(comp, componentElStyles),
+                // );
+              }}
+              ><ArrowBendUpLeftIcon class="mr-2" weight="bold" /> Reject</button
+            >
+            <button
+              class="flex items-center mx-1 px-3 py-1 font-bold underline hover:no-underline active:text-yellow-900/80 active:translate-y-0.5"
+              onclick={() => window.location.reload()}
+              ><CheckIcon class="mr-1" weight="bold" /> Accept</button
+            >
+          </div>
         {/if}
       </div>
       <div class="flex items-center justify-center font-mono italic">
-        <div>{reduceVerString(compLibVer.currentVer ?? "")}</div>
+        <div>{reduceVerString(oldCompLibVer)}</div>
         <ArrowRight class="mx-1" />
-        <div>{reduceVerString(compLibVer.latestVer ?? "")}</div>
+        <div>{reduceVerString(compLib.latestVer ?? "")}</div>
       </div>
       {#if upgradeInfo}
         <div class="mt-2">

@@ -366,8 +366,11 @@ function getInlineStylesForElement(
       visit: "Declaration", // We are interested in 'Declaration' nodes
       enter: (node: csstree.Declaration) => {
         const originalName = node.property; // Property name as declared
-        const value = csstree.generate(node.value); // Convert AST value to string
+        let value = csstree.generate(node.value); // Convert AST value to string
         const important = node.important === true; // Check if important flag is set
+        // The !important isn't considered part of the property value, but part of the property as a whole, so using css.generate() on node.value
+        //  excludes the "!important" as the end of the value (note it *is* included when calling css.generate() on `node` itself).
+        if (important) value += "!important";
 
         properties.push({
           name: originalName, // Store the original declared property name

@@ -50,18 +50,13 @@ def get_document_edit():
         return "Required URL parameter 'id'", 400
     doc = get_development_document(int(id_), commit_changes=True)
     if doc is None:
-        return f"Found no document of id '{id_}'", 400
-
-    ## TODO: TEMPORARY FOR DEMO PURPOSES
-    body = doc.body
-    if not body.startswith("<"):
-        body = "<p>" + body + "</p>"
+        return f"Found no document of id '{id_}'", 404
 
     return {
         "id": doc.id,
         "title": doc.title,
         "description": doc.description,
-        "body": body,
+        "body": doc.body,
         "accent": doc.accent,
         "thumbnail": doc.thumbnail,
         "tags": [tag.name for tag in doc.tags],
@@ -108,9 +103,9 @@ def sync_document_patch():
                     "value": str      # The string to insert at the specified index (optional, defaults to "")
                 },
                 ...
-            ]
+            ],
+            "complibver": str         # The component library version for the document
         }
-    The function applies each patch in reverse order of their indices to avoid index shifting issues.
     Each patch replaces `length` characters at `index` with `value`.
     Returns:
         - The updated document content as a string on success.
@@ -120,11 +115,15 @@ def sync_document_patch():
     id_: int = data.get("id")
     if not id_:
         return "Missing required 'id' key", 400
-    patches: list[dict[str, str | int]] = data.get("patches", "")
 
+    patches: list[dict[str, str | int]] = data.get("patches", "")
     # print(patches)
     if type(patches) is not list:
         return "'patches' must be an array", 400
+
+    complibver: str | None = data.get("complibver", None)
+    if complibver is None:
+        return "'complibver' is required", 400
 
     document = get_development_document(int(id_))
     if not document:
@@ -149,40 +148,21 @@ def sync_document_patch():
         patch["old_val"] = content[index : index + length]
         content = content[:index] + value + content[index + length :]
 
-    for i in range(len(patches)):
-        patch = patches[i]
-        print(
-            f'({i}) Index: {patch["index"]} Length: {patch["length"]} "{patch["old_val"]}" -> "{patch["value"]}"'
-        )
-    print(f"---Content length: {old_len} -> {len(content)}")
+    # for i in range(len(patches)):
+    #     patch = patches[i]
+    #     print(
+    #         f'({i}) Index: {patch["index"]} Length: {patch["length"]} "{patch["old_val"]}" -> "{patch["value"]}"'
+    #     )
+    # print(f"---Content length: {old_len} -> {len(content)}")
+    print(content)
     document.body = content
+    document.component_lib_version = complibver
     db.session.commit()
 
     return content
 
 
 ################################### DOCUMENT METADATA
-
-
-@bp.route("/update_document_complib", methods=["OPTIONS", "POST"])
-@api_view(methods=["OPTIONS", "POST"])
-def update_document_complib():
-    data = json.loads(request.data.decode("utf-8"))
-    id_: int = data.get("id")
-    if not id_:
-        return "Missing required 'id' key", 400
-    version: str | None = data.get("version")
-    if version is None:
-        version = get_component_lib().latest_version
-
-    # document = db.session.get(GuidanceDocument, int(id_))
-    document = get_development_document(int(id_))
-    if not document:
-        return f"No guidance document of id '{id_}'", 400
-
-    document.component_lib_version = version
-    db.session.commit()
-    return ""
 
 
 def fill_doc_tag_names(tags: list[str]) -> list[DocumentTag]:

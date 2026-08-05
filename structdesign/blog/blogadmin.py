@@ -171,8 +171,6 @@ def create_new_guidance_document():
             file.save(input_file)
             input_file.flush()
 
-            # input_file.
-
             print(input_file.name)
             try:
                 output = convert_document_to_html(input_file.name, ext, str(doc.id))
@@ -181,6 +179,13 @@ def create_new_guidance_document():
                     "File type is unsupported or otherwise the file contents are invalid",
                     400,
                 )
+
+            output = (
+                '<main style="width: 75%; max-width: 600px; margin: 0 auto;">'
+                + output
+                + "</main>"
+            )
+
             print("\n\n")
             print(output)
 

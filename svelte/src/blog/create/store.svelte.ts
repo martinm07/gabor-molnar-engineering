@@ -2,13 +2,17 @@ import { writable, type Writable } from "svelte/store";
 import { elsListConnected } from "./helper";
 import { PersistedState, useDebounce } from "runed";
 import type { CompLibUpgradeInfo } from "./components/libraryupgrade";
+import { SvelteMap } from "svelte/reactivity";
 
 type CursorMode = "select" | "edit" | "add" | "move" | "noselect";
-type SidebarMode = "edit" | "addcomponent" | "viewcomponent" | "viewer";
+type SidebarMode =
+  "edit" | "addcomponent" | "changetocomponent" | "viewcomponent" | "viewer";
 
 class Mode {
   cursor: CursorMode = $state("select");
-  sidebar: SidebarMode = $state("edit");
+  sidebar: SidebarMode = $state("changetocomponent");
+  disabled: boolean = $state(false);
+  inCompLibUpgrade: boolean = $state(false);
 }
 export const mode = new Mode();
 
@@ -33,12 +37,7 @@ export const selection = new Selection();
 /////////////////////////////////////////// AUTOCOMPLETE
 
 type AutocompleteMode =
-  | "css"
-  | "attributes"
-  | "tag"
-  | "component"
-  | "doctag"
-  | null;
+  "css" | "attributes" | "tag" | "component" | "doctag" | null;
 export const autocompleteMode: Writable<AutocompleteMode> = writable(null);
 export const autocompleteSuggestions: Writable<string[]> = writable([]);
 
@@ -103,6 +102,7 @@ class Doc {
     componentLibVer: "",
   });
   infoFetched = $state(false);
+  is404 = $state(false);
   // savedInfo: DocumentInfo =
 }
 
@@ -144,6 +144,17 @@ export interface SavedComponent {
   tags?: string;
 }
 
+export type SavedComponentOptionalIdentName = Omit<
+  SavedComponent,
+  "identName"
+> & {
+  identName?: string;
+};
+
+export type SavedComponentWithEdit = SavedComponent & {
+  state?: "unmodified" | "modified" | "added" | "removed";
+};
+
 // const savedComps_: SavedComponent[] = [
 // {
 //   name: "component1",
@@ -180,36 +191,26 @@ export interface SavedComponent {
 //   writable(savedComps_);
 export const savedComponents: SavedComponent[] = $state([]);
 
+export type PropsList = [k: string, v: string][];
+export const compPartToInheritedAttrs: Map<string, PropsList> = new SvelteMap();
+
 export const allComponentTags: string[] = $state([]);
 
-// export const compLibVer: {
-//   currentVer: string | null;
-//   latestVer: string | null;
-// } = $state({
-//   currentVer: null,
-//   latestVer: null,
-// });
-// export let isLibUpToDate_ = $derived(
-//   compLibVer.currentVer !== null &&
-//     compLibVer.latestVer !== null &&
-//     compLibVer.currentVer === compLibVer.latestVer,
-// );
-// export const isLibUpToDate = () => isLibUpToDate_;
-class CompLibVer {
-  currentVer: string | null = $state(null);
+class CompLib {
   latestVer: string | null = $state(null);
+
   isLibUpToDate: boolean = $derived(
-    this.currentVer !== null &&
+    doc.info.componentLibVer !== null &&
       this.latestVer !== null &&
-      this.currentVer === this.latestVer,
+      doc.info.componentLibVer === this.latestVer,
   );
   isVersFetched: boolean = $derived(
-    this.currentVer !== null && this.latestVer !== null,
+    doc.info.componentLibVer !== null && this.latestVer !== null,
   );
 
   upgradeInfo: CompLibUpgradeInfo | null = $state(null);
 }
-export const compLibVer = new CompLibVer();
+export const compLib = new CompLib();
 
 interface CompLibEdit {
   type: "add" | "remove" | "edit";
