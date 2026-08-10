@@ -47,7 +47,7 @@ export function onKeydown(e: KeyboardEvent, p: EditorInterfaceKeyboard) {
       selection.hover.remove();
       p.historyManager?.suggestCreateNewHistoryItem();
     }
-  } else if (e.key === "c" && selection.island.length > 0) {
+  } else if (e.key === "c" && !inTextField && selection.island.length > 0) {
     mode.sidebar = "changetocomponent";
   } else if (
     e.key === "Escape" &&

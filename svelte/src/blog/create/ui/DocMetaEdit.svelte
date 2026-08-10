@@ -13,7 +13,48 @@
   import FitContentWrapTextarea from "/shared/components/FitContentWrapTextarea.svelte";
   import { TagsEditor } from "../components/ComponentMetaEdit.svelte";
   import { fetch_ } from "/shared/helper";
-  import { deepEqual } from "../helper";
+  import { deepEqual, DynamicStylesheet } from "../helper";
+  import { getContext } from "svelte";
+  import { createPublishDoc } from "../documents/docsaving.svelte";
+
+  const getDocEl: () => HTMLElement = getContext("getDocEl");
+  const getDataStyles: () => DynamicStylesheet<string> =
+    getContext("getDataStyles");
+  const getComponentElStyles: () => DynamicStylesheet<string> = getContext(
+    "getComponentElStyles",
+  );
+
+  async function publishChanges() {
+    const docEl = getDocEl();
+    const dataStyles = getDataStyles();
+    const componentElStyles = getComponentElStyles();
+
+    // IMP: The order of stylesheets passed in MATTERS for determining the result of the CSS cascade.
+    //      It should be the same order as the dynamic stylesheets are defined/initalised in App.svelte.
+    const { bodyStr, stylesheetStr } = createPublishDoc(docEl, [
+      dataStyles,
+      componentElStyles,
+    ]);
+
+    console.log("PUBLISHING CHANGES.");
+    console.log("HTML string of published document:\n--------\n" + bodyStr);
+    console.log(
+      "Stylesheet string of published document:\n-------\n" + stylesheetStr,
+    );
+
+    disablePublishBtn = true;
+    publishResp = fetch_("/documents/publish_development_document", {
+      method: "post",
+      body: JSON.stringify({
+        id: doc.info.id,
+        body: bodyStr,
+        stylesheet: stylesheetStr,
+      }),
+    });
+    publishResp.finally(() => (disablePublishBtn = false));
+  }
+
+  //////////////
 
   function validateTitle(title: string) {
     if (title.length === 0) return "Title required";
@@ -84,18 +125,6 @@
   let confirmPublish = $state(false);
   let publishResp: Promise<Response> | null = $state(null);
   let disablePublishBtn = $state(false);
-
-  async function publishChanges() {
-    console.log("PUBLISHING CHANGES.");
-    disablePublishBtn = true;
-    publishResp = fetch_("/documents/publish_development_document", {
-      method: "post",
-      body: JSON.stringify({
-        id: doc.info.id,
-      }),
-    });
-    publishResp.finally(() => (disablePublishBtn = false));
-  }
 </script>
 
 <svelte:document

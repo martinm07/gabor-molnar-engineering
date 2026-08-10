@@ -181,6 +181,7 @@
 
   const dataStyles = new DynamicStylesheet<string>();
   onDestroy(() => dataStyles.destroy());
+  setContext("getDataStyles", () => dataStyles);
 
   const componentElStyles = new DynamicStylesheet<string>();
   onDestroy(() => componentElStyles.destroy());
@@ -231,7 +232,8 @@
             if (!alreadyChecked.has(current)) {
               checkDataID(current);
               syncDataStyleAttrs(current, dataStyles);
-              if (!mode.disabled) protectInheritedAttrs(current);
+              if (!mode.disabled && editorState.mode !== "component")
+                protectInheritedAttrs(current);
               alreadyChecked.add(current);
             }
 
@@ -253,7 +255,8 @@
               dataStyles,
               mutation.attributeName as string,
             );
-            if (!mode.disabled) protectInheritedAttrs(el);
+            if (!mode.disabled && editorState.mode !== "component")
+              protectInheritedAttrs(el);
             alreadyChecked.add(el);
           }
         }

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import datetime
-from typing import List, Literal
+from typing import Literal
 
 from sqlalchemy import (
     Column,
@@ -51,8 +51,8 @@ class User(db.Model):
     date_created: Mapped[datetime.date] = mapped_column(default=func.current_date())
     display_date_created: Mapped[bool] = mapped_column(default=True)
 
-    secret: Mapped["UserSecret"] = relationship(back_populates="user")
-    logins_list: Mapped[list["UserLoginOption"]] = relationship(back_populates="user")
+    secret: Mapped[UserSecret] = relationship(back_populates="user")
+    logins_list: Mapped[list[UserLoginOption]] = relationship(back_populates="user")
 
 
 class UserLoginOption(db.Model):
@@ -60,7 +60,7 @@ class UserLoginOption(db.Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id = mapped_column(ForeignKey("users.id"))
-    user: Mapped["User"] = relationship(back_populates="logins_list")
+    user: Mapped[User] = relationship(back_populates="logins_list")
 
     info: Mapped[str] = mapped_column(String(100))
     type: Mapped[str] = mapped_column(String(10))
@@ -80,7 +80,7 @@ class UserSecret(db.Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id = mapped_column(ForeignKey("users.id"))
-    user: Mapped["User"] = relationship(back_populates="secret", single_parent=True)
+    user: Mapped[User] = relationship(back_populates="secret", single_parent=True)
 
 
 ###################################################
@@ -114,18 +114,20 @@ class GuidanceDocument(db.Model):
     date_updated: Mapped[datetime.date] = mapped_column(default=func.current_date())
     title: Mapped[str] = mapped_column(String(256))
     description: Mapped[str] = mapped_column(String(1024))
-    body: Mapped[str] = mapped_column(Text())
     accent: Mapped[str] = mapped_column(String(11), nullable=True)
     thumbnail: Mapped[str] = mapped_column(String(4096))
-    tags: Mapped[List["DocumentTag"]] = relationship(
+    tags: Mapped[list[DocumentTag]] = relationship(
         secondary=document_tag_association_table, back_populates="documents"
     )
+
+    body: Mapped[str] = mapped_column(Text())
+    stylesheet: Mapped[str] = mapped_column(Text())
+    component_lib_version: Mapped[str] = mapped_column(Text(), nullable=False)
 
     hearts: Mapped[int] = mapped_column(default=0)
     status: Mapped[Literal["featured", "public", "unlisted", "private"]] = (
         mapped_column(String(16), default="private")
     )
-    component_lib_version: Mapped[str] = mapped_column(Text(), nullable=False)
 
 
 class DocumentTag(db.Model):
@@ -136,7 +138,7 @@ class DocumentTag(db.Model):
     description: Mapped[str] = mapped_column(String(1024))
     accent: Mapped[str] = mapped_column(String(11), nullable=True)
 
-    documents: Mapped[List["GuidanceDocument"]] = relationship(
+    documents: Mapped[list[GuidanceDocument]] = relationship(
         secondary=document_tag_association_table, back_populates="tags"
     )
 
@@ -188,13 +190,13 @@ class SavedComponent(db.Model):
     content: Mapped[str] = mapped_column(Text())
     parts: Mapped[str] = mapped_column(String(1024))
 
-    tags: Mapped[List["SavedComponentTag"]] = relationship(
+    tags: Mapped[list[SavedComponentTag]] = relationship(
         secondary=component_tag_association_table, back_populates="components"
     )
     tags_str: Mapped[str] = mapped_column(String(1024), default="")
 
     library_id = mapped_column(ForeignKey("savedcomponentlibraries.id"))
-    library: Mapped["SavedComponentLibrary"] = relationship(back_populates="components")
+    library: Mapped[SavedComponentLibrary] = relationship(back_populates="components")
 
 
 class SavedComponentTag(db.Model):
@@ -202,7 +204,7 @@ class SavedComponentTag(db.Model):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(32))
-    components: Mapped[List["SavedComponent"]] = relationship(
+    components: Mapped[list[SavedComponent]] = relationship(
         secondary=component_tag_association_table, back_populates="tags"
     )
 
@@ -211,7 +213,7 @@ class SavedComponentLibrary(db.Model):
     __tablename__ = "savedcomponentlibraries"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    components: Mapped[list["SavedComponent"]] = relationship(back_populates="library")
+    components: Mapped[list[SavedComponent]] = relationship(back_populates="library")
     name: Mapped[str] = mapped_column(String(32))
     latest_version: Mapped[str] = mapped_column(Text(), nullable=False)
 

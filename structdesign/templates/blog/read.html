@@ -5,56 +5,481 @@
     <link rel="icon" type="image/svg+xml" href="/cog1-svgrepo-com.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>{{ title }}</title>
-    <script
-      type="module"
-      crossorigin
-      src="/static/blog/js/read-CoMw5o6N.js"
-    ></script>
-    <link
-      rel="modulepreload"
-      crossorigin
-      href="/static/shared/js/svelte-Zn4dHZ_B.js"
-    />
-    <link
-      rel="modulepreload"
-      crossorigin
-      href="/static/shared/js/this-CYvKrGOR.js"
-    />
-    <link
-      rel="modulepreload"
-      crossorigin
-      href="/static/shared/js/await-BU4qrKyR.js"
-    />
     <link
       rel="stylesheet"
       crossorigin
       href="/static/shared/css/tailwindinit.css"
     />
-    <link
-      rel="stylesheet"
-      crossorigin
-      href="/static/blog/css/read-CS2pPu5R.css"
-    />
+
+    <style>
+      body {
+        position: relative;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .footer-container {
+        background-color: var(--color-rock-50);
+        margin-top: 5rem;
+        padding: 1.25rem;
+        border-top: 2px solid var(--color-rock-300);
+        text-align: center;
+        position: relative;
+      }
+
+      .footer-bg-feature-1,
+      .footer-bg-feature-2 {
+        position: absolute;
+        height: 100%;
+        bottom: 0;
+        background-color: var(--color-rock-100);
+      }
+
+      .footer-bg-feature-1 {
+        width: 33.3%;
+        left: 0;
+      }
+      .footer-bg-feature-2 {
+        width: 16.6%;
+        right: 0;
+      }
+
+      .footer-btn {
+        display: inline-flex;
+        position: relative;
+        align-items: center;
+        padding: 0.25rem 1rem;
+        border: 2px solid var(--color-rock-600);
+        border-radius: 0.25rem;
+        background-color: var(--color-steel-50);
+        color: var(--color-rock-600);
+        font-weight: 700;
+        text-wrap: nowrap;
+      }
+      .footer-btn:hover {
+        background-color: var(--color-steel-100);
+      }
+      .footer-btn:active {
+        background-color: var(--color-steel-200);
+        color: var(--color-rock-700);
+        box-shadow: 0 0 0 4px var(--color-rock-100);
+      }
+
+      .heart-container {
+        display: inline-block;
+        position: relative;
+        margin: 1rem;
+        width: 173px;
+        transition: width 150ms cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .heart-container.hearted {
+        width: 54px;
+      }
+
+      .heart-btn {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+      }
+      .heart-btn-icon {
+        margin-right: 1rem;
+        font-size: 1.125rem;
+        --ionicon-stroke-width: 48px;
+        color: oklch(63.7% 0.237 25.331);
+        flex-shrink: 0;
+      }
+
+      .info-icon {
+        margin-left: 0.25rem;
+        font-size: 1.25rem;
+        position: absolute;
+        top: 0;
+        right: 0;
+        transform: translateX(100%);
+        color: var(--color-rock-700);
+      }
+
+      #heartinfo {
+        display: none;
+        position: absolute;
+        top: -0.75rem;
+        right: 0;
+        /*transform: translateX(-50%) translateY(-100%);*/
+        translate: 50% -100%;
+        width: 12rem;
+        background-color: var(--color-rock-800);
+        border-radius: 0.25rem;
+        color: var(--color-rock-50);
+        font-weight: 400;
+        padding: 0.25rem;
+        font-size: 0.875rem;
+        transition:
+          opacity 150ms cubic-bezier(0.4, 0, 0.2, 1),
+          transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        opacity: 0;
+      }
+
+      .popup-arrow {
+        position: absolute;
+        left: 50%;
+        width: 1.25rem;
+        height: 0.75rem;
+        background-color: var(--color-rock-800);
+        bottom: 0;
+        transform: translateY(100%);
+        clip-path: polygon(100% 0, 0 0, 50% 100%);
+      }
+
+      #comment-dialog {
+        background-color: var(--color-background);
+        margin: auto;
+        padding: 1rem;
+        padding-top: 2rem;
+        border-radius: 0.25rem;
+        border: 2px solid var(--color-rock-500);
+      }
+
+      .dialog-close-btn {
+        font-size: 2rem;
+        position: absolute;
+        top: 0.5rem;
+        left: 0.5rem;
+        color: var(--color-rock-600);
+        transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .dialog-close-btn:hover {
+        transform: rotate(90deg);
+      }
+
+      .dialog-text-container {
+        display: grid;
+        place-content: center;
+        color: var(--color-rock-800);
+        font-size: 1.125rem;
+        margin-top: 1rem;
+        text-wrap: balance;
+      }
+      #dialog-text.error {
+        color: oklch(50.5% 0.213 27.518);
+      }
+
+      #comment {
+        display: block;
+        min-width: 70vw;
+        width: 100%;
+        border: 2px solid var(--color-rock-600);
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+        max-height: 50vh;
+        height: 35vh;
+        color: var(--color-rock-700);
+      }
+      #comment:focus,
+      #email:focus {
+        outline: none;
+        box-shadow: 0 0 0 4px var(--color-rock-200);
+      }
+      #comment::placeholder {
+        font-style: italic;
+      }
+      #comment:disabled {
+        opacity: 40%;
+        pointer-events: none;
+      }
+
+      #email {
+        border: 2px solid var(--color-rock-600);
+        border-radius: 0.25rem;
+        width: 100%;
+        margin: 1rem 0;
+        padding: 0.25rem 1rem;
+        font-family: var(--font-mono);
+        color: var(--color-rock-700);
+      }
+      #email::placeholder {
+        font-family: var(--font-sans);
+        font-style: italic;
+      }
+      #email:disabled {
+        opacity: 40%;
+        pointer-events: none;
+      }
+
+      #comment-submit-btn {
+        padding: 0.25rem 1rem;
+        border: 2px solid var(--color-rock-600);
+        border-radius: 0.25rem;
+        color: var(--color-rock-700);
+        box-shadow: inset 5px 5px var(--color-rock-100);
+        transition: padding 150ms cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 1.125rem;
+      }
+      #comment-submit-btn:hover {
+        background-color: var(--color-rock-100);
+        padding: 0.25rem 1.5rem;
+      }
+      #comment-submit-btn:active {
+        background-color: var(--color-rock-200);
+        box-shadow: none;
+        color: var(--color-rock-800);
+      }
+      #comment-submit-btn:focus {
+        box-shadow: 0 0 0 4px var(--color-rock-200);
+      }
+      #comment-submit-btn:disabled {
+        opacity: 40%;
+        pointer-events: none;
+      }
+    </style>
+
+    <style>
+      {{ stylesheet|safe }}
+    </style>
   </head>
   <body>
-    <div id="app" style="position: relative"></div>
-    <input id="flask-server" type="hidden" value="http://127.0.0.1:5000" />
+    {{ body|safe }}
+
+    <div style="margin-top: auto">
+      <div class="footer-container">
+        <div
+          class="footer-bg-feature-1"
+          style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%)"
+        ></div>
+        <div
+          class="footer-bg-feature-2"
+          style="clip-path: polygon(100% 0, 0% 100%, 100% 100%)"
+        ></div>
+
+        <div class="heart-container">
+          <button class="footer-btn heart-btn">
+            <ion-icon
+              class="heart-btn-icon heart-btn-icon-outline"
+              name="heart-outline"
+            ></ion-icon
+            ><ion-icon
+              class="heart-btn-icon heart-btn-icon-full"
+              name="heart"
+            ></ion-icon
+            >More Like This
+          </button>
+
+          <ion-icon
+            tabindex="0"
+            role="img"
+            aria-describedby="heartinfo"
+            class="info-icon"
+            name="information-circle-outline"
+          ></ion-icon>
+          <div id="heartinfo" role="definition">
+            All this does is privately notify us that you liked this document,
+            and wish to see more on this subject/area.
+            <div class="popup-arrow"></div>
+          </div>
+        </div>
+
+        <button
+          class="footer-btn"
+          style="margin: 1rem"
+          command="show-modal"
+          commandfor="comment-dialog"
+        >
+          <ion-icon
+            style="margin-right: 1rem; font-size: 1.125rem"
+            name="help"
+          ></ion-icon
+          >Comment/Question
+        </button>
+      </div>
+    </div>
+
+    <dialog id="comment-dialog">
+      <button
+        class="dialog-close-btn"
+        aria-label="Close modal"
+        commandfor="comment-dialog"
+        command="close"
+      >
+        <ion-icon name="close" style="display: block"></ion-icon>
+      </button>
+
+      <div class="dialog-text-container">
+        <p id="dialog-text">
+          Privately send us feedback, questions and comments in general. <br />
+          If you want us to respond, then fill in your email address as well.
+        </p>
+      </div>
+
+      <form style="margin-top: 1.25rem; text-align: center" id="comment-form">
+        <textarea
+          name="comment"
+          id="comment"
+          required
+          placeholder="Write your feedback/questions/comments here."
+        ></textarea>
+        <input
+          type="email"
+          name="email"
+          id="email"
+          placeholder="Email address (optional)"
+        />
+        <button type="submit" id="comment-submit-btn">Submit</button>
+      </form>
+    </dialog>
     <script>
-      globalThis.jinjaParsed = false;
-      globalThis.urlRoot = document.getElementById("flask-server").value;
-      try {
-        if (!Number.parseInt("{{ 1 }}"))
-          throw new Error("Jinja wasn't parsed.");
-        globalThis.jinjaParsed = true;
-        globalThis.urlRoot = "/";
+      const stringify = (item) => JSON.stringify(item)?.replace(",", "");
+      function storageListAdd(item, key) {
+        const current = window.localStorage.getItem(key);
+        if (!current) window.localStorage.setItem(key, stringify(item));
+        else window.localStorage.setItem(key, current + "," + stringify(item));
+      }
+      function storageListRemove(item, key) {
+        const current = window.localStorage.getItem(key);
+        if (!current) return;
+        window.localStorage.setItem(
+          key,
+          current
+            .split(",")
+            .filter((el) => el !== stringify(item))
+            .join(","),
+        );
+      }
+      function storageListCheck(item, key) {
+        const data = window.localStorage.getItem(key);
+        if (!data) return false;
+        return data.split(",").find((el) => el === stringify(item))
+          ? true
+          : false;
+      }
 
-        globalThis.csrfToken = "{{ csrf_token() }}";
+      function handledHeartedChange(hearted) {
+        const heartContainer = document.querySelector(".heart-container");
+        const heartBtnIconOutline = document.querySelector(
+          ".heart-btn-icon-outline",
+        );
+        const heartBtnIconFull = document.querySelector(".heart-btn-icon-full");
 
-        globalThis.blogreadID = "{{ id }}";
-        globalThis.blogreadTitle = {{ title|tojson }};
-        globalThis.blogreadDesc = {{ description|tojson }};
-        globalThis.blogreadBody = {{ body|tojson }};
-      } catch {}
+        if (!hearted) {
+          heartContainer.classList.remove("hearted");
+          heartBtnIconOutline.style.display = "inline-block";
+          heartBtnIconFull.style.display = "none";
+        } else {
+          heartContainer.classList.add("hearted");
+          heartBtnIconFull.style.display = "inline-block";
+          heartBtnIconOutline.style.display = "none";
+        }
+      }
+
+      const heartInfo = document.querySelector("#heartinfo");
+
+      function showInfoShow(infoEl) {
+        infoEl.style.display = "block";
+        requestAnimationFrame(() => {
+          infoEl.style.opacity = "1";
+          infoEl.style.transform = "translate(0%, -6px)";
+        });
+      }
+      function showInfoHide(infoEl) {
+        infoEl.style.opacity = "0";
+        infoEl.style.transform = "translate(0%, -0px)";
+        setTimeout(() => {
+          if (infoEl.style.opacity !== "1") infoEl.style.display = "none";
+        }, 150);
+      }
+
+      window.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          showInfoHide(heartInfo);
+        }
+      });
+
+      const heartInfoBtn = document.querySelector(".info-icon");
+      heartInfoBtn.addEventListener("mouseenter", () =>
+        showInfoShow(heartInfo),
+      );
+      heartInfoBtn.addEventListener("mouseleave", () =>
+        showInfoHide(heartInfo),
+      );
+      heartInfoBtn.addEventListener("focusin", () => showInfoShow(heartInfo));
+      heartInfoBtn.addEventListener("focusout", () => showInfoHide(heartInfo));
+
+      heartInfo.addEventListener("mouseenter", () => showInfoShow(heartInfo));
+      heartInfo.addEventListener("mouseleave", () => showInfoHide(heartInfo));
+
+      const docID = "{{ id }}";
+      // console.log(docID);
+
+      let hearted = storageListCheck(docID, "hearted");
+      handledHeartedChange(hearted);
+
+      const heartBtn = document.querySelector(".heart-btn");
+      heartBtn.addEventListener("click", () => {
+        hearted = !hearted;
+
+        const heartedCurrent = hearted;
+        handledHeartedChange(heartedCurrent);
+
+        fetch("/documents/heart", {
+          method: "POST",
+          body: JSON.stringify({
+            id: docID,
+            value: hearted ? 1 : -1,
+          }),
+        })
+          .then((resp) => resp.json())
+          .then((data) => {
+            if (!data["result"])
+              console.error("Failed to process heart action");
+            if (heartedCurrent) storageListAdd(docID, "hearted");
+            else storageListRemove(docID, "hearted");
+          });
+      });
+
+      const dialogText = document.getElementById("dialog-text");
+
+      const commentForm = document.getElementById("comment-form");
+      commentForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        const commentEl = document.getElementById("comment");
+        const emailEl = document.getElementById("email");
+        const submitBtnEl = document.getElementById("comment-submit-btn");
+
+        dialogText.classList.remove("error");
+        dialogText.textContent = "Sending...";
+        commentEl.disabled = true;
+        emailEl.disabled = true;
+        submitBtnEl.disabled = true;
+        fetch("/documents/sendfeedback", {
+          method: "POST",
+          body: JSON.stringify({
+            id: docID,
+            comment: commentEl.value,
+            email: emailEl.value,
+          }),
+        })
+          .then((resp) => {
+            if (resp.ok) {
+              dialogText.textContent =
+                "Submission was successful! Thank you for taking your time to write to us.";
+            } else {
+              dialogText.classList.add("error");
+              dialogText.textContent = `(${resp.status}) Unfortunately, something went wrong. Please try again later, and sorry for the inconvenience.`;
+            }
+          })
+          .catch(() => {
+            dialogText.classList.add("error");
+            dialogText.textContent =
+              "An unexpected error has occurred. Please try again later, and sorry for the inconvenience.";
+          })
+          .finally(() => {
+            commentEl.disabled = false;
+            emailEl.disabled = false;
+            submitBtnEl.disabled = false;
+          });
+      });
     </script>
     <script
       type="module"

@@ -9,7 +9,6 @@ from werkzeug.utils import secure_filename
 from ..extensions import db
 from ..helper import api_view
 from ..models import DocumentTag, GuidanceDocument
-from .blogcreatecomponents import get_component_lib
 
 bp = Blueprint("blogcreatedocuments", __name__, url_prefix="/documents")
 
@@ -21,18 +20,23 @@ def get_development_document(id_: int, commit_changes=False):
 
     publishdoc = db.session.get(GuidanceDocument, (id_, 0))
     if publishdoc:
+        current_app.logger.warning(
+            "Creating missing development document from published document for ID %s",
+            id_,
+        )
         devdoc = GuidanceDocument(
             id=id_,
             type=1,
             title=publishdoc.title,
             description=publishdoc.description,
-            body=publishdoc.body,
             accent=publishdoc.accent,
             thumbnail=publishdoc.thumbnail,
             tags=publishdoc.tags,
-            hearts=publishdoc.hearts,
-            status=publishdoc.status,
+            body=publishdoc.body,
+            stylesheet="",
             component_lib_version=publishdoc.component_lib_version,
+            hearts=0,
+            status=publishdoc.status,
         )
         db.session.add(devdoc)
         if commit_changes:
@@ -129,7 +133,7 @@ def sync_document_patch():
     if not document:
         return f"No guidance document of id '{id_}'", 400
     content = document.body
-    old_len = len(content)
+    # old_len = len(content)
 
     # Sync the content of a document by sending a minimal amount of data
     #  for the server to then figure out how to patch in.
@@ -204,7 +208,7 @@ def update_document_metadata():
         ## IMP: ANY VALIDATION SHOULD GO HERE
 
         db.session.commit()
-    except Exception:
+    except Exception:  # noqa: BLE001
         document = get_development_document(int(id_), commit_changes=True)
         if not document:
             return f"Somehow no guidance document of id '{id_}'", 400
@@ -229,7 +233,12 @@ def publish_development_document():
 
     document = get_development_document(int(id_))
     if not document:
-        return f"No guidance document of id '{id_}'", 400
+        return f"No guidance document of id '{id_}'", 404
+
+    body = data.get("body")
+    stylesheet = data.get("stylesheet")
+    if not body or not stylesheet:
+        return "Missing required fields 'body' and 'stylesheet'", 400
 
     publishdoc = db.session.get(GuidanceDocument, (int(id_), 0))
     if not publishdoc:
@@ -238,13 +247,14 @@ def publish_development_document():
             type=0,
             title=document.title,
             description=document.description,
-            body=document.body,
             accent=document.accent,
             thumbnail=document.thumbnail,
             tags=document.tags,
-            hearts=document.hearts,
-            status=document.status,
+            body=body,
+            stylesheet=stylesheet,
             component_lib_version=document.component_lib_version,
+            hearts=0,
+            status=document.status,
         )
         db.session.add(publishdoc)
     else:
@@ -254,7 +264,8 @@ def publish_development_document():
         publishdoc.thumbnail = document.thumbnail
         publishdoc.tags = document.tags
 
-        publishdoc.body = document.body
+        publishdoc.body = body
+        publishdoc.stylesheet = stylesheet
         publishdoc.component_lib_version = document.component_lib_version
 
         publishdoc.status = document.status

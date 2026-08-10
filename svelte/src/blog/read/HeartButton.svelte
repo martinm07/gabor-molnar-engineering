@@ -14,10 +14,7 @@
   }
   let { doc }: Props = $props();
 
-  let hearted = $state(storageListCheck(doc.id, "hearted"));
-  $effect(() => {
-    hearted = storageListCheck(doc.id, "hearted");
-  });
+  let hearted = $derived(storageListCheck(doc.id, "hearted"));
 
   function heartSubmit() {
     const hearted_ = hearted;
@@ -89,7 +86,7 @@
     onmouseleave={showInfoHide}
     onfocusin={showInfoShow}
     onfocusout={showInfoHide}
-    class="ml-1 text-xl absolute top-0 -right-0 translate-x-full text-rock-700"
+    class="ml-1 text-xl absolute top-0 right-0 translate-x-full text-rock-700"
     name="information-circle-outline"
   ></ion-icon>
   <div
@@ -98,7 +95,7 @@
     onmouseenter={showInfoShow}
     onmouseleave={showInfoHide}
     bind:this={infoEl}
-    class="hidden absolute -top-3 -right-0 translate-x-1/2 w-48 bg-rock-800 rounded text-rock-50 font-normal p-2 text-sm transition-[opacity,transform] opacity-0 -translate-y-full"
+    class="hidden absolute -top-3 right-0 translate-x-1/2 w-48 bg-rock-800 rounded text-rock-50 font-normal p-2 text-sm transition-[opacity,transform] opacity-0 -translate-y-full"
   >
     All this does is privately notify us that you liked this document, and wish
     to see more on this subject/area.

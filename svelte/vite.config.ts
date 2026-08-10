@@ -29,7 +29,7 @@ const entryPoints = {
   register: resolve(root, "auth/register/index.html"),
   bloghome: resolve(root, "blog/home/index.html"),
   blogsearch: resolve(root, "blog/search/index.html"),
-  blogread: resolve(root, "blog/read/index.html"),
+  // blogread: resolve(root, "blog/read/index.html"),
   blogcreate: resolve(root, "blog/create/index.html"),
   blogtagsedit: resolve(root, "blog/tagsedit/index.html"),
   blogadmin: resolve(root, "blog/admin/index.html"),

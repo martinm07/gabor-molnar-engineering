@@ -1,5 +1,6 @@
 import { mode, type SavedComponent } from "../store.svelte";
 import {
+  addCompLibVerAttrs,
   breakInheritance,
   decodeComponentStr,
   extractPartsFromCompStr,
@@ -340,6 +341,8 @@ const handleAddedCompParts = (
       if (targetDataComponent !== dataComponent) continue;
 
       const bodyFrag = decodeComponentStr(addInfo.bodyStr, "document");
+      addCompLibVerAttrs(bodyFrag);
+
       const body = bodyFrag.childNodes[0];
       // prettier-ignore
       if (bodyFrag.childNodes.length !== 1 || !(body instanceof Element)) {

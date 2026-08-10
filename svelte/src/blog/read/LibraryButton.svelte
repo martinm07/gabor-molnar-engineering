@@ -13,10 +13,7 @@
   }
   let { doc }: Props = $props();
 
-  let bookmarked = $state(storageListCheck(doc.id, "saved"));
-  $effect(() => {
-    bookmarked = storageListCheck(doc.id, "saved");
-  });
+  let bookmarked = $derived(storageListCheck(doc.id, "saved"));
 
   let infoEl: HTMLElement;
   function showInfoShow() {
@@ -72,7 +69,7 @@
     onmouseleave={showInfoHide}
     onfocusin={showInfoShow}
     onfocusout={showInfoHide}
-    class="ml-1 text-xl absolute top-0 -right-0 translate-x-full text-rock-700"
+    class="ml-1 text-xl absolute top-0 right-0 translate-x-full text-rock-700"
     name="information-circle-outline"
   ></ion-icon>
   <div
@@ -81,7 +78,7 @@
     onmouseenter={showInfoShow}
     onmouseleave={showInfoHide}
     bind:this={infoEl}
-    class="hidden absolute -top-3 -right-0 translate-x-1/2 w-48 bg-rock-800 rounded text-rock-50 font-normal p-2 text-sm transition-[opacity,transform] opacity-0 -translate-y-full"
+    class="hidden absolute -top-3 right-0 translate-x-1/2 w-48 bg-rock-800 rounded text-rock-50 font-normal p-2 text-sm transition-[opacity,transform] opacity-0 -translate-y-full"
   >
     Save this document to your personal library, for easy future access. Your
     library can be found on the guidance documents home page.

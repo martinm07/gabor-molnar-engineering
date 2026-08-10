@@ -1,7 +1,7 @@
 import json
 import random
+from collections.abc import Iterable
 from itertools import islice
-from typing import Iterable
 
 import click
 from flask import Blueprint, abort, jsonify, render_template, request, session
@@ -130,19 +130,6 @@ def get_blogs_tag():
 def read(name: str):
     name_transformed = name.replace("-", "").replace(" ", "").lower()
     print("Trying to fetch article:", name_transformed)
-    # stmt = select(GuidanceDocument).where(
-    #     and_(
-    #         func.LOWER(
-    #             func.REPLACE(func.REPLACE(GuidanceDocument.title, "-", ""), " ", "")
-    #         )
-    #         == name_transformed,
-    #         or_(
-    #             GuidanceDocument.status == "public",
-    #             GuidanceDocument.status == "featured",
-    #             GuidanceDocument.status == "unlisted"
-    #         )
-    #     )
-    # )
 
     stmt = select(GuidanceDocument).where(
         func.LOWER(func.REPLACE(func.REPLACE(GuidanceDocument.title, "-", ""), " ", ""))
@@ -162,6 +149,7 @@ def read(name: str):
         title=doc.title,
         description=doc.description,
         body=doc.body,
+        stylesheet=doc.stylesheet,
     )
 
 

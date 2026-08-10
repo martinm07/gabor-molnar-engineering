@@ -12,7 +12,10 @@
   import { changePage, editorState } from "../url.svelte";
   import { watch } from "runed";
   import { getContext } from "svelte";
-  import { decodeComponentStr } from "../components/component.svelte";
+  import {
+    addCompLibVerAttrs,
+    decodeComponentStr,
+  } from "../components/component.svelte";
 
   const removeFromSelection: (nodes?: Node[] | Node) => void = getContext(
     "removeFromSelection",
@@ -24,6 +27,7 @@
     if (editorState.mode !== "document") return;
 
     const componentFrag = decodeComponentStr(comp.content, "document");
+    addCompLibVerAttrs(componentFrag);
     const topLevel = Array(...componentFrag.childNodes);
 
     selection.selected[0].replaceWith(componentFrag);

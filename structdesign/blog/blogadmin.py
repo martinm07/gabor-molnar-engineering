@@ -151,9 +151,10 @@ def create_new_guidance_document():
     doc = GuidanceDocument(
         title=data["title"],
         description=data.get("description", ""),
-        body=data.get("body", ""),
         accent=data.get("accent", None),
         thumbnail=data.get("thumbnail", ""),
+        body=data.get("body", ""),
+        stylesheet=data.get("stylesheet", ""),
         component_lib_version=get_component_lib().latest_version,
         status="public",
         type=1,

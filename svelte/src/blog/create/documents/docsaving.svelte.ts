@@ -10,6 +10,7 @@ import {
   type DocPatchStr,
   generatePosNodes,
   applyPatches,
+  getElementString,
 } from "./docsyncing";
 import {
   doc,
@@ -19,7 +20,7 @@ import {
 } from "../store.svelte";
 import { editorState } from "../url.svelte";
 import { fetch_ } from "/shared/helper";
-import { isHistoryNotBodyContainer } from "../helper";
+import { DynamicStylesheet, isHistoryNotBodyContainer } from "../helper";
 
 const getDocumentID = () =>
   editorState.mode === "document"
@@ -387,4 +388,63 @@ export class SaveDoc {
     updateCompEdit(componentID, { content, parts });
     return htmlStr;
   }
+}
+
+export function createPublishDoc(
+  docEl: HTMLElement,
+  stylesheets: DynamicStylesheet<any>[],
+): { bodyStr: string; stylesheetStr: string } {
+  const [htmlStr, nodeMap] = reconstructHTMLString(docEl, {
+    docContainer: docEl,
+    includeContainer: false,
+    includeHistoryNotBodyEls: false,
+  });
+
+  const strUpdates: { insert: string; length: number; index: number }[] = [];
+
+  nodeMap.entries().forEach(([node, info]) => {
+    if (info.isEl && node instanceof Element) {
+      const newEl = document.createElement(node.tagName.toLowerCase());
+      Array.from(node.attributes).forEach((attr) => {
+        if ("data-complibver" === attr.name) return;
+        if ("data-componentname" === attr.name) return;
+        if ("data-iscompcontainer" === attr.name) return;
+        if ("data-comppartblacklist" === attr.name) return;
+        if ("data-compdisinherited" === attr.name) return;
+        if (/^data-style-.*$/g.test(attr.name)) return;
+        if (/^data-dummycompstyle.*$/g.test(attr.name)) return;
+        if (/^data-override-.*$/g.test(attr.name)) return;
+
+        newEl.setAttribute(attr.name, attr.value);
+      });
+
+      const [newTagStr] = getElementString(newEl);
+
+      strUpdates.push({
+        index: info.stringPos,
+        length: info.startTagLen,
+        insert: newTagStr,
+      });
+    }
+  });
+
+  let bodyStr = htmlStr;
+  strUpdates.sort((a, b) => b.index - a.index);
+
+  strUpdates.forEach(({ index, length, insert }) => {
+    bodyStr = bodyStr.slice(0, index) + insert + bodyStr.slice(index + length);
+  });
+
+  let stylesheetStr = "";
+
+  stylesheets.forEach((stylesheet) => {
+    Array.from(stylesheet.stylesheet.cssRules).forEach((cssRule) => {
+      stylesheetStr += cssRule.cssText + "\n\n";
+    });
+  });
+
+  return {
+    bodyStr,
+    stylesheetStr,
+  };
 }

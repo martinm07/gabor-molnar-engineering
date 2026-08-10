@@ -242,10 +242,11 @@ export function generateCompContentStr(
         .endsWith(" />");
 
       const newEl = document.createElement(node.tagName.toLowerCase());
-      Array.from(node.attributes).forEach(
-        (attr) =>
-          attr.name !== "data-id" && newEl.setAttribute(attr.name, attr.value),
-      );
+      Array.from(node.attributes).forEach((attr) => {
+        if (attr.name === "data-id") return;
+        if (attr.name === "data-complibver") return;
+        newEl.setAttribute(attr.name, attr.value);
+      });
       newEl.setAttribute("data-component", `${compName}-[${partsStr}]`);
 
       const [newTagStr] = getElementString(newEl);
@@ -305,8 +306,6 @@ export function decodeComponentStr(
   } else if (for_ === "document") {
     getAllChildNodes(tempDiv).forEach((node) => {
       if (node instanceof HTMLElement) {
-        node.setAttribute("data-complibver", doc.info.componentLibVer);
-
         Array.from(node.attributes).forEach((attr, i) => {
           if (attr.name === "style") {
             replaceAttrAtIndex(node, i, "data-dummycompstyle", attr.value);
@@ -325,6 +324,19 @@ export function decodeComponentStr(
 
   while (tempDiv.firstChild) fragment.appendChild(tempDiv.firstChild);
   return fragment;
+}
+
+export function addCompLibVerAttrs(compInstance: DocumentFragment) {
+  const walker = document.createTreeWalker(
+    compInstance,
+    NodeFilter.SHOW_ELEMENT,
+  );
+
+  let current: Element | null = walker.currentNode as Element;
+  while (current) {
+    current.setAttribute("data-complibver", doc.info.componentLibVer);
+    current = walker.nextNode() as Element | null;
+  }
 }
 
 /**
@@ -447,8 +459,8 @@ export function breakInheritance(els: Element[]) {
     // Note, these aren't currently used, but have been ideas that could be used in the future
     el.removeAttribute("data-componentname");
 
-    el.removeAttribute("data-isCompContainer");
-    el.removeAttribute("data-compPartBlacklist");
+    el.removeAttribute("data-iscompcontainer");
+    el.removeAttribute("data-comppartblacklist");
 
     Array.from(el.attributes).forEach((attr) => {
       if (attr.name.startsWith("data-dummycompstyle")) {
