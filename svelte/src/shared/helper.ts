@@ -1,3 +1,4 @@
+import type { Attachment } from "svelte/attachments";
 import { quartOut } from "svelte/easing";
 
 export function fetch_(input: string | URL | Request, init?: RequestInit) {
@@ -191,6 +192,19 @@ export function tada(
   };
 }
 
+export const ellipsesAnimationAttachment: Attachment = (el) => {
+  let i = 3;
+  el.textContent = "...";
+  const periodInterval = setInterval(() => {
+    i = (i + 1) % 4;
+    if (i === 0) el.textContent = "";
+    else el.textContent = el.textContent + ".";
+  }, 300);
+  return () => {
+    clearInterval(periodInterval);
+  };
+};
+
 export function splitCodes(codes: string) {
   if (codes.length % 3 !== 0)
     throw new Error("codes string not a multiple of 3");
@@ -239,7 +253,8 @@ export function assign<T1 extends object, T2 extends object>(
   return Object.assign(structuredClone(obj1), obj2);
 }
 
-export function convertAccent(accent: string) {
+export function convertAccent(accent?: string) {
+  if (!accent) return accent;
   let color: string;
   if (/^\d+ \d+ \d/g.test(accent)) {
     color =
@@ -274,3 +289,8 @@ export function prefixBytesVal(bytes: number) {
 
   return bestVal.toPrecision(3) + " " + bestPrefix;
 }
+
+export const rootFontSize = parseFloat(
+  getComputedStyle(document.documentElement).fontSize,
+);
+export const remToPixels = (x: number) => x * rootFontSize;

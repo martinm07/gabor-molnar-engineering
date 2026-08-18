@@ -1,246 +1,217 @@
 <script lang="ts">
-  import type { TypesenseResults } from "/shared/types";
+  import CaretDownIcon from "phosphor-svelte/lib/CaretDownIcon";
+  import BlogsList from "../home/BlogsList.svelte";
+  import NavBar from "../home/NavBar.svelte";
+  import {
+    changeSearchQueryURL,
+    pageState,
+    query,
+    search,
+    typesenseHitToCard,
+    type SortOption,
+  } from "./store.svelte";
   import "/shared/tailwindinit.css";
-  import SearchCard from "./SearchCard.svelte";
-  import { setContext } from "svelte";
-  import { watch } from "runed";
-  import TagsDropdown from "./TagsDropdown.svelte";
+  import TagDropdown from "./TagDropdown.svelte";
   import DateDropdown from "./DateDropdown.svelte";
-  import { fetch_, preventDefault } from "/shared/helper";
+  import { type TypesenseResults } from "/shared/types";
+  import {
+    ellipsesAnimationAttachment,
+    fetch_,
+    preventDefault,
+  } from "/shared/helper";
+  import type { Card } from "../home/store.svelte";
+  import { onMount } from "svelte";
   import Pagination from "./Pagination.svelte";
 
-  type DictList = { [key: string]: any }[];
+  import SortDescendingIcon from "phosphor-svelte/lib/SortDescendingIcon";
+  import SortAscendingIcon from "phosphor-svelte/lib/SortAscendingIcon";
+  import { watch } from "runed";
+  import Footer from "/shared/components/Footer.svelte";
 
-  let tags: DictList = $state([]);
-  let fromDate: string = $state("");
-  let toDate: string = $state("");
-  let value = $state("");
-  let sortBy = $state("");
-  let sortOrder = $state("desc");
-
-  let page = $state(1);
-  // $inspect(page);
-
-  let lastSubmittedQuery: string = $state("");
-  let query: string = $derived.by(() => {
-    const tags_filter = tags
-      .filter((tag) => tag.selected)
-      .map((tag) => tag.value)
-      .join(",");
-    const searchParams = new URLSearchParams([
-      ["tags", tags_filter],
-      ["fromdate", fromDate],
-      ["todate", toDate],
-      ["sort", sortBy],
-      ["desc", JSON.stringify(sortOrder !== "asc")],
-      ["q", value],
-      ["page", JSON.stringify(page)],
-    ]);
-    return "?" + searchParams.toString();
-  });
-  // $inspect("query: " + query);
-  // $inspect("lastSubmittedQuery: " + lastSubmittedQuery);
-
-  function queriesEqual(q1: string, q2: string) {
-    const query1 = new URLSearchParams(q1);
-    const query2 = new URLSearchParams(q2);
-    let equal = query1.get("q") === query2.get("q");
-    equal =
-      equal &&
-      (() => {
-        // The `==` instead of `===` means "" == null will match, which we want
-        if (!query1.get("tags") || !query2.get("tags"))
-          return query1.get("tags") == query2.get("tags");
-        const query1Tags = query1.get("tags")!.split(",");
-        const query2Tags = query2.get("tags")!.split(",");
-        if (query1Tags.length !== query2Tags.length) return false;
-        const query2Sorted = query2Tags.toSorted();
-        return query1Tags.toSorted().every((tag, i) => tag === query2Sorted[i]);
-      })();
-    equal = equal && query1.get("fromdate") === query2.get("fromdate");
-    equal = equal && query1.get("todate") === query2.get("todate");
-    equal = equal && query1.get("sort") === query2.get("sort");
-    equal = equal && query1.get("desc") == query2.get("desc");
-    return equal;
-  }
-
-  let queryModified = $derived(!queriesEqual(query, lastSubmittedQuery));
-
-  let results: TypesenseResults | undefined = $state();
-
-  function getURLParams() {
-    const query = new URLSearchParams(window.location.search);
-    const tagsStr = query.get("tags")?.split(",") || [];
-    return {
-      q: query.get("q") ?? "",
-      selectedTags: tagsStr,
-      fromDate_: query.get("fromdate"),
-      toDate_: query.get("todate"),
-      sortBy_: query.get("sort") || "relevance",
-      sortOrder_: query.get("desc") === "false" ? "asc" : "desc",
-      page_: Number.parseInt(query.get("page") || "1"),
-    };
-  }
-
-  function search(
-    pushState: boolean = true,
-    setState: boolean = true,
-    manualQuery?: string,
-  ) {
-    const query_ = manualQuery ?? query;
-    lastSubmittedQuery = query_;
-    const resp = fetch_(`/documents/advanced_query${query_}`)
-      .then((resp) => resp.json())
-      .then((data: TypesenseResults) => {
-        console.log(data);
-        results = data;
-
-        if (!setState) return;
-        const {
-          selectedTags: selectedTagNames,
-          fromDate_,
-          toDate_,
-          sortBy_,
-          sortOrder_,
-          q,
-          page_,
-        } = getURLParams();
-
-        const tags_counts =
-          data.facet_counts.find((facet) => facet.field_name === "tags")
-            ?.counts ?? [];
-        const selectedTags = tags.filter((tag) => tag.selected);
-        tags = Object.assign(
-          selectedTags,
-          tags_counts.map((tag) =>
-            Object.assign(tag, {
-              selected: Boolean(
-                selectedTagNames.find((name) => name === tag.value),
-              ),
-            }),
-          ),
-        );
-
-        if (fromDate_) fromDate = fromDate_;
-        if (toDate_) toDate = toDate_;
-        sortBy = sortBy_;
-        sortOrder = sortOrder_;
-        value = q;
-        page = page_;
-      });
-    if (pushState) history.pushState({}, "", query_);
-    return resp;
-  }
-  search(false, true, window.location.search).then(
-    () => (lastSubmittedQuery = query),
-  );
-
-  watch(
-    [() => sortBy, () => sortOrder],
-    (_, p) => {
-      if (p && p.some((el) => !el)) return;
-      const query_ = new URLSearchParams(lastSubmittedQuery);
-      query_.set("sort", sortBy);
-      query_.set("desc", JSON.stringify(sortOrder !== "asc"));
-      search(true, false, "?" + query_.toString());
-    },
-    { lazy: true },
-  );
-  watch(
-    () => page,
-    (_, p) => {
-      if (!p) return;
-      const query_ = new URLSearchParams(lastSubmittedQuery);
-      query_.set("page", JSON.stringify(page));
-      search(true, false, "?" + query_.toString()).then(() => {
-        const topResult = document.querySelector(".search-result");
-        if (!(topResult instanceof HTMLElement)) return;
-        window.scrollTo(0, topResult.offsetTop);
-      });
-    },
-  );
-
-  window.addEventListener("popstate", (e) => {
-    console.log("POP");
-    search(false, true, window.location.search);
+  onMount(() => {
+    query.restoreStateFromQueryStr();
+    search();
   });
 
-  setContext("divider", divider);
+  $inspect(query.newQueryStr);
+
+  // function snipText(text: string, cutoff: number = 30) {
+  //   if (text.split(" ").length <= cutoff) return text;
+  //   return text.slice(0, cutoff).trimEnd() + " [...]";
+  // }
+  // function processSnippet(snippet: string, fullField: string) {
+  //   if (!snippet) return snippet;
+  //   const snippetRaw = snippet.replace(/(<mark>)|(<\/mark>)/g, "");
+  //   if (snippetRaw === fullField) return snippet;
+  //   return "[...] " + snippet.trim() + " [...]";
+  // }
+
+  const resultCards: Card[] = $derived.by(() => {
+    const hits = pageState.searchResults?.hits;
+    if (!hits || hits.length === 0) return [];
+
+    // return hits.map((hit) => {
+    //   const instant = Temporal.Instant.fromEpochMilliseconds(
+    //     hit.document.date_updated * 1000,
+    //   );
+    //   const dateUpdated = instant.toZonedDateTimeISO("UTC").toPlainDate();
+
+    //   const mainMatch =
+    //     processSnippet(
+    //       hit.highlight.description?.snippet,
+    //       hit.document.description,
+    //     ) ??
+    //     processSnippet(hit.highlight.body?.snippet, hit.document.body) ??
+    //     hit.document.description;
+
+    //   const tags =
+    //     hit.highlight.tags?.map((el: any) => el.snippet) ?? hit.document.tags;
+
+    //   return {
+    //     title: hit.highlight.title?.snippet ?? hit.document.title,
+    //     description: mainMatch,
+    //     tags,
+    //     dateUpdated,
+    //     accent: hit.document.accent,
+    //     svgIcon: hit.document.thumbnail,
+    //   };
+    // });
+    return hits.map((hit) => typesenseHitToCard(hit));
+  });
+
+  // https://github.com/typesense/typesense/issues/2431
+  // Typesense only supports descending order when sorting items by relevance
+  watch(
+    () => query.sortBy,
+    () => {
+      if (query.sortBy === "relevance") query.sortOrder = "desc";
+    },
+  );
 </script>
 
-{#snippet divider()}
-  <div class="w-5/6 ml-[8.3%] h-0.5 bg-rock-300"></div>
-{/snippet}
+<!-- <div class="grid grid-cols-[1fr_3fr] grid-rows-[auto_1fr_auto] w-screen"> -->
+<div
+  class="grid grid-cols-1 md:grid-cols-[1fr_3fr] grid-rows-[auto_auto_1fr_auto] md:grid-rows-[auto_1fr_auto] w-screen min-h-[calc(100vh+13rem)]"
+>
+  <NavBar disableSearchBox={true} disableHiding={!pageState.isMobile} />
 
-<div class="min-h-screen flex flex-col">
-  <TagsDropdown bind:tags />
-  {@render divider()}
-  <DateDropdown bind:fromDate bind:toDate />
-  {@render divider()}
-  <form
-    method="get"
-    onsubmit={preventDefault(search)}
-    class="p-5 text-center border-b-2 border-rock-300 bg-background"
+  <div
+    class="border-b-2 md:border-b-0 md:border-r-2 border-rock-100/75 relative px-2 not-md:py-6 bg-white flex flex-col items-center min-h-[calc(100vh-3.75rem)]"
   >
-    <input
-      type="text"
-      bind:value
-      placeholder="search"
-      class="border-2 border-rock-400 px-3 py-1 w-full max-w-[500px] rounded font-mono focus:outline-none ring-rock-200 focus:ring-4"
-    />
-    <br />
-    <button
-      type="submit"
-      disabled={!queryModified}
-      class="mt-4 px-5 py-2 text-lg text-steel-600 border-2 border-steel-400 bg-steel-100 rounded-lg shadow-[inset_4px_4px_white,inset_-8px_-8px_var(--steel-200)] disabled:shadow-none disabled:opacity-40 disabled:bg-background transition-all hover:ring-4 hover:ring-rock-200 disabled:ring-0"
-    >
-      Submit Query</button
-    >
-  </form>
-  <div class="bg-steel-100 px-5 py-3 relative z-10 text-right">
-    <div class="ml-auto inline-flex items-center">
-      <label for="sortby" class="mr-2 font-bold text-rock-600">Sort by:</label
-      ><select
-        bind:value={sortBy}
-        class="bg-background px-2 py-1 rounded text-rock-700"
-        name="sortby"
-        id="sortby"
-      >
-        <option value="relevance">Relevance</option>
-        <option value="date_created">Date Created</option>
-      </select>
-      <button
-        class="h-7 px-1 ml-3 bg-background hover:bg-rock-200 hover:text-rock-700 rounded text-rock-600 text-xl flex items-center disabled:opacity-40 disabled:bg-background disabled:text-rock-600"
-        title="{sortOrder === 'asc' ? 'Ascending' : 'Descending'} Order"
-        onclick={() => {
-          sortOrder = sortOrder === "desc" ? "asc" : "desc";
-        }}
-        disabled={sortBy === "relevance"}
-      >
-        {#if sortOrder === "asc" && sortBy !== "relevance"}
-          <ion-icon name="caret-up"></ion-icon>
-        {:else}
-          <ion-icon name="caret-down"></ion-icon>
-        {/if}
-      </button>
+    <div class="font-serif text-rock-700 text-3xl text-center mb-2 md:mt-6">
+      Advanced Search
     </div>
-    {#if results}
-      <div class="text-steel-700 text-sm inline-block mt-4 float-left">
-        {results.found} results found. Searched {results.out_of} documents in {results.search_time_ms}ms.
+    <form
+      class="md:sticky md:top-22 md:min-w-[2.2rem] max-w-[28rem] w-full"
+      onsubmit={(e) => {
+        e.preventDefault();
+        query.page = 1;
+        search().then(changeSearchQueryURL);
+        // const data = search();
+        // console.log("🎈🎈🎈🎈🎈", data);
+      }}
+    >
+      <div class="my-4 flex px-1">
+        <input
+          class="border-2 rounded border-steel-300 bg-stone-50 py-1.5 px-2 focus:outline-none focus:ring-4 ring-steel-300/50 w-full text-steel-800 font-mono leading-tight focus:bg-white placeholder:italic"
+          type="text"
+          name="search"
+          id="search"
+          placeholder="search query"
+          bind:value={query.q}
+        />
+      </div>
+      <TagDropdown />
+      <DateDropdown />
+      <div class="mt-8 md:mt-12 flex items-center justify-center flex-col">
+        <button
+          class="text-xl text-steel-600 border-2 border-steel-300 px-4 py-2 rounded-lg font-semibold bg-stone-50 shadow hover:bg-stone-100 hover:px-5 active:ring-4 ring-stone-200 active:bg-stone-200 active:translate-y-1 transition-[background-color,box-shadow,opacity,padding] disabled:pointer-events-none disabled:opacity-60 disabled:shadow-none"
+          disabled={(!query.queryDifferent &&
+            pageState.searchSubmitState !== "error") ||
+            pageState.searchSubmitState === "searching"}
+          type="submit">Submit Query</button
+        >
+        {#if pageState.searchSubmitState === "searching"}
+          <p class="font-mono italic text-steel-700 mt-2">
+            Searching <span
+              class="absolute"
+              {@attach ellipsesAnimationAttachment}
+            ></span>
+          </p>
+        {:else if pageState.searchSubmitState === "error"}
+          <p class="font-mono leading-tight text-red-700 mt-2">
+            Encountered an unexpected error.<br />Please try again later
+          </p>
+        {:else}
+          <p class="font-mono mt-2">&nbsp;</p>
+        {/if}
+      </div>
+    </form>
+  </div>
+
+  <div class="flex flex-col">
+    <div class="h-12 border-b-2 border-rock-100/75 bg-background-50 flex">
+      <div
+        class="not-md:ml-auto md:mr-auto flex items-center text-lg text-rock-800"
+      >
+        <label for="sortby" class="mx-2">Sort by:</label>
+        <select
+          name="sortby"
+          id="sortby"
+          class="font-bold text-rock-700 font-mono leading-tight border-2 border-stone-300 rounded p-1 hover:bg-stone-200"
+          bind:value={query.sortBy}
+          oninput={(e) => {
+            if (!(e.target instanceof HTMLSelectElement)) return;
+            query.sortBy = e.target.value as SortOption;
+            search().then(changeSearchQueryURL);
+          }}
+        >
+          <option value="relevance">Relevance</option>
+          <option value="date_created">Date created</option>
+          <option value="date_updated">Date updated</option>
+        </select>
+        <!-- https://github.com/typesense/typesense/issues/2431 -->
+        <!-- We must disable this when sorting by relevance -->
+        <button
+          class="text-2xl mx-4 border-2 border-stone-300 rounded p-1 hover:bg-stone-200"
+          class:hidden={query.sortBy === "relevance"}
+          title={query.sortOrder === "asc"
+            ? "Ascending order"
+            : "Descending order"}
+          onclick={() => {
+            if (query.sortOrder === "desc") query.sortOrder = "asc";
+            else if (query.sortOrder === "asc") query.sortOrder = "desc";
+            search().then(changeSearchQueryURL);
+          }}
+        >
+          {#if query.sortOrder === "desc"}
+            <SortDescendingIcon />
+          {:else if query.sortOrder === "asc"}
+            <SortAscendingIcon />
+          {/if}
+        </button>
+      </div>
+    </div>
+    {#if pageState.searchResults}
+      <div class="text-steel-700 text-sm inline-block mt-2 px-4">
+        {pageState.searchResults.found} results found. Searched {pageState
+          .searchResults.out_of} documents in {pageState.searchResults
+          .search_time_ms}ms.
       </div>
     {/if}
-    <div class="clear-left"></div>
-  </div>
-  {#if results}
-    {#key results.hits}
-      {#each results.hits as result}
-        <SearchCard info={result} />
-      {/each}
-    {/key}
-    <Pagination
-      bind:page
-      perPage={results.request_params.per_page}
-      total={results.found}
+    <BlogsList
+      cards={resultCards}
+      showLoading={pageState.searchSubmitState === "searching"}
     />
-  {/if}
+    <!-- <div class="mt-auto h-24 bg-red-700"></div> -->
+    <Pagination />
+  </div>
+  <!-- <div class="col-span-full h-52 bg-stone-600"></div> -->
+  <Footer />
 </div>
+
+<style>
+  :global(html) {
+    scroll-behavior: smooth;
+  }
+</style>

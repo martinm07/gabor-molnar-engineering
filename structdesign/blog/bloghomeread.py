@@ -1,5 +1,6 @@
 import json
 import random
+import time
 from collections.abc import Iterable
 from itertools import islice
 
@@ -48,7 +49,15 @@ def get_latest():
 
     results = []
     rows = db.session.scalars(
-        select(GuidanceDocument).order_by(GuidanceDocument.date_created.desc())
+        select(GuidanceDocument)
+        .where(
+            and_(
+                GuidanceDocument.type == 0,
+                GuidanceDocument.status != "unlisted",
+                GuidanceDocument.status != "private",
+            )
+        )
+        .order_by(GuidanceDocument.date_created.desc())
     )
 
     for row in paginate(rows, page, length):
@@ -57,16 +66,19 @@ def get_latest():
                 "id": row.id,
                 "title": row.title,
                 "description": row.description,
+                "tags": [tag.name for tag in row.tags],
                 "accent": row.accent,
                 "thumbnail": row.thumbnail,
+                "dateUpdated": row.date_updated.isoformat(),
             }
         )
+
     return jsonify(results)
 
 
-@bp.route("/get_tagnames")
+@bp.route("/get_doctags")
 @api_view(admin_required_=False)
-def get_tagnames():
+def get_doctags():
     tags = db.session.scalars(select(DocumentTag)).all()
     return jsonify(
         [
@@ -91,13 +103,7 @@ def get_blogs_tag():
     )
 
     stmt = (
-        select(
-            GuidanceDocument.id,
-            GuidanceDocument.title,
-            GuidanceDocument.description,
-            GuidanceDocument.accent,
-            GuidanceDocument.thumbnail,
-        )
+        select(GuidanceDocument)
         .join_from(
             GuidanceDocument,
             document_tag_association_table,
@@ -106,17 +112,27 @@ def get_blogs_tag():
                 GuidanceDocument.type == document_tag_association_table.c.blog_type,
             ),
         )
-        .where(document_tag_association_table.c.tag_id == scalar_subq)
+        .where(
+            and_(
+                document_tag_association_table.c.tag_id == scalar_subq,
+                GuidanceDocument.type == 0,
+                GuidanceDocument.status != "unlisted",
+                GuidanceDocument.status != "private",
+            )
+        )
     )
-    rows = db.session.execute(stmt).all()
+    rows = db.session.scalars(stmt).all()
+
     return jsonify(
         [
             {
                 "id": row.id,
                 "title": row.title,
                 "description": row.description,
+                "tags": [tag.name for tag in row.tags],
                 "accent": row.accent,
                 "thumbnail": row.thumbnail,
+                "dateUpdated": row.date_updated.isoformat(),
             }
             for row in paginate(rows, page, length)
         ]

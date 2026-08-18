@@ -1,9 +1,10 @@
 import json
+import time
 from datetime import date
 from typing import cast
 
 from flask import Blueprint, render_template, request
-from sqlalchemy import select
+from sqlalchemy import and_, select
 
 from ..extensions import db, typesense_client
 from ..helper import api_view, collection_exists, get_unix_timestamp
@@ -33,7 +34,7 @@ def query():
     return typesense_client.collections["documents"].documents.search(
         {
             "q": query,
-            "query_by": ",".join(["title", "description", "body", "tags"]),
+            "query_by": "title,description,body,tags",
             "sort_by": f"{sort_str}{',_text_match:DESC' if sort_by != 'relevance' else ''}",
         }
     )
@@ -44,7 +45,8 @@ def query():
 def advanced_query():
     query = onfalsey(request.args.get("q"), "*")
     sort_by = onfalsey(request.args.get("sort"), "relevance")
-    sort_descending = json.loads(onfalsey(request.args.get("desc"), "true"))
+    # sort_descending = json.loads(onfalsey(request.args.get("desc"), "true"))
+    sort_ascending = request.args.get("asc") is not None
     tags = request.args.get("tags", None)
     from_date = request.args.get("fromdate", None)
     to_date = request.args.get("todate", None)
@@ -64,16 +66,23 @@ def advanced_query():
             f"date_created:<={get_unix_timestamp(date.fromisoformat(to_date))}"
         )
 
-    sort_str = f"{sort_by if sort_by != 'relevance' else '_text_match'}:{'desc' if sort_descending else 'asc'}"
+    sort_str = f"{sort_by if sort_by != 'relevance' else '_text_match'}:{'asc' if sort_ascending else 'desc'}"
+    # sort_str = f"{sort_str}{',_text_match:desc' if sort_by != 'relevance' else ''}"
+
+    print("Sort string:", sort_str)
+    print(f"Searching with query: '{query}'")
 
     results = typesense_client.collections["documents"].documents.search(
         {
             "q": query,
-            "query_by": ",".join(["title", "description", "body", "tags"]),
-            "sort_by": f"{sort_str}{',_text_match:desc' if sort_by != 'relevance' else ''}",
+            "query_by": "title,description,body,tags",
+            "sort_by": sort_str,
             "filter_by": " && ".join(filter_args),
             "facet_by": "tags",
             "page": int(page),
+            "highlight_affix_num_tokens": 15,
+            "per_page": 12,
+            "prioritize_exact_match": False,
         }
     )
 
@@ -100,24 +109,55 @@ def advanced_query():
     return results
 
 
+def to_typesense_document(doc: GuidanceDocument):
+    return {
+        "id": str(doc.id),
+        "title": doc.title,
+        "description": doc.description,
+        "body": doc.body,
+        "date_created": get_unix_timestamp(doc.date_created),
+        "date_updated": get_unix_timestamp(doc.date_updated),
+        "tags": [tag.name for tag in doc.tags],
+        "doc_id": doc.id,
+        "accent": doc.accent,
+        "thumbnail": doc.thumbnail,
+    }
+
+
+def update_typesense_document(doc: GuidanceDocument):
+    if doc.status == "unlisted" or doc.status == "private" or doc.type == 1:
+        delete_typesense_document(doc.id)
+        return
+
+    to_update = typesense_client.collections["documents"].documents[f"{doc.id}"]
+    if to_update:
+        to_update.update(to_typesense_document(doc))
+    else:
+        typesense_client.collections["documents"].documents.create(
+            to_typesense_document(doc)
+        )
+
+
+def delete_typesense_document(docid: int):
+    if to_delete := typesense_client.collections["documents"].documents[f"{docid}"]:
+        to_delete.delete()
+
+
 ### COMMANDS
 
 
 @bp.cli.command("create_documents_jsonl")
 def create_documents_jsonl():
-    rows = db.session.scalars(select(GuidanceDocument))
-    data = [
-        {
-            "id": str(row.id),
-            "title": row.title,
-            "description": row.description,
-            "body": row.body,
-            "date_created": get_unix_timestamp(row.date_created),
-            "tags": [tag.name for tag in row.tags],
-            "doc_id": row.id,
-        }
-        for row in rows
-    ]
+    rows = db.session.scalars(
+        select(GuidanceDocument).where(
+            and_(
+                GuidanceDocument.status != "unlisted",
+                GuidanceDocument.status != "private",
+                GuidanceDocument.type == 0,
+            )
+        )
+    )
+    data = [to_typesense_document(row) for row in rows]
     with open("instance/documentdata.jsonl", "w+") as f:
         f.write("\n".join([json.dumps(row) for row in data]))
 

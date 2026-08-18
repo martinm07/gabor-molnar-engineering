@@ -16,6 +16,10 @@ from sqlalchemy import and_, select
 from sqlalchemy.orm import aliased
 
 from structdesign.blog.blogcreatecomponents import get_component_lib
+from structdesign.blog.blogsearch import (
+    delete_typesense_document,
+    update_typesense_document,
+)
 from structdesign.helper import admin_required, api_view
 
 from ..extensions import db
@@ -193,6 +197,7 @@ def create_new_guidance_document():
             doc.body = output
 
     db.session.commit()
+    update_typesense_document(doc)
 
     # We are returning text, not JSON
     return url_for("blogcreate.edit_document", id=doc.id)
@@ -216,5 +221,6 @@ def delete_document():
         db.session.delete(doc)
 
     db.session.commit()
+    [delete_typesense_document(doc.id) for doc in to_delete]
 
     return ""

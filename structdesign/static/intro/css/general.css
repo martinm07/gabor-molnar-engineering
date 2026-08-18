@@ -63,7 +63,10 @@ img.mfp-img {
   outline: none;
   font-size: 115%;
   color: #383838;
-  transition: border-bottom 0.15s, border-top 0.15s, box-shadow 0.5s;
+  transition:
+    border-bottom 0.15s,
+    border-top 0.15s,
+    box-shadow 0.5s;
 }
 .sticky-home-menu-item button:hover {
   border-bottom: 2px solid #bfbfbf;
@@ -92,7 +95,9 @@ img.mfp-img {
   border-left: 2px solid rgb(240, 240, 240);
   border-bottom: 2px solid rgb(240, 240, 240);
   color: #525252;
-  transition: transform 0.15s, opacity 0.15s;
+  transition:
+    transform 0.15s,
+    opacity 0.15s;
   transform: translateY(-10px);
   opacity: 0;
   display: none;
@@ -159,7 +164,9 @@ footer {
   margin: 3px 0px;
   text-decoration: underline;
   display: block;
-  transition: color 0.15s, letter-spacing 0.15s;
+  transition:
+    color 0.15s,
+    letter-spacing 0.15s;
 }
 .footer-link.disabled {
   pointer-events: none;

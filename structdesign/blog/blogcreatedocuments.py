@@ -1,10 +1,14 @@
+# from datetime.timezone.utc import UTC
 import json
 import os
+from datetime import UTC, date, datetime, timezone
 from pathlib import Path
 
 from flask import Blueprint, current_app, request
 from sqlalchemy import select
 from werkzeug.utils import secure_filename
+
+from structdesign.blog.blogsearch import update_typesense_document
 
 from ..extensions import db
 from ..helper import api_view
@@ -88,6 +92,7 @@ def sync_document_full():
     if document is None:
         return f"Found no document of id '{id_}'", 400
     document.body = body
+    document.date_updated = datetime.now(UTC)
     db.session.commit()
     return ""
 
@@ -161,6 +166,7 @@ def sync_document_patch():
     print(content)
     document.body = content
     document.component_lib_version = complibver
+    document.date_updated = datetime.now(UTC)
     db.session.commit()
 
     return content
@@ -207,6 +213,7 @@ def update_document_metadata():
 
         ## IMP: ANY VALIDATION SHOULD GO HERE
 
+        document.date_updated = datetime.now(UTC)
         db.session.commit()
     except Exception:  # noqa: BLE001
         document = get_development_document(int(id_), commit_changes=True)
@@ -271,7 +278,10 @@ def publish_development_document():
         publishdoc.status = document.status
         # We don't set hearts
 
+        publishdoc.date_updated = datetime.now(UTC)
+
     db.session.commit()
+    update_typesense_document(publishdoc)
     return ""
 
 

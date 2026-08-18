@@ -1,64 +1,132 @@
 <script lang="ts">
-  import Dropdown from "./Dropdown.svelte";
-  import DateInput from "./DateInput.svelte";
-  import { getContext, type Snippet } from "svelte";
+  import CaretDownIcon from "phosphor-svelte/lib/CaretDownIcon";
+  import CaretRightIcon from "phosphor-svelte/lib/CaretRightIcon";
+  import { query } from "./store.svelte";
 
-  const divider: Snippet = getContext("divider");
-  function now() {
-    const now = new Date();
-    return `${now.getUTCFullYear()}-${`${now.getUTCMonth() + 1}`.padStart(2, "0")}-${`${now.getUTCDate()}`.padStart(2, "0")}`;
-  }
-  const START_DATE = "2024-01-01";
-  const NOW = now();
+  let dropdownActive = $state(true);
 
-  interface Props {
-    fromDate?: string;
-    toDate?: string;
-  }
-  let { fromDate = $bindable(START_DATE), toDate = $bindable(NOW) }: Props =
-    $props();
+  // query.fromDate
+  type DateMode = "off" | "both" | "from" | "to";
+  const dateMode: DateMode = $derived.by(() => {
+    if (query.fromDate !== null && query.toDate !== null) return "both";
+    if (query.fromDate !== null) return "from";
+    if (query.toDate !== null) return "to";
+    return "off";
+  });
 
-  // let fromDate = $state(START_DATE);
-  // let toDate = $state(NOW);
+  let fromDateValue = $state("");
+  let toDateValue = $state("");
+
+  $inspect(fromDateValue);
 </script>
 
-<Dropdown label="Filter by Date">
-  {#snippet content()}
-    {@render divider()}
-    <div class="py-3 bg-rock-100 text-center">
-      <div class="mb-3">
-        <label for="fromdate" class="pr-2 text-rock-700">From:</label>
-        <DateInput
-          startDate={START_DATE}
-          bind:date={fromDate}
-          id="fromdate"
-          type="date"
-          class="has-[+_button]:text-rock-700 px-2 py-1 text-rock-400 bg-background border-2 border-rock-500 rounded focus:outline-none ring-rock-200 focus:ring-4"
-        />
-        {#if fromDate !== START_DATE}
-          <button
-            class="text-rock-700 underline hover:no-underline ml-2"
-            onclick={() => (fromDate = START_DATE)}>Clear</button
-          >
-        {/if}
-      </div>
-      <div>
-        <label for="todate" class="pr-2 text-rock-700">Until:</label>
-        <DateInput
-          startDate={NOW}
-          defaultDate="12-31"
-          bind:date={toDate}
-          id="todate"
-          type="date"
-          class="has-[+_button]:text-rock-700 px-2 py-1 text-rock-400 bg-background border-2 border-rock-500 rounded focus:outline-none ring-rock-200 focus:ring-4"
-        />
-        {#if toDate !== NOW}
-          <button
-            class="text-rock-700 underline hover:no-underline ml-2"
-            onclick={() => (toDate = NOW)}>Clear</button
-          >
-        {/if}
-      </div>
-    </div>
-  {/snippet}
-</Dropdown>
+<button
+  class="flex items-center text-base text-rock-700 mt-3 md:mt-9 hover:text-rock-500"
+  type="button"
+  onclick={() => (dropdownActive = !dropdownActive)}
+>
+  Filter by date
+  {#if dropdownActive}
+    <CaretDownIcon class="ml-1 text-xl" weight="regular" />
+  {:else}
+    <CaretRightIcon class="ml-1 text-xl" weight="regular" />
+  {/if}
+</button>
+{#if dropdownActive}
+  <div
+    class="mt-2 flex justify-around text-rock-800 tracking-tight border-y border-rock-300 py-2"
+  >
+    <form>
+      <input
+        class=""
+        type="date"
+        name="fromdate"
+        id="fromdate"
+        oninput={(e) => {
+          console.log((e.target as HTMLInputElement).value);
+        }}
+        bind:value={
+          () => fromDateValue,
+          (v) => {
+            fromDateValue = v;
+            if (query.fromDate !== null) query.fromDate = v;
+          }
+        }
+        class:invisible={dateMode === "off" || dateMode === "to"}
+      />
+    </form>
+    <span>&mdash;</span>
+    <form>
+      <input
+        class=""
+        type="date"
+        name="todate"
+        id="todate"
+        bind:value={
+          () => toDateValue,
+          (v) => {
+            toDateValue = v;
+            if (query.toDate !== null) query.toDate = v;
+          }
+        }
+        class:invisible={dateMode === "off" || dateMode === "from"}
+      />
+    </form>
+  </div>
+  <div class="grid grid-cols-3 font-mono text-rock-700 leading-tight mt-1">
+    <button
+      class="py-1 mx-0.5 rounded bg-rock-50 border border-rock-300 transition-colors hover:bg-rock-100 [.active]:bg-rock-200 [.active]:text-rock-800"
+      type="button"
+      onclick={() => {
+        if (dateMode === "from") {
+          query.fromDate = null;
+          query.toDate = null;
+        } else if (dateMode === "both") {
+          query.toDate = null;
+        } else if (dateMode === "to") {
+          query.fromDate = fromDateValue;
+          query.toDate = null;
+        } else {
+          query.fromDate = fromDateValue;
+        }
+      }}
+      class:active={dateMode === "from"}>Only from</button
+    >
+    <button
+      class="py-1 mx-0.5 rounded bg-rock-50 border border-rock-300 transition-colors hover:bg-rock-100 [.active]:bg-rock-200 [.active]:text-rock-800"
+      type="button"
+      onclick={() => {
+        if (dateMode === "both") {
+          query.fromDate = null;
+          query.toDate = null;
+        } else if (dateMode === "from") {
+          query.toDate = toDateValue;
+        } else if (dateMode === "to") {
+          query.fromDate = fromDateValue;
+        } else {
+          query.fromDate = fromDateValue;
+          query.toDate = toDateValue;
+        }
+      }}
+      class:active={dateMode === "both"}>Both</button
+    >
+    <button
+      class="py-1 mx-0.5 rounded bg-rock-50 border border-rock-300 transition-colors hover:bg-rock-100 [.active]:bg-rock-200 [.active]:text-rock-800"
+      type="button"
+      onclick={() => {
+        if (dateMode === "to") {
+          query.fromDate = null;
+          query.toDate = null;
+        } else if (dateMode === "both") {
+          query.fromDate = null;
+        } else if (dateMode === "from") {
+          query.toDate = toDateValue;
+          query.fromDate = null;
+        } else {
+          query.toDate = toDateValue;
+        }
+      }}
+      class:active={dateMode === "to"}>Only until</button
+    >
+  </div>
+{/if}

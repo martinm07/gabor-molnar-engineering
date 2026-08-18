@@ -1,169 +1,104 @@
 <script lang="ts">
-  import { getContext, onDestroy } from "svelte";
-  import { on } from "svelte/events";
-  import { fetch_, fadeColor, darkenColor } from "/shared/helper";
+  import { onMount } from "svelte";
+  import Color from "color";
   import BlogsList from "./BlogsList.svelte";
-  import type { IBlogsList } from "./BlogsList.svelte";
-  import DummyCard from "./DummyCard.svelte";
-  import type { Card } from "./BlogsList.svelte";
-  import "./style.css";
-  const PAGE_SIZE = getContext("PAGE_SIZE");
+  import { getCardsForTag, getTags, type Card, type Tag } from "./store.svelte";
+  import { convertAccent } from "/shared/helper";
+  import { watch } from "runed";
 
-  type DictList = { [key: string]: any }[];
+  const NUM_CARDS_FOR_TAG = 25;
 
-  let tags: DictList = $state([]);
-  const tagsFetch = fetch_("/documents/get_tagnames")
-    .then((resp) => {
-      return resp.json();
-    })
-    .then((data) => {
-      tags = data;
-      return data;
-    });
-  let activeTag: number = $state(0);
-  let tagblogsFetch: Promise<any> = $state(Promise.resolve());
-  let tagBlogs: Card[] = $state([]);
-  let blogsListComp: IBlogsList;
+  let tagsFetch: Promise<Tag[]> | undefined = $state();
+  const tags: Tag[] = $state([]);
+  let activeTagI: number = $state(0);
 
-  $effect(() => {
-    if (tags.length <= activeTag) return;
-    const params = new URLSearchParams([
-      ["name", $state.snapshot(tags)[activeTag].name],
-      ["l", PAGE_SIZE],
-    ]);
-    tagblogsFetch = fetch_(`/documents/get_blogs_tag?${params.toString()}`)
-      .then((resp) => resp.json())
-      .then((data) => {
-        const cardData = data.map(
-          ({ title, description, accent, thumbnail }: any) => {
-            return {
-              title,
-              description,
-              color: accent,
-              svgPath: thumbnail,
-            };
-          },
-        );
-        tagBlogs = cardData;
-        blogsListComp.recalculateBumps();
-        return cardData;
-      });
+  const tagCards: Card[] = $state([]);
+  let tagCardsFetch: Promise<Card[]> | undefined = $state();
+  let isLoadingCards: boolean = $state(true);
+
+  onMount(() => (tagsFetch = getTags(tags)));
+
+  watch([() => activeTagI, () => tags.length], () => {
+    if (activeTagI < 0 || activeTagI >= tags.length) return;
+    const currentActiveTagI = $state.snapshot(activeTagI);
+    tagCards.splice(0, tagCards.length);
+    isLoadingCards = true;
+    tagCardsFetch = getCardsForTag(tags[activeTagI].name, NUM_CARDS_FOR_TAG);
+    // We use the `currentActiveTagI === activeTagI` check to make sure we still actually
+    //  want to show these cards by the time they've finished fetching
+    //  (since in that time it's possible the user already selected a different tag, if they're spam-clicking).
+    tagCardsFetch
+      .then(
+        (cardsData) =>
+          currentActiveTagI === activeTagI &&
+          tagCards.splice(0, tagCards.length, ...cardsData),
+      )
+      .finally(
+        () => currentActiveTagI === activeTagI && (isLoadingCards = false),
+      );
   });
 
-  let mousePos: { x: number; y: number } = { x: 0, y: 0 };
-  const offMouse = on(document, "mousemove", (e) => {
-    const event = e as MouseEvent;
-    mousePos = { x: event.clientX, y: event.clientY };
-  });
-  onDestroy(offMouse);
-
-  let tagsBlockEl: HTMLElement;
-  let totalDelta = 0;
-  const offScroll = on(
-    document,
-    "wheel",
-    (e) => {
-      const event = e as WheelEvent;
-      const rect = tagsBlockEl.getBoundingClientRect();
-
-      if (tagsBlockEl.scrollWidth <= tagsBlockEl.clientWidth) return;
-      if (event.deltaY === 0 || event.deltaX !== 0) return;
-
-      if (mousePos.y > rect.y && mousePos.y < rect.y + rect.height) {
-        e.preventDefault();
-
-        // Instead of using the current tagsBlockEl.scrollLeft value (which may be some intermediate
-        //  interpolated value if the user scrolls fast, causing that scroll to be cut off short if
-        //  we were to calculate from there), we accumulate delta values from the wheel events,
-        //  clamping the value to [0, tagsBlockEl.scrollWidth - rect.width].
-        if (event.deltaY > 0)
-          totalDelta += Math.min(
-            event.deltaY,
-            tagsBlockEl.scrollWidth - (rect.width + totalDelta),
-          );
-        else if (event.deltaY < 0)
-          totalDelta += Math.max(event.deltaY, -totalDelta);
-        else return;
-
-        tagsBlockEl.scroll({
-          left: totalDelta,
-          behavior: "smooth",
-        });
-      }
-    },
-    { passive: false },
-  );
-  onDestroy(offScroll);
+  $inspect(isLoadingCards);
 </script>
 
-<h1 class="text-3xl text-stone-600 font-sans p-8 pt-14 font-bold">
-  View documents of a specific tag
-</h1>
-<div
-  bind:this={tagsBlockEl}
-  class="tags-block text-nowrap overflow-x-scroll mb-0 py-3 border-y-2 border-rock-200 bg-rock-50"
+<h2
+  class="text-4xl text-text-700 mt-14 mb-8 text-center font-bold text-balance"
 >
-  {#await tagsFetch}
-    loading...
-  {:then}
-    {#each tags as tag, i}
-      {@const colorLight = fadeColor(tag.color, 0.2)}
-      {@const colorMed = fadeColor(tag.color, 0.4)}
-      {@const colorDark = darkenColor(tag.color, 0.7)}
-      <button
-        onmouseup={() => (activeTag = i)}
-        onfocusin={() => (activeTag = i)}
-        type="button"
-        style="--accent: rgb({tag.color}); --accent-light: rgb({colorLight}); --accent-med: rgb({colorMed}); --accent-dark: rgb({colorDark});"
-        class="px-3 py-1 border-2 rounded border-(--accent) text-(--accent) font-bold bg-(--accent-light) mx-2 focus:outline-none transition-shadow hover:bg-(--accent-med)"
-        class:active={i === activeTag}>{tag.name}</button
+  Browse Documents By Tag
+</h2>
+
+<div class="flex justify-center mb-8">
+  <div class="w-7xl px-4 md:px-12">
+    {#await tagsFetch}
+      <span class="tags-loading-text font-mono text-rock-700"
+        >Loading tags...</span
       >
+    {:catch}
+      <span class="text-red-700 font-bold"></span>
+    {/await}
+    {#each tags as tag, i}
+      {const accent = Color(convertAccent(tag.accent))}
+      <button
+        class="inline-flex items-center text-rock-800 text-lg border rounded border-rock-300 m-1.5 px-1.5 font-mono bg-rock-50 tracking-tight hover:bg-rock-100 [.active.isdark]:text-rock-50 [.active]:bg-(--color) transition-colors"
+        class:active={i === activeTagI}
+        class:isdark={accent.isDark()}
+        style="word-spacing: -0.25rem; --color: {accent.toString()}"
+        onclick={() =>
+          activeTagI === i ? (activeTagI = -1) : (activeTagI = i)}
+      >
+        <span class="w-3 h-3 rounded-sm bg-(--color) mr-1"></span>
+        {tag.name}
+      </button>
     {/each}
-  {:catch}
-    Something went wrong. Please try again later
-  {/await}
-</div>
-<div
-  style="--accent-light: rgb({tags[activeTag]
-    ? fadeColor(tags[activeTag].color, 0.1)
-    : '255 255 255'});"
-  class="bg-(--accent-light) py-8 border-b-2 border-rock-200"
->
-  <BlogsList cards={tagBlogs} bind:this={blogsListComp} />
-</div>
-{#await tagblogsFetch}
-  <div
-    class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 justify-items-center gap-5 px-5"
-  >
-    <DummyCard />
-    <DummyCard class="hidden md:block" />
-    <DummyCard class="hidden xl:block" />
-    <DummyCard class="hidden 2xl:block" />
   </div>
-{/await}
-<div class="text-center my-4">
-  <a
-    href="/documents/search"
-    class="text-rock-600 text-xl underline hover:no-underline inline-flex items-center"
-    >For more results and search options<ion-icon
-      class="text-3xl ml-1"
-      name="arrow-forward-outline"
-    ></ion-icon></a
-  >
 </div>
+
+{#if activeTagI >= 0 && activeTagI < tags.length}
+  <BlogsList cards={tagCards} showLoading={isLoadingCards} />
+  {#if tagCards.length === 0 && !isLoadingCards}
+    <p class="text-2xl text-rock-600 italic text-center px-8">
+      There are no guidance documents under this tag, for now...
+    </p>
+  {/if}
+{:else if activeTagI === -1}
+  <p class="text-2xl text-rock-600 italic text-center px-8">
+    Select a tag to see the associated guidance documents we've written.
+  </p>
+{/if}
 
 <style>
-  .tags-block::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+  .tags-loading-text {
+    animation: pulse-animation 1s linear infinite;
   }
-  .tags-block {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
-  }
-
-  button.active {
-    box-shadow: 0 0 0 5px var(--steel-300);
-    background-color: var(--accent-med);
-    color: var(--accent-dark);
+  @keyframes pulse-animation {
+    0% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.6;
+    }
+    100% {
+      opacity: 1;
+    }
   }
 </style>

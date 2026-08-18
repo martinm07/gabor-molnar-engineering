@@ -150,8 +150,11 @@ documents_schema: CollectionCreateSchema = {
         {"name": "description", "type": "string"},
         {"name": "body", "type": "string", "stem": True},
         {"name": "date_created", "type": "int64"},
+        {"name": "date_updated", "type": "int64"},
         {"name": "tags", "type": "string[]", "facet": True},
         {"name": "doc_id", "type": "int64", "index": False},
+        {"name": "accent", "type": "string", "index": False},
+        {"name": "thumbnail", "type": "string", "index": False},
     ],
 }
 
