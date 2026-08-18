@@ -1,7 +1,0 @@
-const B=t=>t;function w(t){const n=t-1;return n*n*n+1}function m(t){const n=typeof t=="string"&&t.match(/^\s*(-?[\d.]+)([^\s]*)\s*$/);return n?[parseFloat(n[1]),n[2]||"px"]:[t,"px"]}function R(t,{delay:n=0,duration:s=400,easing:i=B}={}){const p=+getComputedStyle(t).opacity;return{delay:n,duration:s,easing:i,css:f=>`opacity: ${f*p}`}}function v(t,{delay:n=0,duration:s=400,easing:i=w,x:p=0,y:f=0,opacity:u=0}={}){const e=getComputedStyle(t),a=+e.opacity,c=e.transform==="none"?"":e.transform,o=a*(1-u),[g,y]=m(p),[d,$]=m(f);return{delay:n,duration:s,easing:i,css:(l,h)=>`
-			transform: ${c} translate(${(1-l)*g}${y}, ${(1-l)*d}${$});
-			opacity: ${a-o*h}`}}function k(t,n){for(const s in n)t[s]=n[s];return t}function F({fallback:t,...n}){const s=new Map,i=new Map;function p(u,e,a){const{delay:c=0,duration:o=r=>Math.sqrt(r)*30,easing:g=w}=k(k({},n),a),y=u.getBoundingClientRect(),d=e.getBoundingClientRect(),$=y.left-d.left,l=y.top-d.top,h=y.width/d.width,C=y.height/d.height,M=Math.sqrt($*$+l*l),_=getComputedStyle(e),S=_.transform==="none"?"":_.transform,q=+_.opacity;return{delay:c,duration:typeof o=="function"?o(M):o,easing:g,css:(r,x)=>`
-			   opacity: ${r*q};
-			   transform-origin: top left;
-			   transform: ${S} translate(${x*$}px,${x*l}px) scale(${r+(1-r)*h}, ${r+(1-r)*C});
-		   `}}function f(u,e,a){return(c,o)=>(u.set(o.key,c),()=>{if(e.has(o.key)){const g=e.get(o.key);return e.delete(o.key),p(g,c,o)}return u.delete(o.key),t&&t(c,o,a)})}return[f(i,s,!1),f(s,i,!0)]}export{v as a,F as c,R as f};

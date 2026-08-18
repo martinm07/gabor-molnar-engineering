@@ -1,0 +1,1 @@
+import{aq as t,ar as e,X as a,v as c}from"./svelte-CkzmYXov.js";function f(n){t===null&&e(),a(()=>{const o=c(n);if(typeof o=="function")return o})}function s(n){t===null&&e(),f(()=>()=>c(n))}export{s as a,f as o};
