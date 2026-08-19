@@ -13,7 +13,7 @@
     devShells.x86_64-linux.default = let
       pkgs = import nixpkgs {system = "x86_64-linux";};
     in
-      pkgs.mkShellNoCC {
+      pkgs.mkShell {
         packages = with pkgs; [
           # common build inputs
           direnv
@@ -80,7 +80,7 @@
           # echo "$PROJECT_HOME"
 
           # IMP: That the Ruby version matches up with the ruby version installed by this shell.nix buildInputs
-          export PATH="$PATH:/home/martinm/.local/share/gem/ruby/3.3.0/bin"
+          export PATH="$PATH:/home/martinm/.local/share/gem/ruby/3.3.0/bin:/home/martinm/.local/share/gem/ruby/3.4.0/bin"
 
           if [ -f "''${PROJECT_HOME}/.venv/bin/activate" ]; then
             source "''${PROJECT_HOME}/.venv/bin/activate"
