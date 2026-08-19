@@ -72,6 +72,7 @@
   );
 
   function bodyClick(e: MouseEvent) {
+    console.log(e.target);
     if (
       (<HTMLElement>e.target).closest(".search-results") ||
       (<HTMLElement>e.target).closest(".navbar")
@@ -118,11 +119,8 @@
     >
       <input
         bind:value
-        onfocusin={() => {
+        onfocus={() => {
           searchHidden = false;
-        }}
-        onfocusout={() => {
-          searchHidden = true;
         }}
         name="q"
         type="text"

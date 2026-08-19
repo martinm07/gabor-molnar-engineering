@@ -239,6 +239,21 @@ export function escapeRegex(string: string) {
   return string.replace(/[/\-\\^$*+?.()|[\]{}]/g, "\\$&");
 }
 
+export function htmlToTextContent(htmlStr: string) {
+  // I would use a <template> element here for its better efficiency,
+  //  but it seems like it always gives an empty textContent/innerText.
+  // Also interesting, the difference between textContent and innerText; https://stackoverflow.com/a/35213639
+  const template = document.createElement("div");
+  template.innerHTML = htmlStr;
+  // console.log(
+  //   "🎈 Convertinh HTML to textContent",
+  //   htmlStr,
+  //   template.innerHTML,
+  //   template.textContent,
+  // );
+  return template.textContent;
+}
+
 /**
  * Object.assign(), but calls structuredClone on the object passed in as the first argument. This is to avoid
  * Object.assign() modifying that object.

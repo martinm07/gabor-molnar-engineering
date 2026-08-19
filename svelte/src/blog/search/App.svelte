@@ -96,7 +96,7 @@
   <NavBar disableSearchBox={true} disableHiding={!pageState.isMobile} />
 
   <div
-    class="border-b-2 md:border-b-0 md:border-r-2 border-rock-100/75 relative px-2 not-md:py-6 bg-white flex flex-col items-center min-h-[calc(100vh-3.75rem)]"
+    class="border-b-2 md:border-b-0 md:border-r-2 border-rock-100/75 relative px-2 not-md:py-6 bg-white flex flex-col items-center md:min-h-[calc(100vh-3.75rem)]"
   >
     <div class="font-serif text-rock-700 text-3xl text-center mb-2 md:mt-6">
       Advanced Search

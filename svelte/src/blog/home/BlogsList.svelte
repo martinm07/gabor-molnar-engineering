@@ -2,7 +2,11 @@
   import { type Card } from "./store.svelte";
   import Color from "color";
   import ClockIcon from "phosphor-svelte/lib/ClockIcon";
-  import { convertAccent, remToPixels } from "/shared/helper";
+  import {
+    convertAccent,
+    htmlToTextContent,
+    remToPixels,
+  } from "/shared/helper";
   import { onDestroy } from "svelte";
   import { watch } from "runed";
 
@@ -210,13 +214,11 @@
           class="svgicon absolute h-4/5 aspect-square top-1 right-1 -z-10 opacity-50 bg-stone-300 group-hover:bg-(--accentSaved) group-[.active]:bg-(--accentSaved) transition-colors duration-1000"
         ></div>
         <a
-          href="/documents/{encodeURI(card.title.replaceAll(' ', '-'))}"
+          href="/documents/{encodeURI(
+            htmlToTextContent(card.title.replaceAll(' ', '-')),
+          )}"
           class="text-2xl font-serif text-rock-700 underline hover:no-underline pr-6"
-          {@attach (anchor) => {
-            anchor.href =
-              "/documents/" +
-              encodeURI(anchor.textContent.replaceAll(" ", "-"));
-          }}>{@html card.title}</a
+          >{@html card.title}</a
         >
         <div class="text-lg text-rock-700 italic mt-2">
           {@html card.description}

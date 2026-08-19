@@ -140,4 +140,61 @@
     color: var(--color-stone-300);
   }
   /*endGeneral.cssFooter309123*/
+
+  /* FOOTER */
+  /*general-query.cssFooter512241*/
+  @media only screen and (max-width: 640px) {
+    .footer-col-2 {
+      display: none;
+    }
+    .mobile-col-2 {
+      margin-top: auto;
+      display: block;
+    }
+  }
+  @media only screen and (max-width: 500px) {
+    footer {
+      display: block;
+    }
+    .footer-col-3 {
+      text-align: center;
+      width: 100%;
+    }
+    .social-links {
+      position: absolute;
+      top: 20px;
+      right: 40px;
+    }
+    .contact-info {
+      justify-content: center;
+      text-align: center;
+      margin-top: 30px;
+    }
+    .footer-col-1 {
+      flex-direction: row;
+      justify-content: space-between;
+    }
+    .mobile-col-2 {
+      text-align: right;
+    }
+  }
+  @media only screen and (max-width: 390px) {
+    .footer-col-1 {
+      flex-direction: column;
+      text-align: center;
+      margin-top: 35px;
+    }
+    .mobile-col-2 {
+      margin-top: 15px;
+      text-align: center;
+    }
+    .social-links {
+      text-align: center;
+      right: 0;
+      width: 100%;
+    }
+    footer {
+      padding: 20px 10px;
+    }
+  }
 </style>
