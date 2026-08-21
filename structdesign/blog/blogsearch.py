@@ -4,6 +4,9 @@ from datetime import date
 from typing import cast
 
 from flask import Blueprint, render_template, request
+
+# from typesense.exceptions import ServiceUnavailable
+from httpx import ConnectError
 from sqlalchemy import and_, select
 
 from ..extensions import db, typesense_client
@@ -125,22 +128,32 @@ def to_typesense_document(doc: GuidanceDocument):
 
 
 def update_typesense_document(doc: GuidanceDocument):
-    if doc.status == "unlisted" or doc.status == "private" or doc.type == 1:
-        delete_typesense_document(doc.id)
-        return
+    try:
+        if doc.status == "unlisted" or doc.status == "private" or doc.type == 1:
+            delete_typesense_document(doc.id)
+            return
 
-    to_update = typesense_client.collections["documents"].documents[f"{doc.id}"]
-    if to_update:
-        to_update.update(to_typesense_document(doc))
-    else:
-        typesense_client.collections["documents"].documents.create(
-            to_typesense_document(doc)
+        to_update = typesense_client.collections["documents"].documents[f"{doc.id}"]
+        if to_update:
+            to_update.update(to_typesense_document(doc))
+        else:
+            typesense_client.collections["documents"].documents.create(
+                to_typesense_document(doc)
+            )
+    except ConnectError:
+        print(
+            "!!! FAILED TO CONNECT TO TYPESENSE SERVER. WILL NOT APPLY UPDATE TO TYPESENSE DATABASE."
         )
 
 
 def delete_typesense_document(docid: int):
-    if to_delete := typesense_client.collections["documents"].documents[f"{docid}"]:
-        to_delete.delete()
+    try:
+        if to_delete := typesense_client.collections["documents"].documents[f"{docid}"]:
+            to_delete.delete()
+    except ConnectError:
+        print(
+            "!!! FAILED TO CONNECT TO TYPESENSE SERVER. WILL NOT APPLY UPDATE TO TYPESENSE DATABASE."
+        )
 
 
 ### COMMANDS

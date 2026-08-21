@@ -244,7 +244,7 @@ def publish_development_document():
 
     body = data.get("body")
     stylesheet = data.get("stylesheet")
-    if not body or not stylesheet:
+    if body is None or stylesheet is None:
         return "Missing required fields 'body' and 'stylesheet'", 400
 
     publishdoc = db.session.get(GuidanceDocument, (int(id_), 0))

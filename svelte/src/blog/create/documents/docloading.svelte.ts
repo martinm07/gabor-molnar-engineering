@@ -180,6 +180,7 @@ export async function loadDocument(p: EditorInterfaceLoading) {
   };
   if (resp.ok) doc.infoFetched = true;
 
+  console.log(`${documentID}`);
   console.log(data["body"]);
   const parsedBody = parseHTMLFragment(data["body"], true, true);
   loadDocBody(parsedBody, p);

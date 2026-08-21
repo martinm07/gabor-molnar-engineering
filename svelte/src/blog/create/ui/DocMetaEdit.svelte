@@ -264,7 +264,7 @@
   </select>
 </div>
 
-<div class="flex items-center flex-col mt-18">
+<div class="flex items-center flex-col my-18">
   {#if confirmPublish}
     <div
       class="bg-yellow-100 text-yellow-700 text-lg p-2 rounded max-w-1/2 mb-4"

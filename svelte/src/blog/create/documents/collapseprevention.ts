@@ -48,7 +48,7 @@ function removeTextContent(node: Node) {
 function nodeWhitespaceRestricted(node: Node, strict = true) {
   if (node instanceof HTMLElement) {
     return (
-      (strict ? node.innerText : node.innerText.trim()) === "" &&
+      (strict ? node.textContent : node.textContent.trim()) === "" &&
       !closestClass(node, "not-body") &&
       !closestClass(node, "history-not-body")
     );
@@ -138,7 +138,8 @@ export function handleCollapsePrevention(
     // Don't do anything with the element/node if it has anything to do with "non-body" elements
     if (
       closestClass(target, "not-body") ||
-      closestClass(target, "history-not-body")
+      closestClass(target, "history-not-body") ||
+      !target.isConnected
     )
       continue;
 
@@ -197,13 +198,13 @@ export function handleCollapsePrevention(
       } else {
         // 2) If BRs were removed then there's a chance that the element has no collapsed
         //     which must be handled.
-        if (removedBRs && el.innerText === "") addNBSP(el);
+        if (removedBRs && el.textContent === "") addNBSP(el);
         break;
       }
     }
 
     // 2) Check if the modification of this element has collapsed it, and rectify if so
-    if (el.innerText === "") {
+    if (el.textContent === "") {
       const rect = el.getBoundingClientRect();
       if (rect.height * rect.width >= 1) continue;
 
@@ -213,8 +214,8 @@ export function handleCollapsePrevention(
     }
     // 3) We know this element has only whitespace- because of the early termination above-
     //     and so we're checking if the nbsp (or other) could be safely removed.
-    if (el.innerText !== "") {
-      // If the element's innerText is just a single nbsp character, that indicates
+    if (el.textContent !== "") {
+      // If the element's textContent is just a single nbsp character, that indicates
       //  the user would like this element to be empty, but we don't allow that
       //  unless the element has some non-zero area that could be hovered and selected.
       const undo = removeTextContent(el);

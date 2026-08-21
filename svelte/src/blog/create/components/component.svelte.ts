@@ -83,7 +83,10 @@ export function getCompNameAndPart(
   compName: string,
 ): [name: string, part: string] {
   if (!componentNameValid(compName))
-    throw new Error(`Component name provided was invalid. Got: "${compName}"`);
+    // throw new Error(`Component name provided was invalid. Got: "${compName}"`);
+    console.warn(
+      `Component name provided was invalid (bad syntax or nonexistent component). Got: ${compName}`,
+    );
   const nameParts = compName.split("-");
   const partsArr = nameParts.at(-1)!.slice(1, -1);
   return [nameParts.slice(0, -1).join("-"), partsArr];

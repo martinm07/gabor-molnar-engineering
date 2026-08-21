@@ -250,7 +250,7 @@ colors = [
 def addblogs(num):
     """Adds randomized blogs of size `num` to the database."""
     num = int(num)
-    thumbnail = "M 0 0 L 2 -2 L 3 -2 L 3 2 L 1 4 L 0 4 L 0 0 L 1 0 L 1 4 L 1 4 L 1 0 M 3 -2 L 1 0 M -2 3 L -3 1 L -2 0 L -1 1 L -2 3 M -2 3 L -2.273 1.39 L -3 1 M -2.273 1.388 L -1 1 M -2.273 1.389 L -2 0"
+    thumbnail = ""
     for _ in range(num):
         start = random.randint(0, len(lorem) // 2)
         titlelen = random.randint(15, 35)
@@ -264,6 +264,7 @@ def addblogs(num):
             title=lorem[start : start + titlelen],
             description=lorem[start : start + desclen],
             body=lorem,
+            stylesheet="",
             accent=color,
             thumbnail=thumbnail,
             component_lib_version="",
