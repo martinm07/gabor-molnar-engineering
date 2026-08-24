@@ -8,6 +8,9 @@ from flask import Blueprint, render_template, request
 # from typesense.exceptions import ServiceUnavailable
 from httpx import ConnectError
 from sqlalchemy import and_, select
+from typesense.exceptions import ObjectNotFound
+from typesense.sync.document import Document
+from typesense.types.document import DocumentSchema
 
 from ..extensions import db, typesense_client
 from ..helper import api_view, collection_exists, get_unix_timestamp
@@ -127,6 +130,18 @@ def to_typesense_document(doc: GuidanceDocument):
     }
 
 
+def document_exists(typesense_doc: Document[DocumentSchema]):
+    try:
+        typesense_doc.retrieve()
+        return True
+    except ObjectNotFound:
+        return False
+    except ConnectError:
+        print("!!! FAILED TO CONNECT TO TYPESENSE SERVER.")
+
+    return False
+
+
 def update_typesense_document(doc: GuidanceDocument):
     try:
         if doc.status == "unlisted" or doc.status == "private" or doc.type == 1:
@@ -134,7 +149,7 @@ def update_typesense_document(doc: GuidanceDocument):
             return
 
         to_update = typesense_client.collections["documents"].documents[f"{doc.id}"]
-        if to_update:
+        if document_exists(to_update):
             to_update.update(to_typesense_document(doc))
         else:
             typesense_client.collections["documents"].documents.create(
@@ -148,7 +163,8 @@ def update_typesense_document(doc: GuidanceDocument):
 
 def delete_typesense_document(docid: int):
     try:
-        if to_delete := typesense_client.collections["documents"].documents[f"{docid}"]:
+        to_delete = typesense_client.collections["documents"].documents[f"{docid}"]
+        if document_exists(to_delete):
             to_delete.delete()
     except ConnectError:
         print(
