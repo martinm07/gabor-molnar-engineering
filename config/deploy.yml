@@ -18,7 +18,7 @@ servers:
 #
 # Note: If using Cloudflare, set encryption mode in SSL/TLS setting to "Full" to enable CF-to-app encryption.
 proxy:
-  ssl: true
+  ssl: false
   # Until this can be set to a proper domain name (e.g. structural-design.eu) after configuring DNS records
   #  on the domain name provider, ssl can't be enabled. That is because Let's Encrypt only works with a proper domain
   hosts:
@@ -26,6 +26,10 @@ proxy:
     - www.structural-design.eu
   # Proxy connects to your container on port 80 by default.
   app_port: 5000
+  run:
+    publish: false
+    # http_port: 8080
+    # https_port: 8443
 
 # Credentials for your image host.
 registry:
@@ -112,6 +116,10 @@ accessories:
   typesense:
     image: typesense/typesense:28.0
     host: 134.199.188.153
+    # The [::1] refers to localhost (i.e. 127.0.0.1). Hence, this maps container port 8108 to port 8108 *on the localhost network* of the host machine
+    #  (i.e. the VM running the docker containers). If we didn't include the "[::1]:" then this would publish the port to the outside world as well,
+    #  which is not what we want
+    # https://docs.docker.com/engine/network/port-publishing/#publishing-ports
     port: "[::1]:8108:8108"
     env:
       clear:
@@ -121,7 +129,71 @@ accessories:
         - TYPESENSE_API_KEY:FLASK_TYPESENSE_API_KEY
     volumes:
       - ./typesense-data:/data # mount host folder for persistence
-#   redis:
+
+  # nginx-reverse-proxy:
+  #   image: nginx:trixie-perl
+  #   host: 134.199.188.153
+  #   port:
+  #     - "[::1]:80:80"
+  #     - "[::1]:443:443"
+  #   files:
+  #     - config/nginx.conf:/etc/nginx/nginx.conf
+  #   volumes:
+  #     - ./certbot/www/:/var/www/certbot/:ro
+  nginx-reverse-proxy:
+    # This contains a lot of very useful documentation:
+    #   https://github.com/JonasAlfredsson/docker-nginx-certbot
+    image: jonasal/nginx-certbot:6-alpine
+    host: 134.199.188.153
+    # We want these ports to be accessible to the outside world as well, hence we don't prepend "[::1]:"
+    # port:
+    #   - "80:80"
+    #   - "443:443"
+    options:
+      publish:
+        - "80:80"
+        - "443:443"
+    env:
+      clear:
+        # "Used by Let's Encrypt to contact you in case of security issues."
+        CERTBOT_EMAIL: martin.github07@gmail.com
+
+    # directories:
+    #   # Note that the :ro means "read-only"
+    #   - ./config/nginx:/etc/nginx/user_conf.d:ro
+    files:
+      # Note that the :ro means "read-only"
+      - ./config/nginx/structdesign.conf:/etc/nginx/user_conf.d/structdesign.conf:ro
+
+    volumes:
+      # - ./config/nginx:/etc/nginx/user_conf.d:ro
+      - ./nginx_secrets:/etc/letsencrypt
+
+  go-away:
+    image: git.gammaspectra.live/git/go-away:0.7-alpine3.21
+    host: 134.199.188.153
+    port: "[::1]:8080:8080"
+    env:
+      clear:
+        GOAWAY_BACKEND: "*=http://kamal-proxy:80"
+        GOAWAY_BIND: ":8080"
+        GOAWAY_CLIENT_IP_HEADER: "X-Real-IP"
+        GOAWAY_METRICS_BIND: ":9090"
+        GOAWAY_POLICY: "/policy.yml"
+        GOAWAY_CHALLENGE_TEMPLATE: "anubis"
+        GOAWAY_SLOG_LEVEL: "DEBUG"
+
+    files:
+      - ./config/go-away-policy.yml:/policy.yml:ro
+
+  # certbot:
+  #   image: certbot/certbot:latest
+  #   host: 134.199.188.153
+  #   volumes:
+  #     - ./certbot/www/:/var/www/certbot/:rw
+  #     - ./certbot/conf/:/etc/letsencrypt/:rw
+
+#   valkey:
 #     image: valkey/valkey:8
 #     host: 192.168.0.2
 #     port: 6379
