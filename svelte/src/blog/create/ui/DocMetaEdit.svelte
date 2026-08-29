@@ -43,7 +43,7 @@
     );
 
     disablePublishBtn = true;
-    publishResp = fetch_("/documents/publish_development_document", {
+    publishResp = fetch_("/documents/api/publish_development_document", {
       method: "post",
       body: JSON.stringify({
         id: doc.info.id,

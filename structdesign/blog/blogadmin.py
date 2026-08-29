@@ -84,7 +84,7 @@ def get_all_documents_json() -> list[dict]:
     return final
 
 
-@bp.route("/list_all_documents")
+@bp.route("/api/list_all_documents")
 @api_view()
 def list_all_documents():
     return get_all_documents_json()
@@ -141,7 +141,7 @@ def convert_document_to_html(input_path: str, ext: str, doc_id: str) -> str:
         return html
 
 
-@bp.route("/create_new_guidance_document", methods=["OPTIONS", "POST"])
+@bp.route("/api/create_new_guidance_document", methods=["OPTIONS", "POST"])
 @api_view(methods=["OPTIONS", "POST"])
 def create_new_guidance_document():
     file = request.files.get("file")
@@ -203,7 +203,7 @@ def create_new_guidance_document():
     return url_for("blogcreate.edit_document", id=doc.id)
 
 
-@bp.route("/delete_document", methods=["OPTIONS", "POST"])
+@bp.route("/api/delete_document", methods=["OPTIONS", "POST"])
 @api_view(methods=["OPTIONS", "POST"])
 def delete_document():
     data = json.loads(request.data.decode("utf-8"))

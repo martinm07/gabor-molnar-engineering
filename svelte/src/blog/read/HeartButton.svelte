@@ -18,7 +18,7 @@
 
   function heartSubmit() {
     const hearted_ = hearted;
-    fetch_("/documents/heart", {
+    fetch_("/documents/api/heart", {
       method: "POST",
       body: JSON.stringify({
         id: doc.id,

@@ -50,7 +50,7 @@ def get_development_document(id_: int, commit_changes=False):
         return None
 
 
-@bp.route("/get_document_edit")
+@bp.route("/api/get_document_edit")
 @api_view()
 def get_document_edit():
     id_ = request.args.get("id")
@@ -76,7 +76,7 @@ def get_document_edit():
 ################################# DOCUMENT BODY
 
 
-@bp.route("/sync_document_full", methods=["OPTIONS", "POST"])
+@bp.route("/api/sync_document_full", methods=["OPTIONS", "POST"])
 @api_view()
 def sync_document_full():
     data = json.loads(request.data.decode("utf-8"))
@@ -97,7 +97,7 @@ def sync_document_full():
     return ""
 
 
-@bp.route("/sync_document_patch", methods=["OPTIONS", "POST"])
+@bp.route("/api/sync_document_patch", methods=["OPTIONS", "POST"])
 @api_view(methods=["OPTIONS", "POST"])
 def sync_document_patch():
     """
@@ -185,7 +185,7 @@ def fill_doc_tag_names(tags: list[str]) -> list[DocumentTag]:
     return final
 
 
-@bp.route("/update_document_metadata", methods=["OPTIONS", "POST"])
+@bp.route("/api/update_document_metadata", methods=["OPTIONS", "POST"])
 @api_view(methods=["OPTIONS", "POST"])
 def update_document_metadata():
     data = json.loads(request.data.decode("utf-8"))
@@ -230,7 +230,7 @@ def update_document_metadata():
     }
 
 
-@bp.route("/publish_development_document", methods=["OPTIONS", "POST"])
+@bp.route("/api/publish_development_document", methods=["OPTIONS", "POST"])
 @api_view(methods=["OPTIONS", "POST"])
 def publish_development_document():
     data = json.loads(request.data.decode("utf-8"))
@@ -288,7 +288,7 @@ def publish_development_document():
 ################################# MEDIA FILES
 
 
-@bp.route("/add_media_file", methods=["OPTIONS", "POST"])
+@bp.route("/api/add_media_file", methods=["OPTIONS", "POST"])
 @api_view(methods=["OPTIONS", "POST"])
 def add_media_file():
     file = request.files.get("file")
@@ -323,7 +323,7 @@ def add_media_file():
     return ""
 
 
-@bp.route("/remove_media_file", methods=["OPTIONS", "POST"])
+@bp.route("/api/remove_media_file", methods=["OPTIONS", "POST"])
 @api_view(methods=["OPTIONS", "POST"])
 def remove_media_file():
     data = json.loads(request.data.decode("utf-8"))
@@ -346,7 +346,7 @@ def remove_media_file():
     return ""
 
 
-@bp.route("/get_media_files", methods=["GET"])
+@bp.route("/api/get_media_files", methods=["GET"])
 @api_view(methods=["OPTIONS", "POST"])
 def get_media_files():
     docid = request.args.get("id")

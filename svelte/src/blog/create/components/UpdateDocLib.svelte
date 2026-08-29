@@ -78,7 +78,7 @@
     submitStatus = "idle";
     submitMsg = "Fetching latest component library...";
 
-    let resp = await fetch_("/documents/get_component_library");
+    let resp = await fetch_("/documents/api/get_component_library");
     if (!resp.ok) {
       submitStatus = "error";
       submitMsg =

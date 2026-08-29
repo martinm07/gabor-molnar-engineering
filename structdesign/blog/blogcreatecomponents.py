@@ -242,13 +242,13 @@ def get_library_components(lib: SavedComponentLibrary) -> list[SavedComponent]:
     return lib.components
 
 
-@bp.route("/savedcomponents_currentversion")
+@bp.route("/api/savedcomponents_currentversion")
 @api_view()
 def savedcomponents_currentversion():
     return get_component_lib().latest_version
 
 
-@bp.route("/get_component_library")
+@bp.route("/api/get_component_library")
 @api_view()
 def get_component_library():
     version = request.args.get("ver")
@@ -444,7 +444,7 @@ def fill_comp_tag_names(tags: list[str] | None) -> list[SavedComponentTag]:
     return final
 
 
-@bp.route("/update_components", methods=["OPTIONS", "POST"])
+@bp.route("/api/update_components", methods=["OPTIONS", "POST"])
 @api_view(methods=["OPTIONS", "POST"])
 def update_components():
     """
@@ -674,7 +674,7 @@ def update_components():
     return lib.latest_version
 
 
-@bp.route("/get_component_tags")
+@bp.route("/api/get_component_tags")
 @api_view()
 def get_component_tags():
     tag_names = list(db.session.scalars(select(SavedComponentTag.name)).all())

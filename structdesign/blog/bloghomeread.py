@@ -41,7 +41,7 @@ def onfalsey(val, fallback):
 ### HOME
 
 
-@bp.route("/get_latest")
+@bp.route("/api/get_latest")
 @api_view(admin_required_=False)
 def get_latest():
     page = float(request.args.get("p")) if "p" in request.args else None  # type: ignore
@@ -76,7 +76,7 @@ def get_latest():
     return jsonify(results)
 
 
-@bp.route("/get_doctags")
+@bp.route("/api/get_doctags")
 @api_view(admin_required_=False)
 def get_doctags():
     tags = db.session.scalars(select(DocumentTag)).all()
@@ -88,7 +88,7 @@ def get_doctags():
     )
 
 
-@bp.route("/get_blogs_tag")
+@bp.route("/api/get_blogs_tag")
 @api_view(admin_required_=False)
 def get_blogs_tag():
     name = request.args.get("name", None)
@@ -142,7 +142,7 @@ def get_blogs_tag():
 ### READ
 
 
-@bp.route("/<string:name>")
+@bp.route("/read/<string:name>")
 def read(name: str):
     name_transformed = name.replace("-", "").replace(" ", "").lower()
     print("Trying to fetch article:", name_transformed)
@@ -169,7 +169,7 @@ def read(name: str):
     )
 
 
-@bp.route("/get")
+@bp.route("/api/get")
 @api_view(admin_required_=False)
 def get():
     # TODO: this onfalsey use is probably unwanted behavior?
@@ -186,7 +186,7 @@ def get():
     }
 
 
-@bp.route("/sendfeedback", methods=["OPTIONS", "POST"])
+@bp.route("/api/sendfeedback", methods=["OPTIONS", "POST"])
 @api_view(methods=["OPTIONS", "POST"], admin_required_=False)
 def sendfeedback():
     data = json.loads(request.data.decode("utf-8"))
@@ -202,7 +202,7 @@ def sendfeedback():
     return {"result": True}
 
 
-@bp.route("/heart", methods=["OPTIONS", "POST"])
+@bp.route("/api/heart", methods=["OPTIONS", "POST"])
 @api_view(methods=["OPTIONS", "POST"], admin_required_=False)
 def heart():
     data = json.loads(request.data.decode("utf-8"))

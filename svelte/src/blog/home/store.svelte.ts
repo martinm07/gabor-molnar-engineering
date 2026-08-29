@@ -19,7 +19,7 @@ export interface Card {
 export async function addCards(cards: Card[], num: number) {
   console.log(`Fetching ${num} more cards...`);
   const p = cards.length / num;
-  return fetch_(`/documents/get_latest?p=${p}&l=${num}`)
+  return fetch_(`/documents/api/get_latest?p=${p}&l=${num}`)
     .then((resp) => resp.json())
     .then((data) => {
       const cardData = data.map(
@@ -47,7 +47,7 @@ export interface Tag {
 }
 
 export async function getTags(tagsList: Tag[]) {
-  return fetch_("/documents/get_doctags")
+  return fetch_("/documents/api/get_doctags")
     .then((resp) => resp.json())
     .then((data) => {
       const tagsData: Tag[] = data.map(
@@ -73,7 +73,7 @@ export async function getCardsForTag(
     ["name", tagname],
     ["l", `${num}`],
   ]);
-  return fetch_(`/documents/get_blogs_tag?${params.toString()}`)
+  return fetch_(`/documents/api/get_blogs_tag?${params.toString()}`)
     .then((resp) => resp.json())
     .then((data) => {
       const cardsData: Card[] = data.map(

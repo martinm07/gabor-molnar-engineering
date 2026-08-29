@@ -30,7 +30,7 @@
   if (globalThis.jinjaParsed) {
     loadData(globalThis.allDocs);
   } else {
-    fetch_("/documents/list_all_documents")
+    fetch_("/documents/api/list_all_documents")
       .then((resp) => resp.json())
       .then((data: IncomingData[]) => {
         loadData(data);

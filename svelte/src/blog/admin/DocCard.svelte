@@ -28,7 +28,7 @@
   let deleteErrMsg: string = $state("");
   function deleteDocument() {
     deleteErrMsg = "";
-    fetch_("/documents/delete_document", {
+    fetch_("/documents/api/delete_document", {
       method: "post",
       body: JSON.stringify({
         id: doc.id,

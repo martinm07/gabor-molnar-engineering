@@ -40,14 +40,14 @@ def get_all_tags(return_objs=False) -> list[Any]:
         return tag_objs
 
 
-@bp.route("/get_all_tags")
+@bp.route("/api/get_all_tags")
 @api_view(admin_required_=False)
 def get_all_tags_view():
     all_tags = get_all_tags()
     return all_tags
 
 
-@bp.route("/save_doctag_changes", methods=["OPTIONS", "POST"])
+@bp.route("/api/save_doctag_changes", methods=["OPTIONS", "POST"])
 @api_view(methods=["OPTIONS", "POST"])
 def save_doctag_changes():
     data = json.loads(request.data.decode("utf-8"))

@@ -137,7 +137,7 @@ export async function search() {
 
   let resp: Response;
   try {
-    resp = await fetch_(`/documents/advanced_query${newQuery}`);
+    resp = await fetch_(`/documents/api/advanced_query${newQuery}`);
     if (!resp.ok) {
       pageState.searchSubmitState = "error";
       return resp;

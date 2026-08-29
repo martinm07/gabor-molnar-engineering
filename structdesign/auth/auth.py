@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import UTC, datetime
 
 from flask import (
     Blueprint,
@@ -43,7 +43,7 @@ def login():
             flash(error)
         else:
             session["is_admin"] = True
-            session["logged_in_time"] = datetime.now().isoformat()
+            session["logged_in_time"] = datetime.now(UTC).isoformat()
             if redirect_to := request.args.get("redirect_to"):
                 return redirect(redirect_to)
             else:
@@ -63,7 +63,7 @@ def logout():
 @bp.route("/logout_all", methods=["OPTIONS", "POST"])
 @api_view(methods=["OPTIONS", "POST"])
 def logout_all():
-    current_time = datetime.now().isoformat()
+    current_time = datetime.now(UTC).isoformat()
 
     param = db.session.get(Param, "logout_admin_before")
     if not param:

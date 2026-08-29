@@ -1,5 +1,12 @@
 <script lang="ts">
-  import { tags, ed, type DocTag, inputTags, savedTags, tagsSame } from "./store.svelte";
+  import {
+    tags,
+    ed,
+    type DocTag,
+    inputTags,
+    savedTags,
+    tagsSame,
+  } from "./store.svelte";
   import FitContentWrapTextarea from "/shared/components/FitContentWrapTextarea.svelte";
   import TrashIcon from "phosphor-svelte/lib/TrashIcon";
   import ArrowCounterClockwiseIcon from "phosphor-svelte/lib/ArrowCounterClockwiseIcon";
@@ -10,23 +17,34 @@
   function validateName(name: string) {
     // console.log("VALIDATING NAME", $state.snapshot(inputTags));
     if (name === "") return "Name required";
-    else if (inputTags.filter((inputTag, i) => (inputTag.name ?? tags[i]?.name) === name).length > 1)
+    else if (
+      inputTags.filter(
+        (inputTag, i) => (inputTag.name ?? tags[i]?.name) === name,
+      ).length > 1
+    )
       return "Name must be unique";
     return "";
   }
 
   // $inspect(tags);
 
-  function validateField(value: string, validateFunc: (x: string) => string): Attachment {
+  function validateField(
+    value: string,
+    validateFunc: (x: string) => string,
+  ): Attachment {
     return (element) => {
       // console.log("RUNNING ATTACHMENT", value);
-      if (!(element instanceof HTMLInputElement || (element instanceof HTMLTextAreaElement))) return;
+      if (!(
+        element instanceof HTMLInputElement ||
+        element instanceof HTMLTextAreaElement
+      ))
+        return;
 
       const msg = validateFunc(value);
       // On form submission, this lets the browser display our error message itself (and also focus the relevant input field)
       // Constrainty Validation API
       element.setCustomValidity(msg);
-    }
+    };
   }
 
   const tagToAdd: DocTag = $state({
@@ -60,8 +78,8 @@
     // Check if we're removing an existing tag, or an added tag
     if (ed.activeI >= savedTags.length) {
       // Removing added tag, we can just remove it completely
-      tags.splice(ed.activeI, 1)
-      inputTags.splice(ed.activeI, 1)
+      tags.splice(ed.activeI, 1);
+      inputTags.splice(ed.activeI, 1);
       ed.activeI = -1;
     } else {
       tags[ed.activeI].removed = true;
@@ -77,7 +95,7 @@
         name: tag.name,
         description: tag.description,
         accent: tag.accentDisabled ? null : tag.accent,
-      }
+      };
     });
 
     const editI = tags
@@ -93,22 +111,27 @@
 
     // Filter tags that were edited if they were also removed
     const editIFiltered = editI.filter((i) => !removed.includes(i));
-    const edit = Object.fromEntries(editIFiltered.map((i) => {
-      const tag = tags[i as number];
-      return [i, {
-        name: tag.name,
-        description: tag.description,
-        accent: tag.accentDisabled ? null : tag.accent
-      }];
-    }));
+    const edit = Object.fromEntries(
+      editIFiltered.map((i) => {
+        const tag = tags[i as number];
+        return [
+          i,
+          {
+            name: tag.name,
+            description: tag.description,
+            accent: tag.accentDisabled ? null : tag.accent,
+          },
+        ];
+      }),
+    );
 
     disableSaveChangesBtn = true;
-    saveChangesResp = fetch_("/documents/save_doctag_changes", {
+    saveChangesResp = fetch_("/documents/api/save_doctag_changes", {
       method: "post",
       body: JSON.stringify({
         added,
         edit,
-        removed
+        removed,
       }),
     });
     saveChangesResp.then(() => {
@@ -123,19 +146,23 @@
   <div class="flex flex-col md:flex-row">
     <label
       for="edit-tagname"
-      class="text-xl md:text-2xl flex items-center text-rock-700 mr-2">Name:</label
+      class="text-xl md:text-2xl flex items-center text-rock-700 mr-2"
+      >Name:</label
     >
     <div class="relative grow">
       <input
         id="edit-tagname"
         class="w-full border-2 rounded border-rock-300 px-3 py-1 text-lg text-rock-700 bg-background-50 focus:bg-white focus:ring-4 ring-rock-300/50 outline-none font-bold font-mono"
         type="text"
-        bind:value={() => {
-          return inputTag.name ?? tag.name;
-        }, (v) => {
-          inputTag.name = v;
-          if (!validateName(v)) tag.name = v;
-        }}
+        bind:value={
+          () => {
+            return inputTag.name ?? tag.name;
+          },
+          (v) => {
+            inputTag.name = v;
+            if (!validateName(v)) tag.name = v;
+          }
+        }
         spellcheck="true"
         placeholder="Tag Name"
         required
@@ -146,7 +173,9 @@
           class="absolute text-red-400 font-bold text-sm bottom-2 translate-y-full ml-3"
           aria-live="polite"
         >
-          <span class="bg-background px-1">{validateName(inputTag.name ?? tag.name)}</span>
+          <span class="bg-background px-1"
+            >{validateName(inputTag.name ?? tag.name)}</span
+          >
         </div>
       {/if}
     </div>
@@ -175,16 +204,14 @@
   <div class="flex mt-3">
     <label
       for="edit-tagaccent"
-      class="text-xl md:text-2xl flex items-center text-rock-700 mr-2">Accent:</label
+      class="text-xl md:text-2xl flex items-center text-rock-700 mr-2"
+      >Accent:</label
     >
     <input
       id="edit-toggle-tagaccent"
       class="w-5 aspect-square mr-2"
       type="checkbox"
-      bind:checked={
-        () => !tag.accentDisabled,
-        (v) => (tag.accentDisabled = !v)
-      }
+      bind:checked={() => !tag.accentDisabled, (v) => (tag.accentDisabled = !v)}
     />
     <input
       id="edit-tagaccent"
@@ -204,8 +231,7 @@
         <button
           class="bg-red-100 py-2 px-3 text-red-800 rounded text-xl flex items-center border-2 border-red-200 hover:bg-red-200 ring-red-200 active:bg-red-300 active:border-red-300 active:translate-y-1"
           type="button"
-          onclick={() => removeTag()}
-          ><TrashIcon class="mr-2" />Remove</button
+          onclick={() => removeTag()}><TrashIcon class="mr-2" />Remove</button
         >
       {:else}
         <button
@@ -218,7 +244,8 @@
       {const numDocuments = $derived(tags[ed.activeI].documentTitles.length)}
       {#if tags[ed.activeI].removed && numDocuments > 0}
         <div class="p-3 bg-yellow-100 text-yellow-800 mt-2 w-fit">
-          <b>Note:</b> Removing this tag will automatically remove it from {numDocuments} document{numDocuments === 1 ? "" : "s"}. THIS ACTION IS IRREVERSIBLE.
+          <b>Note:</b> Removing this tag will automatically remove it from {numDocuments}
+          document{numDocuments === 1 ? "" : "s"}. THIS ACTION IS IRREVERSIBLE.
         </div>
       {/if}
     </div>
@@ -235,15 +262,15 @@
     <div class="mt-6">
       <button
         class="bg-steel-100 py-2 px-3 text-steel-800 rounded text-xl flex items-center border-2 border-steel-200 hover:bg-steel-200 ring-steel-200 active:bg-steel-300 active:border-steel-300 active:translate-y-1"
-        type="submit"
-        ><PlusCircleIcon class="mr-2 text-2xl" />Add</button
+        type="submit"><PlusCircleIcon class="mr-2 text-2xl" />Add</button
       >
     </div>
   </form>
 {:else if ed.mode === "save"}
   <div class="text-center">
     <div class="p-3 bg-yellow-100 text-yellow-800 mt-2 w-fit h-fit text-lg">
-      <b>Note:</b> Saving your changes will affect public documents, and that<br />THIS ACTION CANNOT BE UNDONE.<br />
+      <b>Note:</b> Saving your changes will affect public documents, and that<br
+      />THIS ACTION CANNOT BE UNDONE.<br />
       Click "Save Changes" if you wish to proceed regardless.
     </div>
     <div class="mt-4">
@@ -251,8 +278,8 @@
         class="text-xl border-2 border-steel-300 text-steel-600 px-4 py-1 rounded bg-steel-50 hover:bg-white hover:ring-4 ring-steel-100 font-bold active:translate-y-1 active:bg-steel-100 disabled:opacity-50 disabled:pointer-events-none"
         type="button"
         onclick={() => saveChanges()}
-        disabled={disableSaveChangesBtn}
-      >Save Changes</button>
+        disabled={disableSaveChangesBtn}>Save Changes</button
+      >
       {#if saveChangesResp}
         {#await saveChangesResp}
           <div class="italic text-rock-700">Processing...</div>
@@ -262,7 +289,11 @@
           {:else}
             {let respText = $state("")}
             {const _ = resp.text().then((text) => (respText = text))}
-            <div class="text-red-700 font-bold">({resp.status}) Something went wrong. Message:<br /><span class="font-normal">{respText}</span></div>
+            <div class="text-red-700 font-bold">
+              ({resp.status}) Something went wrong. Message:<br /><span
+                class="font-normal">{respText}</span
+              >
+            </div>
           {/if}
         {:catch}
           <div class="text-red-700 font-bold">Something went wrong.</div>

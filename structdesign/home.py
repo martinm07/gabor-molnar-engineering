@@ -66,3 +66,8 @@ def signup_newsletter():
 @bp.route("/favicon.ico")
 def favicon():
     return send_file("static/shared/favicon.ico")
+
+
+@bp.route("/robots.txt")
+def robotstxt():
+    return send_file("static/shared/robots.txt")

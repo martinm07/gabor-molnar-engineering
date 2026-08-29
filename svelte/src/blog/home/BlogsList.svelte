@@ -214,7 +214,7 @@
           class="svgicon absolute h-4/5 aspect-square top-1 right-1 -z-10 opacity-50 bg-stone-300 group-hover:bg-(--accentSaved) group-[.active]:bg-(--accentSaved) transition-colors duration-1000"
         ></div>
         <a
-          href="/documents/{encodeURI(
+          href="/documents/read/{encodeURI(
             htmlToTextContent(card.title.replaceAll(' ', '-')),
           )}"
           class="text-2xl font-serif text-rock-700 underline hover:no-underline pr-6"

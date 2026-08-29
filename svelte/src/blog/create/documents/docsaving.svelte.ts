@@ -210,7 +210,7 @@ export class SaveDoc {
     this.syncDocLocal();
 
     if (this.doServerSync)
-      fetch_("/documents/sync_document_full", {
+      fetch_("/documents/api/sync_document_full", {
         method: "post",
         body: JSON.stringify({
           id: documentID,
@@ -268,7 +268,7 @@ export class SaveDoc {
         );
       }
 
-      const resp = fetch_("/documents/sync_document_patch", {
+      const resp = fetch_("/documents/api/sync_document_patch", {
         method: "post",
         body: JSON.stringify({
           id: documentID,
@@ -288,7 +288,7 @@ export class SaveDoc {
 
   async syncDocMetadata(info: typeof doc.info) {
     console.log("DOING UPDATE OF METADATA");
-    const resp = await fetch_("/documents/update_document_metadata", {
+    const resp = await fetch_("/documents/api/update_document_metadata", {
       method: "post",
       body: JSON.stringify({
         id: info.id.trim(),

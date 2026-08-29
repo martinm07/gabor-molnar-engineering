@@ -46,7 +46,7 @@
   if (globalThis.jinjaParsed) {
     loadData(globalThis.allDocTags);
   } else {
-    fetch_("/documents/get_all_tags")
+    fetch_("/documents/api/get_all_tags")
       .then((resp) => resp.json())
       .then((data: IncomingData[]) => {
         loadData(data);

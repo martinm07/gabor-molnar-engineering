@@ -59,7 +59,7 @@
       bgEl.style.top = `0px`;
 
       const searchParams = new URLSearchParams([["q", value]]);
-      fetch_(`/documents/query?${searchParams.toString()}`)
+      fetch_(`/documents/api/query?${searchParams.toString()}`)
         .then((resp) => resp.json())
         .then((data) => {
           console.log(data);

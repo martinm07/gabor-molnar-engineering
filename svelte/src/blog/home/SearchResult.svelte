@@ -16,7 +16,7 @@
 </script>
 
 <a
-  href="/documents/{encodeURI(
+  href="/documents/read/{encodeURI(
     htmlToTextContent(card.title.replaceAll(' ', '-')),
   )}"
   class="card block relative z-0 p-6 m-2 border-rock-300 border-b last-of-type:border-b-0 group"

@@ -52,10 +52,11 @@ rules:
       - 'path.matches("^\\/home(($)|(\\/$)|(\\/?#.*$)|(\\/?\\?.*$))")'
       - 'path.matches("^\\/gallery(($)|(\\/$)|(\\/?#.*$)|(\\/?\\?.*$))")'
 
-      # - 'path.matches("^\\/documents(($)|(\\/$)|(\\/?#.*$)|(\\/?\\?.*$))")'
-      # - 'path.matches("^\\/get_latest(($)|(\\/$)|(\\/?#.*$)|(\\/?\\?.*$))")'
-      # - 'path.matches("^\\/get_doctags(($)|(\\/$)|(\\/?#.*$)|(\\/?\\?.*$))")'
-      # - 'path.matches("^\\/get_blogs_tag(($)|(\\/$)|(\\/?#.*$)|(\\/?\\?.*$))")'
+      - 'path.matches("^\\/documents(($)|(\\/$)|(\\/?#.*$)|(\\/?\\?.*$))")'
+      - 'path.matches("^\\/documents\\/all(($)|(\\/$)|(\\/?#.*$)|(\\/?\\?.*$))")'
+      - 'path.matches("^\\/documents\\/api\\/get_latest(($)|(\\/$)|(\\/?#.*$)|(\\/?\\?.*$))")'
+      - 'path.matches("^\\/documents\\/api\\/get_doctags(($)|(\\/$)|(\\/?#.*$)|(\\/?\\?.*$))")'
+      - 'path.matches("^\\/documents\\/api\\/get_blogs_tag(($)|(\\/$)|(\\/?#.*$)|(\\/?\\?.*$))")'
 
       # Currently unused (but may be added in the future):
       - 'path.matches("^\\/tos(($)|(\\/$)|(\\/?#.*$)|(\\/?\\?.*$))")'

@@ -172,7 +172,7 @@ export function saveLibChanges(
 
   if (submitBtn) submitBtn.disabled = true;
 
-  fetch_("/documents/update_components", {
+  fetch_("/documents/api/update_components", {
     method: "post",
     body: JSON.stringify(final),
   })

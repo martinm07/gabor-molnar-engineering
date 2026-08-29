@@ -28,7 +28,7 @@ def search():
     return render_template("blog/search.html")
 
 
-@bp.route("/query")
+@bp.route("/api/query")
 @api_view(admin_required_=False)
 def query():
     query = request.args.get("q", "*")
@@ -46,7 +46,7 @@ def query():
     )
 
 
-@bp.route("/advanced_query")
+@bp.route("/api/advanced_query")
 @api_view(admin_required_=False)
 def advanced_query():
     query = onfalsey(request.args.get("q"), "*")

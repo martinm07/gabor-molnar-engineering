@@ -32,18 +32,21 @@
     // fileState.status = "uploading";
     formStatus = "processing";
     errMsg = "";
-    const { xhr, promise } = xhr_("/documents/create_new_guidance_document", {
-      method: "POST",
-      body: formData,
-      onUploadProgress: (e) => {
-        if (e.lengthComputable) {
-          const progressVal = (e.loaded / e.total) * 100;
-          fileState.progress = progressVal.toPrecision(3);
-        } else {
-          fileState.progress = "";
-        }
+    const { xhr, promise } = xhr_(
+      "/documents/api/create_new_guidance_document",
+      {
+        method: "POST",
+        body: formData,
+        onUploadProgress: (e) => {
+          if (e.lengthComputable) {
+            const progressVal = (e.loaded / e.total) * 100;
+            fileState.progress = progressVal.toPrecision(3);
+          } else {
+            fileState.progress = "";
+          }
+        },
       },
-    });
+    );
 
     promise
       .then((resp) => {

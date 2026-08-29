@@ -48,7 +48,7 @@
   if (!globalThis.jinjaParsed) {
     const search = new URLSearchParams(window.location.search);
     const id = search.get("id") ?? 1;
-    fetch_(`/documents/get?id=${id}`)
+    fetch_(`/documents/api/get?id=${id}`)
       .then((resp) => {
         if (resp.ok) return resp.json();
         return {

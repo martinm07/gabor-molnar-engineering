@@ -98,7 +98,9 @@ export async function loadDocument(p: EditorInterfaceLoading) {
   //   return;
   // }
 
-  const resp = await fetch_(`/documents/get_document_edit?id=${documentID}`);
+  const resp = await fetch_(
+    `/documents/api/get_document_edit?id=${documentID}`,
+  );
 
   let data;
   if (!resp.ok) {
@@ -131,7 +133,7 @@ export async function loadDocument(p: EditorInterfaceLoading) {
   const componentLibVer = data["component_lib_ver"];
   if (typeof componentLibVer !== "string")
     throw new Error(
-      "'/documents/get_document_edit' didn't return string for key 'component_lib_ver'.",
+      "'/documents/api/get_document_edit' didn't return string for key 'component_lib_ver'.",
     );
 
   localSave.current[`D:${documentID}`] = {
@@ -185,7 +187,7 @@ export async function loadDocument(p: EditorInterfaceLoading) {
   const parsedBody = parseHTMLFragment(data["body"], true, true);
   loadDocBody(parsedBody, p);
 
-  const tagsResp = await fetch_("/documents/get_all_tags");
+  const tagsResp = await fetch_("/documents/api/get_all_tags");
   if (tagsResp.ok) {
     const allTags = await tagsResp.json();
     console.log(allTags);
@@ -199,7 +201,7 @@ async function getSavedComponentLibrary(ver?: string): Promise<{
 }> {
   console.log("getting saved components library");
 
-  const URL = `/documents/get_component_library${typeof ver === "string" ? "?ver=" + ver : ""}`;
+  const URL = `/documents/api/get_component_library${typeof ver === "string" ? "?ver=" + ver : ""}`;
   const resp = await fetch_(URL);
 
   if (!resp.ok) {
@@ -265,7 +267,7 @@ export async function loadComponent(p: EditorInterfaceLoading) {
   }
 
   // Get all currently defined tags, so that autocomplete can be provided when modifying component tags
-  const resp = await fetch_("/documents/get_component_tags");
+  const resp = await fetch_("/documents/api/get_component_tags");
   recoverTags: if (!resp.ok) {
     console.warn(
       "Fetching component tags failed. Will attempt to use local store.",
@@ -302,7 +304,7 @@ export async function loadComponent(p: EditorInterfaceLoading) {
   }
 
   // Find the current (latest) version string of the component library
-  const verResp = await fetch_("/documents/savedcomponents_currentversion");
+  const verResp = await fetch_("/documents/api/savedcomponents_currentversion");
   recoverVer: if (!verResp.ok) {
     console.warn(
       "Fetching latest component library version failed. Will attempt to use local store.",

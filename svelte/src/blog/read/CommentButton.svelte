@@ -12,7 +12,7 @@
   let submitPromise: Promise<any> | undefined = $state();
   let feedbackSent = $state(false);
   function questionSubmit() {
-    submitPromise = fetch_("/documents/sendfeedback", {
+    submitPromise = fetch_("/documents/api/sendfeedback", {
       method: "POST",
       body: JSON.stringify({
         id: doc.id,

@@ -25,7 +25,7 @@
 
   function updateList() {
     console.log(doc.info.id);
-    fetch_(`/documents/get_media_files?id=${doc.info.id}`)
+    fetch_(`/documents/api/get_media_files?id=${doc.info.id}`)
       .then((resp) => resp.json())
       .then((data) => {
         mediaFiles.splice(0, mediaFiles.length, ...data);
@@ -60,7 +60,7 @@
 
   async function removeMediaFile(filename: string) {
     try {
-      const resp = await fetch_("/documents/remove_media_file", {
+      const resp = await fetch_("/documents/api/remove_media_file", {
         method: "post",
         body: JSON.stringify({
           id: doc.info.id,
@@ -130,7 +130,7 @@
         N -= 1;
 
         fileState.status = "uploading";
-        const { xhr, promise } = xhr_("/documents/add_media_file", {
+        const { xhr, promise } = xhr_("/documents/api/add_media_file", {
           method: "POST",
           body: formData,
           onUploadProgress: (e) => {
