@@ -24,6 +24,7 @@ proxy:
   hosts:
     - structural-design.eu
     - www.structural-design.eu
+    - stats.structural-design.eu
   # Proxy connects to your container on port 80 by default.
   app_port: 5000
   run:
@@ -71,6 +72,7 @@ env:
 aliases:
   shell: app exec --interactive --reuse "bash"
   mysql: accessory exec db --interactive --reuse "mysql -p"
+  stats: accessory exec goaccess --reuse --interactive "goaccess /var/log/nginx/access.log --log-format=COMBINED"
 
 # Use a different ssh user than root
 #
@@ -146,9 +148,6 @@ accessories:
     image: jonasal/nginx-certbot:6-alpine
     host: 134.199.188.153
     # We want these ports to be accessible to the outside world as well, hence we don't prepend "[::1]:"
-    # port:
-    #   - "80:80"
-    #   - "443:443"
     options:
       publish:
         - "80:80"
@@ -163,11 +162,14 @@ accessories:
     #   - ./config/nginx:/etc/nginx/user_conf.d:ro
     files:
       # Note that the :ro means "read-only"
-      - ./config/nginx/structdesign.conf:/etc/nginx/user_conf.d/structdesign.conf:ro
+      - config/nginx/structdesign.conf:/etc/nginx/user_conf.d/structdesign.conf:ro
+      - .kamal/statspwd:/etc/nginx/htpasswd
 
     volumes:
       # - ./config/nginx:/etc/nginx/user_conf.d:ro
       - ./nginx_secrets:/etc/letsencrypt
+      - /var/kamal-shared/nginx-logs:/var/log/nginx
+      - /var/kamal-shared/goaccess-html:/var/www/goaccess:ro
 
   go-away:
     image: git.gammaspectra.live/git/go-away:0.7-alpine3.21
@@ -185,6 +187,27 @@ accessories:
 
     files:
       - ./config/go-away-policy.yml:/policy.yml:ro
+
+  goaccess:
+    image: allinurl/goaccess:latest
+    host: 134.199.188.153
+    volumes:
+      - /var/kamal-shared/nginx-logs:/var/log/nginx:ro
+      - /var/kamal-shared/goaccess-html:/var/www/goaccess
+    cmd: >-
+      /var/log/nginx/access.log
+      -o /var/www/goaccess/index.html
+      --log-format=COMBINED
+      --real-time-html
+      --port=7890
+      --addr=0.0.0.0
+      --ws-url=wss://stats.structural-design.eu:443/ws
+      --geoip-database=/mmdb/dbip-asn-lite-2026-08.mmdb
+      --geoip-database=/mmdb/dbip-city-lite-2026-08.mmdb
+
+    files:
+      - config/dbip/dbip-asn-lite-2026-08.mmdb:/mmdb/dbip-asn-lite-2026-08.mmdb
+      - config/dbip/dbip-city-lite-2026-08.mmdb:/mmdb/dbip-city-lite-2026-08.mmdb
 
   # certbot:
   #   image: certbot/certbot:latest

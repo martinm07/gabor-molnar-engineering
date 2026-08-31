@@ -23,6 +23,7 @@ ngrok.exe
 developing-email/
 .obsidian/
 .kamal/secrets
+.kamal/statspwd
 
 # Logs
 logs
