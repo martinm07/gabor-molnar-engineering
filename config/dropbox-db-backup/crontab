@@ -1,0 +1,3 @@
+# When struggling with getting a cron job to be working, this is a great resource to check out: https://askubuntu.com/questions/23009/why-crontab-scripts-are-not-working
+
+0 4 * * * bash -c "set -o allexport && source /etc/dropbox-backup.env && set +o allexport && /root/dropbox-backup.sh >> /var/log/dropbox-backup.log 2>&1"
