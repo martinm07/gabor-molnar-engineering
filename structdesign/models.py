@@ -190,6 +190,13 @@ class SavedComponent(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(32))
     description: Mapped[str] = mapped_column(String(512))
+
+    # 0 - element
+    # 1 - style
+    # 2 - colour
+    # 3 - svelte
+    # 4 - media
+    type: Mapped[int] = mapped_column()
     content: Mapped[str] = mapped_column(Text())
     parts: Mapped[str] = mapped_column(String(1024))
 

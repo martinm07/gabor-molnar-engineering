@@ -20,6 +20,7 @@
   import AddNodeMenu from "./AddNodeMenu.svelte";
   import DocumentViewComponents from "./DocumentViewComponents.svelte";
   import ChangeToComponent from "./ChangeToComponent.svelte";
+  import StylesEditor from "../editors/styles/StylesEditor.svelte";
 
   const updateHighlight: () => void = getContext("updateHighlight");
 
@@ -126,4 +127,9 @@
 <!-- SIDEBAR MODE: viewer -->
 <div class:hidden={mode.sidebar !== "viewer"}>
   TODO: The document DOM viewer (/headings viewer for easier navigation?)
+</div>
+
+<!-- SIDEBAR MODE: styles -->
+<div class:hidden={mode.sidebar !== "styles"}>
+  <StylesEditor />
 </div>

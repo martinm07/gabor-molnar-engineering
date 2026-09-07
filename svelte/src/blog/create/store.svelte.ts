@@ -6,11 +6,17 @@ import { SvelteMap } from "svelte/reactivity";
 
 type CursorMode = "select" | "edit" | "add" | "move" | "noselect";
 type SidebarMode =
-  "edit" | "addcomponent" | "changetocomponent" | "viewcomponent" | "viewer";
+  | "edit"
+  | "addcomponent"
+  | "changetocomponent"
+  | "viewcomponent"
+  | "viewer"
+  | "styles";
 
 class Mode {
   cursor: CursorMode = $state("select");
-  sidebar: SidebarMode = $state("changetocomponent");
+  // TODO: Change back to "edit"
+  sidebar: SidebarMode = $state("styles");
   disabled: boolean = $state(false);
   inCompLibUpgrade: boolean = $state(false);
 }
@@ -64,7 +70,7 @@ export interface DocumentInfo {
   // status: "featured" | "public" | "unlisted" | "private";
   status: string;
 
-  body: string;
+  // body: string;
   componentLibVer: string;
 }
 
@@ -98,9 +104,12 @@ class Doc {
     accent: "",
     thumbnail: "",
     status: "",
-    body: "",
+    // body: "",
     componentLibVer: "",
   });
+  body: string = $state("");
+  styles: string = $state("");
+
   infoFetched = $state(false);
   is404 = $state(false);
   // savedInfo: DocumentInfo =

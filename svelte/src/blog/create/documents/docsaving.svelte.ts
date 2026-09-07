@@ -51,6 +51,7 @@ export class SaveDoc {
   syncDocMetadataDebounce: ReturnType<
     typeof useDebounce<[typeof doc.info], void>
   >;
+  syncDocStylesDebounce: ReturnType<typeof useDebounce<[string], void>>;
 
   prevDocumentType: typeof editorState.mode | null = null;
   prevDocumentID: typeof editorState.resourceName | null = null;
@@ -76,6 +77,13 @@ export class SaveDoc {
     this.syncDocMetadataDebounce = useDebounce(
       (info: typeof doc.info) => {
         this.syncDocMetadata(info);
+      },
+      () => SERVER_SYNC_INTERVAL_TIME,
+    );
+
+    this.syncDocStylesDebounce = useDebounce(
+      (styles: string) => {
+        this.syncDocStyles(styles);
       },
       () => SERVER_SYNC_INTERVAL_TIME,
     );
@@ -156,6 +164,7 @@ export class SaveDoc {
   flushServerChanges() {
     this.syncServerDocPatch(getDocumentID());
     this.syncDocMetadataDebounce.runScheduledNow();
+    this.syncDocStylesDebounce.runScheduledNow();
   }
 
   /**
@@ -313,6 +322,24 @@ export class SaveDoc {
     doc.info.accent = data["accent"];
     doc.info.thumbnail = data["thumbnail"];
     doc.info.status = data["status"];
+  }
+
+  async syncDocStyles(styles: string) {
+    console.log("DOING UPDATE OF STYLES");
+    const resp = await fetch_("/documents/api/sync_development_stylesheet", {
+      method: "post",
+      body: JSON.stringify({
+        id: doc.info.id,
+        styles,
+      }),
+    });
+    if (!resp.ok) {
+      console.error(await resp.text());
+      return;
+    }
+
+    const dataStyles = await resp.text();
+    doc.styles = dataStyles;
   }
 
   syncDocLocal() {

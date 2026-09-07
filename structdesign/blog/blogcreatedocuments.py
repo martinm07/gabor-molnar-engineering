@@ -172,6 +172,28 @@ def sync_document_patch():
     return content
 
 
+@bp.route("/api/sync_development_stylesheet", methods=["OPTIONS", "POST"])
+@api_view(methods=["OPTIONS", "POST"])
+def sync_development_stylesheet():
+    data = json.loads(request.data.decode("utf-8"))
+    id_: int = data.get("id")
+    if not id_:
+        return "Missing required 'id' key", 400
+
+    stylesheet = data.get("stylesheet", None)
+    if stylesheet is None:
+        return "Missing required 'stylesheet' key", 400
+
+    document = get_development_document(int(id_))
+    if not document:
+        return f"No guidance document of id '{id_}'", 400
+
+    document.stylesheet = stylesheet
+    db.session.commit()
+
+    return document.stylesheet
+
+
 ################################### DOCUMENT METADATA
 
 

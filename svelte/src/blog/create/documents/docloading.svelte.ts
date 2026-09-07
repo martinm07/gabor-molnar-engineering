@@ -177,9 +177,10 @@ export async function loadDocument(p: EditorInterfaceLoading) {
     thumbnail: data["thumbnail"] ?? "",
     status: data["status"] ?? "",
 
-    body: data["body"],
+    // body: data["body"],
     componentLibVer: data["component_lib_ver"],
   };
+  doc.body = data["body"];
   if (resp.ok) doc.infoFetched = true;
 
   console.log(`${documentID}`);

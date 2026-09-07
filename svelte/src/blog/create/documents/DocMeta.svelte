@@ -104,28 +104,28 @@
 </script>
 
 <div class="doc-meta history-not-body">
-  <div class="document-meta-data" data-field="id">
-    {doc.info ? doc.info.id : ""}
-  </div>
-  <div class="document-meta-data" data-field="componentLibVer">
-    {doc.info ? doc.info.componentLibVer : ""}
-  </div>
-  <div class="document-meta-data" data-field="status">
-    {doc.info ? doc.info.status : ""}
-  </div>
+  <pre class="document-meta-data" data-field="id">{doc.info
+      ? doc.info.id
+      : ""}</pre>
+  <pre class="document-meta-data" data-field="componentLibVer">{doc.info
+      ? doc.info.componentLibVer
+      : ""}</pre>
+  <pre class="document-meta-data" data-field="status">{doc.info
+      ? doc.info.status
+      : ""}</pre>
 
-  <div class="document-meta-data" data-field="title">
-    {doc.info ? doc.info.title : ""}
-  </div>
-  <div class="document-meta-data" data-field="description">
-    {doc.info ? doc.info.description : ""}
-  </div>
-  <div class="document-meta-data" data-field="accent">
-    {doc.info ? doc.info.accent : ""}
-  </div>
-  <div class="document-meta-data" data-field="thumbnail">
-    {doc.info ? doc.info.thumbnail : ""}
-  </div>
+  <pre class="document-meta-data" data-field="title">{doc.info
+      ? doc.info.title
+      : ""}</pre>
+  <pre class="document-meta-data" data-field="description">{doc.info
+      ? doc.info.description
+      : ""}</pre>
+  <pre class="document-meta-data" data-field="accent">{doc.info
+      ? doc.info.accent
+      : ""}</pre>
+  <pre class="document-meta-data" data-field="thumbnail">{doc.info
+      ? doc.info.thumbnail
+      : ""}</pre>
 
   <div
     class="document-meta-data"

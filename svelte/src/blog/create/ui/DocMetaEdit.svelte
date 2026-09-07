@@ -12,26 +12,32 @@
   } from "../store.svelte";
   import FitContentWrapTextarea from "/shared/components/FitContentWrapTextarea.svelte";
   import { TagsEditor } from "../components/ComponentMetaEdit.svelte";
-  import { fetch_ } from "/shared/helper";
+  import { fetch_, timeoutPromise } from "/shared/helper";
   import { deepEqual, DynamicStylesheet } from "../helper";
   import { getContext } from "svelte";
   import { createPublishDoc } from "../documents/docsaving.svelte";
 
   const getDocEl: () => HTMLElement = getContext("getDocEl");
+  const getMainStyles: () => DynamicStylesheet<number> =
+    getContext("getMainStyles");
   const getDataStyles: () => DynamicStylesheet<string> =
     getContext("getDataStyles");
   const getComponentElStyles: () => DynamicStylesheet<string> = getContext(
     "getComponentElStyles",
   );
 
+  const flushServerChanges: () => void = getContext("flushServerChanges");
+
   async function publishChanges() {
     const docEl = getDocEl();
+    const mainStyles = getMainStyles();
     const dataStyles = getDataStyles();
     const componentElStyles = getComponentElStyles();
 
     // IMP: The order of stylesheets passed in MATTERS for determining the result of the CSS cascade.
     //      It should be the same order as the dynamic stylesheets are defined/initalised in App.svelte.
     const { bodyStr, stylesheetStr } = createPublishDoc(docEl, [
+      mainStyles,
       dataStyles,
       componentElStyles,
     ]);
@@ -43,14 +49,17 @@
     );
 
     disablePublishBtn = true;
-    publishResp = fetch_("/documents/api/publish_development_document", {
-      method: "post",
-      body: JSON.stringify({
-        id: doc.info.id,
-        body: bodyStr,
-        stylesheet: stylesheetStr,
+    flushServerChanges();
+    publishResp = timeoutPromise(1).then(() =>
+      fetch_("/documents/api/publish_development_document", {
+        method: "post",
+        body: JSON.stringify({
+          id: doc.info.id,
+          body: bodyStr,
+          stylesheet: stylesheetStr,
+        }),
       }),
-    });
+    );
     publishResp.finally(() => (disablePublishBtn = false));
   }
 

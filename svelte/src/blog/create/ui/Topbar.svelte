@@ -14,6 +14,7 @@
   import ListIcon from "phosphor-svelte/lib/ListIcon";
   import XIcon from "phosphor-svelte/lib/XIcon";
   import ImagesSquareIcon from "phosphor-svelte/lib/ImagesSquareIcon";
+  import PaintBrushBroadIcon from "phosphor-svelte/lib/PaintBrushBroadIcon";
 
   // interface Props {
   // }
@@ -88,7 +89,7 @@
     }}><SquaresFour /></button
   >
   <button
-    class="aspect-square rounded hover:bg-rock-200/70 h-full flex items-center justify-center text-2xl text-rock-800 [.active]:border border-rock-300 [.active]:bg-background [.active]:hover:bg-rock-200/70"
+    class="aspect-square rounded hover:bg-rock-200/70 h-full flex items-center justify-center text-2xl text-rock-800 [.active]:border border-rock-300 [.active]:bg-background [.active]:hover:bg-rock-200/70 mr-0.5"
     aria-label="View node hierarchy"
     class:active={mode.sidebar === "viewer"}
     onclick={() => {
@@ -96,6 +97,17 @@
       else mode.sidebar = "viewer";
     }}><TreeView /></button
   >
+  {#if editorState.mode === "document"}
+    <button
+      class="aspect-square rounded hover:bg-rock-200/70 h-full flex items-center justify-center text-2xl text-rock-800 [.active]:border border-rock-300 [.active]:bg-background [.active]:hover:bg-rock-200/70"
+      aria-label="View node hierarchy"
+      class:active={mode.sidebar === "styles"}
+      onclick={() => {
+        if (mode.sidebar === "styles") mode.sidebar = "edit";
+        else mode.sidebar = "styles";
+      }}><PaintBrushBroadIcon /></button
+    >
+  {/if}
 </div>
 
 <div class="ml-auto flex mr-2">

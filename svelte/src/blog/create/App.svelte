@@ -45,6 +45,7 @@
   import { on } from "svelte/events";
   import DocMeta, { type IDocMeta } from "./documents/DocMeta.svelte";
   import { protectInheritedAttrs } from "./components/component.svelte";
+  import DocStyles, { type IDocStyles } from "./documents/DocStyles.svelte";
 
   let documentID = $derived(
     editorState.mode === "document"
@@ -89,6 +90,7 @@
   let multipleSelect: IMultipleSelect | undefined = $state();
   let addNode: IAddNode | undefined = $state();
   let docMeta: IDocMeta | undefined = $state();
+  let docStyles: IDocStyles | undefined = $state();
 
   setContext("resetHoverTarget", () => (selection.hover = undefined));
   setContext("updateHighlight", () => {
@@ -178,6 +180,10 @@
 
   // For testing purposes only
   let debugCreateNewHistoryItem: boolean = false;
+
+  const mainStyles = new DynamicStylesheet<number>();
+  onDestroy(() => mainStyles.destroy());
+  setContext("getMainStyles", () => mainStyles);
 
   const dataStyles = new DynamicStylesheet<string>();
   onDestroy(() => dataStyles.destroy());
@@ -307,6 +313,7 @@
       // setTimeout(() => docMeta?.informMetaUpdate(processed));
 
       docMeta?.informMetaUpdate(processed);
+      docStyles?.informStyleUpdate(processed);
     },
     {
       subtree: true,
@@ -408,6 +415,7 @@
   on(document, "visibilitychange", () => {
     if (document.hidden) docSaver.flushServerChanges();
   });
+  setContext("flushServerChanges", () => docSaver.flushServerChanges());
 
   let currentSelection: ClonedSelection | null = null;
   let prevSelection: ClonedSelection | null = null;
@@ -472,6 +480,7 @@
            for example. -->
       <div class="doc w-full" bind:this={docEl}>
         <DocMeta {docEl} {docSaver} bind:this={docMeta} />
+        <DocStyles {docSaver} bind:this={docStyles} />
         <div class="w-3/4 max-w-[600px] mx-auto">Loading document...</div>
       </div>
     </div>
