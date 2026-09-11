@@ -210,7 +210,7 @@
   onkeydown={onKeydown}
   contenteditable="true"
   class:invalid={!tagNameURL}
-  class="tagname-display bg-steel-100 p-2 rounded font-mono text-lg font-bold text-rock-700 focus:outline-none"
+  class="tagname-display bg-steel-100 p-2 rounded font-mono text-lg font-bold text-rock-700 focus:outline-none focus:ring-2 ring-steel-300/50"
   role="textbox"
   spellcheck="false"
   tabindex="0"

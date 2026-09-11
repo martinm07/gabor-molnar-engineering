@@ -595,7 +595,7 @@
       class="group font-mono text-rock-700 text-sm text-balance flex items-center justify-center flex-wrap pb-2 mb-2 border-b border-rock-300 last-of-type:border-0"
     >
       <FitContentInput
-        class="attrname-input m-0.5 text-wrap bg-steel-100 font-bold focus:outline-none max-w-[calc(100%-8px)] p-1 rounded box-content group-[.invalid]:text-rock-500 group-[.invalid]:underline decoration-wavy decoration-red-700 disabled:opacity-50"
+        class="attrname-input m-0.5 text-wrap bg-steel-100 font-bold focus:outline-none focus:ring-2 ring-steel-300/50 max-w-[calc(100%-8px)] p-1 rounded box-content group-[.invalid]:text-rock-500 group-[.invalid]:underline decoration-wavy decoration-red-700 disabled:opacity-50"
         bind:value={attr.name}
         placeholder="attribute"
         disabled={attr.name === "data-component"}
@@ -605,7 +605,7 @@
         }}
       />
       <FitContentWrapTextarea
-        class="resize-none m-0.5 text-wrap bg-steel-100 focus:outline-none max-w-[calc(100%-8px)] p-1 rounded box-content [.unsynced]:underline decoration-dotted decoration-2 decoration-blue-400 [.invalid]:text-rock-500 {attr.name ===
+        class="resize-none m-0.5 text-wrap bg-steel-100 focus:outline-none focus:ring-2 ring-steel-300/50 max-w-[calc(100%-8px)] p-1 rounded box-content [.unsynced]:underline decoration-dotted decoration-2 decoration-blue-400 [.invalid]:text-rock-500 {attr.name ===
           'data-component' && dataComponent.current.includes('diff')
           ? 'unsynced'
           : ''} {attr.name === 'data-component' &&

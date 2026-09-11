@@ -75,7 +75,7 @@
         target instanceof HTMLElement && target.classList.contains("doc-meta");
 
       if (doc.info && parentEl && metaEl instanceof HTMLElement) {
-        console.log("Doing update for ", metaEl);
+        // console.log("Doing update for ", metaEl);
         updateStateForMetaEl(metaEl);
       } else if (doc.info && targetIsMetaContainer) {
         Array.from(target.children).forEach((metaEl) => {

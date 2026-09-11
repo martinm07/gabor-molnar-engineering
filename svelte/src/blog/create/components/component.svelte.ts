@@ -365,7 +365,7 @@ export function loadComponentLibrary(
 
     compLib_.forEach((comp) => {
       const parts = extractPartsFromCompStr(comp.content);
-      console.log(comp.name, parts);
+      // console.log(comp.name, parts);
       // console.log($state.snapshot(comp), $state.snapshot(parts));
       parts.forEach((part) => {
         const partAttrs = Array.from(part.partEl.attributes);
@@ -390,11 +390,11 @@ export function loadComponentLibrary(
         // Separately, set the number of attributes parsed on this part in the map compPartsToNumInheritedAttrs,
         //  signifying that for any instance of this component part, that first number of attributes are what are being inherited.
 
-        console.log(
-          "SETTING compPartToInheritedAttrs",
-          part.attrValue,
-          partAttrs.map((attr) => [attr.name, attr.value]),
-        );
+        // console.log(
+        //   "SETTING compPartToInheritedAttrs",
+        //   part.attrValue,
+        //   partAttrs.map((attr) => [attr.name, attr.value]),
+        // );
         compPartToInheritedAttrs.set(
           part.attrValue,
           partAttrs.map((attr) => [attr.name, attr.value]),

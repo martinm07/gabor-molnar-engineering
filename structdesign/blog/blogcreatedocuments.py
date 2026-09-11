@@ -64,11 +64,12 @@ def get_document_edit():
         "id": doc.id,
         "title": doc.title,
         "description": doc.description,
-        "body": doc.body,
         "accent": doc.accent,
         "thumbnail": doc.thumbnail,
         "tags": [tag.name for tag in doc.tags],
         "status": doc.status,
+        "body": doc.body,
+        "stylesheet": doc.stylesheet,
         "component_lib_ver": doc.component_lib_version,
     }
 

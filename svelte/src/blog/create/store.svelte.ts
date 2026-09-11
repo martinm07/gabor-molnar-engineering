@@ -95,6 +95,12 @@ export const docMetaFields = [
   "componentLibVer",
 ];
 
+export interface DocCSSRule {
+  selector: string;
+  declarations: string;
+  compInheritance: string | null;
+}
+
 class Doc {
   info: DocumentInfo = $state({
     id: "",
@@ -108,7 +114,7 @@ class Doc {
     componentLibVer: "",
   });
   body: string = $state("");
-  styles: string = $state("");
+  styles: DocCSSRule[] = $state([]);
 
   infoFetched = $state(false);
   is404 = $state(false);

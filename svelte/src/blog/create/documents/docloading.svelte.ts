@@ -24,6 +24,8 @@ import {
 } from "../store.svelte";
 import { editorState } from "../url.svelte";
 import { assign, fetch_, request2AnimationFrames } from "/shared/helper";
+import { parseStylesheetStr } from "./DocStyles.svelte";
+// import { parseStylesheetStr } from "../editors/styles/StylesEditor.svelte";
 
 interface EditorInterfaceLoading {
   multipleSelect?: IMultipleSelect;
@@ -181,10 +183,13 @@ export async function loadDocument(p: EditorInterfaceLoading) {
     componentLibVer: data["component_lib_ver"],
   };
   doc.body = data["body"];
+  doc.styles = parseStylesheetStr(data["stylesheet"]);
   if (resp.ok) doc.infoFetched = true;
 
+  console.groupCollapsed("Loaded data");
   console.log(`${documentID}`);
   console.log(data["body"]);
+  console.groupEnd();
   const parsedBody = parseHTMLFragment(data["body"], true, true);
   loadDocBody(parsedBody, p);
 

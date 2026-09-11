@@ -16,10 +16,9 @@
   import { deepEqual, DynamicStylesheet } from "../helper";
   import { getContext } from "svelte";
   import { createPublishDoc } from "../documents/docsaving.svelte";
+  import { generateRuleString } from "../documents/DocStyles.svelte";
 
   const getDocEl: () => HTMLElement = getContext("getDocEl");
-  const getMainStyles: () => DynamicStylesheet<number> =
-    getContext("getMainStyles");
   const getDataStyles: () => DynamicStylesheet<string> =
     getContext("getDataStyles");
   const getComponentElStyles: () => DynamicStylesheet<string> = getContext(
@@ -30,7 +29,10 @@
 
   async function publishChanges() {
     const docEl = getDocEl();
-    const mainStyles = getMainStyles();
+
+    const mainStyles = doc.styles
+      .map((rule) => generateRuleString(rule.selector, rule.declarations))
+      .join("\n");
     const dataStyles = getDataStyles();
     const componentElStyles = getComponentElStyles();
 

@@ -21,6 +21,7 @@ import {
 import { editorState } from "../url.svelte";
 import { fetch_ } from "/shared/helper";
 import { DynamicStylesheet, isHistoryNotBodyContainer } from "../helper";
+import { parseStylesheetStr } from "./DocStyles.svelte";
 
 const getDocumentID = () =>
   editorState.mode === "document"
@@ -42,7 +43,7 @@ interface SaveDocConstructor {
 }
 
 export class SaveDoc {
-  serverSyncInterval: NodeJS.Timeout | undefined;
+  serverSyncInterval: number | undefined;
   serverSyncPatchesQueue: DocPatchStr[] = [];
   prevFetch: Promise<Response> | null = null;
   doServerSync: boolean;
@@ -330,7 +331,7 @@ export class SaveDoc {
       method: "post",
       body: JSON.stringify({
         id: doc.info.id,
-        styles,
+        stylesheet: styles,
       }),
     });
     if (!resp.ok) {
@@ -338,8 +339,8 @@ export class SaveDoc {
       return;
     }
 
-    const dataStyles = await resp.text();
-    doc.styles = dataStyles;
+    // const dataStyles = await resp.text();
+    // doc.styles = parseStylesheetStr(dataStyles);
   }
 
   syncDocLocal() {
@@ -419,7 +420,7 @@ export class SaveDoc {
 
 export function createPublishDoc(
   docEl: HTMLElement,
-  stylesheets: DynamicStylesheet<any>[],
+  stylesheets: (DynamicStylesheet<any> | string)[],
 ): { bodyStr: string; stylesheetStr: string } {
   const [htmlStr, nodeMap] = reconstructHTMLString(docEl, {
     docContainer: docEl,
@@ -465,9 +466,13 @@ export function createPublishDoc(
   let stylesheetStr = "";
 
   stylesheets.forEach((stylesheet) => {
-    Array.from(stylesheet.stylesheet.cssRules).forEach((cssRule) => {
-      stylesheetStr += cssRule.cssText + "\n\n";
-    });
+    if (stylesheet instanceof DynamicStylesheet) {
+      Array.from(stylesheet.stylesheet.cssRules).forEach((cssRule) => {
+        stylesheetStr += cssRule.cssText + "\n\n";
+      });
+    } else {
+      stylesheetStr += stylesheet + "\n\n";
+    }
   });
 
   return {

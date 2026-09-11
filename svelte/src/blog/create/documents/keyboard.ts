@@ -21,7 +21,7 @@ export function onKeydown(e: KeyboardEvent, p: EditorInterfaceKeyboard) {
       "[contenteditable='true'],[contenteditable='plaintext-only'],input,textarea",
     ),
   );
-  if (e.key === "s" && !inTextField) {
+  keyHandler: if (e.key === "s" && !inTextField) {
     // mode.cursor = "noselect";
     p.multipleSelect?.toggleToSelection();
   } else if (e.key === "t" && !inTextField) {
@@ -49,24 +49,29 @@ export function onKeydown(e: KeyboardEvent, p: EditorInterfaceKeyboard) {
     }
   } else if (e.key === "c" && !inTextField && selection.island.length > 0) {
     mode.sidebar = "changetocomponent";
-  } else if (
-    e.key === "Escape" &&
-    !document.querySelector(".autocomplete-display button") &&
-    !inTextField
-  ) {
-    if (mode.sidebar === "addcomponent")
-      selection.selected.forEach((el) => el.remove());
-    if (mode.sidebar === "changetocomponent") mode.sidebar = "edit";
+  } else if (e.key === "Escape") {
+    // The autocomplete window handles Escape by itself (escaping the autocomplete window);
+    //  if the autocomlete window is present, we shouldn't do anything here.
+    if (document.querySelector(".autocomplete-display button"))
+      break keyHandler;
 
-    if (mode.cursor === "select") p.multipleSelect?.removeSelection();
+    if (inTextField) {
+      if (e.target instanceof HTMLElement) e.target.blur();
+      break keyHandler;
+    }
+
+    if (
+      mode.sidebar === "viewcomponent" ||
+      mode.sidebar === "viewer" ||
+      mode.sidebar === "styles" ||
+      mode.sidebar === "changetocomponent"
+    ) {
+      mode.sidebar = "edit";
+    } else if (mode.sidebar === "addcomponent") {
+      selection.selected.forEach((el) => el.remove());
+    } else if (mode.cursor === "select") p.multipleSelect?.removeSelection();
+
     mode.cursor = "select";
-  } else if (
-    e.key === "Escape" &&
-    !document.querySelector(".autocomplete-display button") &&
-    inTextField &&
-    e.target instanceof HTMLElement
-  ) {
-    e.target.blur();
   } else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
     try {
       p.historyManager?.undo();

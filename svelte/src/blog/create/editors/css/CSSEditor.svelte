@@ -246,9 +246,10 @@
 
   interface Props {
     syncAttrName: string;
-    selected: Element[];
+    selected?: Element[];
+    value?: string;
   }
-  let { syncAttrName, selected }: Props = $props();
+  let { syncAttrName, selected, value = $bindable() }: Props = $props();
 
   type StylesList = [k: string, v: string][];
 
@@ -297,6 +298,10 @@
   watch(
     () => selected,
     (targets) => {
+      if (!targets) {
+        prevSyncedStyles = [];
+        return;
+      }
       const statesToForce = attrNameToStatesToForce(syncAttrName);
       const [styleStr, commonStyles] = getSelectionStyleStr(
         targets,
@@ -332,7 +337,7 @@
       (prop) => !propsList.some((p) => p[0] === prop[0]),
     );
 
-    for (const target of selected) {
+    for (const target of selected ?? []) {
       if (!(target instanceof HTMLElement)) continue;
 
       let targetProps: StylesList;
@@ -385,6 +390,7 @@
    */
   export function syncElementInlineStyles(x: Node | Node[]): void {
     const syncInlineStyles = (el: Element) => {
+      if (!selected) return;
       // console.log("Syncing styles for element", el);
       const statesToForce = attrNameToStatesToForce(syncAttrName);
       const inlineStyleAttribute = syncAttrName;
@@ -566,6 +572,7 @@
     let propsList: StylesList;
     let plainStr: string;
     [stylesEl.innerHTML, propsList, plainStr] = parseStylesStr(styleStr);
+    // console.log("Updating display", propsList, plainStr);
     if (!skipSyncStyles) syncStyles(propsList);
     declareMadeMutation();
 
@@ -621,6 +628,7 @@
   //  on the CSSEditor...
   // Using `<svelte:document onselectionchange={[...]}>` does the expected thing of calling after ALL selection changes.
   const off1 = on(document, "selectionchange", (e) => {
+    if (!stylesEl) return;
     const caret = getSelection();
     // prevStyleStrSelection = styleStrSelection;
     // styleStrSelection = caret !== null ? selectionToState(caret) : null;
@@ -658,8 +666,14 @@
       }
 
       if (!el || !stylesEl.contains(el)) return;
-      const topEl = getTopEl(el) as HTMLElement;
-      if (!(caret && topEl && predicate(topEl) && offset === whenOffset))
+      const topEl = getTopEl(el);
+      if (!(
+        caret &&
+        topEl &&
+        topEl instanceof HTMLElement &&
+        predicate(topEl) &&
+        offset === whenOffset
+      ))
         return;
       // If the selection is being moved within the style editor, make sure the bump
       //  would be bumping in the same direction as the movement
@@ -734,7 +748,8 @@
   function onKeydown(e: KeyboardEvent) {
     doingSpecialBackspace = false;
 
-    if (e.key === "Backspace" && stylesEl) {
+    if (!stylesEl) return;
+    if (e.key === "Backspace") {
       const line = getSelectionLine(stylesEl);
       if (!line || !stylesEl.querySelector("br")) return;
       const text = line
@@ -745,7 +760,7 @@
       if (text.length <= 3 && text.includes(":") && text.includes(";")) {
         doingSpecialBackspace = true;
         line.forEach((node) => {
-          if (stylesEl && stylesEl !== node && stylesEl.contains(node))
+          if (stylesEl !== node && stylesEl.contains(node))
             stylesEl?.removeChild(node);
         });
         // Preventing the backspace from actually happening so that after the custom
@@ -755,7 +770,7 @@
         if (e.target)
           e.target.dispatchEvent(new Event("input", { bubbles: true }));
       }
-    } else if (e.key === "Enter" && stylesEl) {
+    } else if (e.key === "Enter") {
       const line = getSelectionLine(stylesEl);
       if (!line) return;
       const finalNode = line.at(-1)!;
@@ -771,7 +786,7 @@
       // Two after the final node of the line is where the next line starts
       // Must set the selection after the innerHTML is refreshed
       enterPressed = offset + 2;
-    } else if (e.key === ":" && stylesEl) {
+    } else if (e.key === ":") {
       e.preventDefault();
       const line = getSelectionLine(stylesEl);
       if (!line) return;
@@ -779,7 +794,7 @@
       const colon = line.find((node) => node.textContent === ":") ?? null;
       caret?.setPosition(colon, 1);
       handleAutocomplete();
-    } else if (e.key === ";" && stylesEl) {
+    } else if (e.key === ";") {
       e.preventDefault();
       const line = getSelectionLine(stylesEl);
       if (!line) return;
@@ -834,7 +849,9 @@
     // console.log("CSSEditor selection update! 💙");
     // Suggest new history items if the selection changed without an input event being fired
     //  (i.e. the user is using the arrow keys, or clicking around, or making a range selection)
-    if (!calledOnInput) suggestCreateNewHistoryItem();
+    if (!calledOnInput) {
+      suggestCreateNewHistoryItem();
+    }
     calledOnInput = false;
   }}
 />
@@ -854,11 +871,36 @@
     beforeInputFindRemovedColons(e);
   }}
   onkeydown={onKeydown}
-  class="styles-display font-mono inline-block text-left text-rock-700 bg-steel-100 p-2 rounded focus:outline-none text-sm"
+  class="styles-display font-mono inline-block text-left text-rock-700 bg-steel-100 p-2 rounded focus:outline-none focus:ring-2 ring-steel-300/50 text-sm"
   tabindex="0"
->
-  {@html styles}
-</div>
+  bind:textContent={
+    () => {
+      // If we check calledOnInput first, then this method never evaluates value, and so Svelte doesn't see a dependency on any state
+      //  (calledOnInput itself is not state), and so doesn't know to reevaluate when value changes.
+      // Of course we could've turned calledOnInput into reactive state, but that creates a separate problem where it causes selection
+      //  changes to happen multiple times in a row for each input, because now it reevaluates whenever calledOnInput changes as well as value.
+      if (value === undefined || calledOnInput) {
+        // console.log(
+        //   `❖❖❖ Skipping getting value. calledOnInput = ${calledOnInput}  value = ${value}`,
+        // );
+        return null;
+      }
+      // console.log(value, " ---> ", stylesEl?.textContent);
+
+      // If we don't do setTimeout, then updateDisplay sets the innerHTML first and THEN
+      //  Svelte assigns to the textContent of the element, overwriting all of that innerHTML created
+      //  by updateDisplay.
+      setTimeout(() => updateDisplay(value, true, true));
+      return value;
+    },
+    (v) => {
+      if (typeof v === "string") {
+        // console.log("❖❖❖", value, " <--- ", v);
+        value = v;
+      }
+    }
+  }
+></div>
 
 <style>
   :global(.styles-display .colon, .styles-display .semic) {

@@ -479,28 +479,62 @@ export class DynamicStylesheet<T> {
   stylesheetPosMap: Map<T, number>;
   stylesheet: CSSStyleSheet;
 
-  constructor() {
+  readonly isConstructedStylesheet: boolean;
+
+  constructor(useConstructedStylesheet = true) {
     this.stylesheetPosMap = new Map();
-    this.stylesheet = new CSSStyleSheet();
-    document.adoptedStyleSheets.push(this.stylesheet);
+
+    this.isConstructedStylesheet = useConstructedStylesheet;
+    if (this.isConstructedStylesheet) {
+      this.stylesheet = new CSSStyleSheet();
+      document.adoptedStyleSheets.push(this.stylesheet);
+    } else {
+      const style = document.createElement("style");
+      document.head.appendChild(style);
+      if (!style.sheet)
+        throw new Error("Created <style> element had a style.sheet of null.");
+      this.stylesheet = style.sheet;
+    }
   }
 
-  setRule(rule: string, key: T) {
+  setRule(rule: string, key: T, index?: number) {
     //  p { ... }   div { ... }   h1 { ... }
     // |          |             |            |
     // 0          1             2            3
     // (we'll have indexes always refer to the rule that directly follows it)
+    const existingIndex = this.stylesheetPosMap.get(key);
     try {
-      const index = this.stylesheetPosMap.get(key);
-      if (index === undefined) {
-        const newIndex = this.stylesheet.cssRules.length;
+      if (existingIndex === undefined) {
+        const newIndex = index ?? this.stylesheet.cssRules.length;
+        if (newIndex < 0 || newIndex > this.stylesheet.cssRules.length)
+          throw new Error("Index given to setRule is out of bounds.");
 
         this.stylesheet.insertRule(rule, newIndex);
 
+        this.stylesheetPosMap.forEach((i, key) => {
+          if (i >= newIndex) this.stylesheetPosMap.set(key, i + 1);
+        });
         this.stylesheetPosMap.set(key, newIndex);
       } else {
-        this.stylesheet.deleteRule(index);
-        this.stylesheet.insertRule(rule, index);
+        const newIndex = index ?? existingIndex;
+        if (newIndex < 0 || newIndex > this.stylesheet.cssRules.length)
+          throw new Error("Index given to setRule is out of bounds.");
+
+        if (existingIndex !== newIndex)
+          this.stylesheetPosMap.forEach((i, key_) => {
+            if (key === key_) return;
+            // We remove from existing index and insert at newIndex.
+            // If existingIndex is greater, everything between existingIndex and newIndex gets bumped up by 1
+            // if newIndex is greater, everything between existingIndex and newIndex gets bumped down by 1
+            if (existingIndex > newIndex && i >= newIndex && i < existingIndex)
+              this.stylesheetPosMap.set(key_, i + 1);
+            if (existingIndex < newIndex && i > existingIndex && i <= newIndex)
+              this.stylesheetPosMap.set(key_, i - 1);
+          });
+
+        this.stylesheetPosMap.set(key, newIndex);
+        this.stylesheet.deleteRule(existingIndex);
+        this.stylesheet.insertRule(rule, newIndex);
       }
     } catch (e) {
       console.error(
@@ -509,6 +543,11 @@ export class DynamicStylesheet<T> {
         ":",
         rule,
       );
+      if (existingIndex !== undefined) {
+        // We deleted the rule at index, but failed to supply a new rule (the `rule` parameter provided was malformed);
+        //  remove this key from the stylesheetPosMap
+        this.stylesheetPosMap.delete(key);
+      }
     }
   }
 
@@ -541,16 +580,31 @@ export class DynamicStylesheet<T> {
   }
 
   destroy() {
-    const i = document.adoptedStyleSheets.indexOf(this.stylesheet);
-    if (i === -1) {
-      console.error(
-        "Could not find style sheet in document.adoptedStyleSheets",
-        this.stylesheet,
-        document.adoptedStyleSheets,
+    if (this.isConstructedStylesheet) {
+      const i = document.adoptedStyleSheets.indexOf(this.stylesheet);
+      if (i === -1) {
+        console.error(
+          "Could not find style sheet in document.adoptedStyleSheets",
+          this.stylesheet,
+          document.adoptedStyleSheets,
+        );
+        return;
+      }
+      document.adoptedStyleSheets.splice(i, 1);
+    } else {
+      const i = Array.from(document.head.children).findIndex(
+        (el) => el instanceof HTMLStyleElement && el.sheet === this.stylesheet,
       );
-      return;
+      if (i === -1) {
+        console.error(
+          "Could not find style sheet in document head",
+          this.stylesheet,
+          document.head.children,
+        );
+        return;
+      }
+      document.head.removeChild(document.head.children[i]);
     }
-    document.adoptedStyleSheets.splice(i, 1);
   }
 }
 

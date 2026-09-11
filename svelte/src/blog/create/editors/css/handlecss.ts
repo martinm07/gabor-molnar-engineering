@@ -144,7 +144,8 @@ export function splitStringAtChar(str: string, char: string) {
     ]);
   const dQuoteRanges = getMatchRanges(/"([^"\\]|\\.)*"/g);
   const sQuoteRanges = getMatchRanges(/'([^'\\]|\\.)*'/g);
-  const allRanges = [...dQuoteRanges, ...sQuoteRanges];
+  const bracketRanges = getMatchRanges(/\(([^)\\]|\\.)*\)/g);
+  const allRanges = [...dQuoteRanges, ...sQuoteRanges, ...bracketRanges];
 
   const regex = new RegExp("(?<!\\\\)" + char, "g");
   // Find all matches for unescaped 'char' and filter out the ones that

@@ -181,7 +181,10 @@
   // For testing purposes only
   let debugCreateNewHistoryItem: boolean = false;
 
-  const mainStyles = new DynamicStylesheet<number>();
+  // We set useConstructedStylesheet to false in this constructor, so that we use a style tag in the document <head>.
+  // The primary reason for doing this is allowing CSS @import statements in the document styles (because they aren't allowed in constructed stylesheets;
+  //  see https://www.w3.org/TR/cssom-1/#the-cssstylesheet-interface)
+  const mainStyles = new DynamicStylesheet<number>(false);
   onDestroy(() => mainStyles.destroy());
   setContext("getMainStyles", () => mainStyles);
 
@@ -448,7 +451,7 @@
 
 <div
   class="grid grid-cols-[30%_1fr] grid-rows-[48px_3fr_1fr] [.hide-bl]:grid-rows-[48px_3fr_0fr] h-screen overflow-y-hidden"
-  class:hide-bl={mode.sidebar !== "edit"}
+  class:hide-bl={mode.sidebar !== "edit" && mode.sidebar !== "styles"}
 >
   <div
     style="scrollbar-color: var(--rock-100) var(--background);"
