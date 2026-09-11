@@ -190,10 +190,13 @@ rules:
   #    - '($is-tool-ua)'
   #    - '!($is-generic-browser)'
 
+  # TODO: By default the action here is "challenge".
+  #  In the future, consider reverting it to that, and having a blacklist of pages, rather than a whitelist as it is currently
+  #   i.e. blacklisting the search page (and associated API endpoints) and the read page (and associated API endpoints).
   - name: standard-browser
-    action: challenge
-    settings:
-      challenges: [preload-link, meta-refresh, resource-load, js-refresh]
+    action: pass
+    # settings:
+    #   challenges: [preload-link, meta-refresh, resource-load, js-refresh]
     conditions:
       - "($is-generic-browser)"
 
