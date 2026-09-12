@@ -39,7 +39,7 @@
           "{{ url_for(request.endpoint, id=document_or_component_id).split('/')[0] + '/' }}";
 
         globalThis.csrfToken = "{{ csrf_token() }}";
-        globalThis.allDocs = JSON.parse(`{{ all_docs|tojson }}`);
+        globalThis.allDocs = {{ all_docs|tojson }};
       } catch {}
     </script>
 

@@ -49,9 +49,7 @@
 
         globalThis.csrfToken = "{{ csrf_token() }}";
 
-        globalThis.flashedMessages = JSON.parse(
-          `{{ get_flashed_messages()|tojson }}`,
-        );
+        globalThis.flashedMessages = {{ get_flashed_messages()|tojson }};
       } catch {}
     </script>
 
