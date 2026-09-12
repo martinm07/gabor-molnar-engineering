@@ -1,6 +1,5 @@
 import json
 import random
-import time
 from collections.abc import Iterable
 from itertools import islice
 

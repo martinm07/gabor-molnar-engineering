@@ -3,12 +3,20 @@ import re
 import shutil
 from warnings import warn
 
+# class UnsupportedOrInvalidFileError(Exception):
+#     pass
+
 if not os.environ.get("FLASK_APP"):
-    raise Exception(
+    raise OSError(
         'Environment variable "FLASK_APP" is not set. Please set it to relevant value to run the Flask app (e.g. "flask-app".'
     )
-STATIC_PATH = os.path.abspath("./../" + os.environ.get("FLASK_APP") + "/static/")
-TEMPLATES_PATH = os.path.abspath("./../" + os.environ.get("FLASK_APP") + "/templates/")
+else:
+    STATIC_PATH = os.path.abspath(
+        "./../" + os.environ.get("FLASK_APP", "") + "/static/"
+    )
+    TEMPLATES_PATH = os.path.abspath(
+        "./../" + os.environ.get("FLASK_APP", "") + "/templates/"
+    )
 
 ### Update paths in code
 
@@ -16,8 +24,7 @@ TEMPLATES_PATH = os.path.abspath("./../" + os.environ.get("FLASK_APP") + "/templ
 def fixPath(path: str, source_dirpath: str = "intro/js/"):
     if path[0] != "/":
         # Path is relative
-        if path.startswith("./"):
-            path = path[2:]
+        path = path.removeprefix("./")
         path = os.path.normpath(os.path.join(source_dirpath, path)).replace("\\", "/")
 
     if "/assets/" not in path:
@@ -111,7 +118,7 @@ for root, dirs, files in os.walk("dist/"):
         )
 
     def check_ext(filename, ext):
-        filename.split(".")[-1] == ext
+        return filename.split(".")[-1] == ext
 
     # get_etag = (
     #     lambda filepath: "-".join((filepath.split("/")[-1]).split("-")[:-1])

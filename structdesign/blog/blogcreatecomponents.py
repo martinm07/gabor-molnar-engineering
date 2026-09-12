@@ -22,6 +22,11 @@ from ..models import (  # noqa: F401
     SavedComponentTag,
 )
 
+
+class DatabaseError(Exception):
+    pass
+
+
 bp = Blueprint("blogcreatecomponents", __name__, url_prefix="/documents")
 
 
@@ -44,7 +49,7 @@ def get_component_lib():
         select(SavedComponentLibrary).filter_by(name="base")
     ).first()
     if library is None:
-        raise Exception("Missing library with name 'base'")
+        raise DatabaseError("Missing library with name 'base'")
     return library
 
 
@@ -125,8 +130,9 @@ def apply_diff(
     # for i, diffparts in enumerate(diffs):
     i = 0
     for diffparts in diffs:
-
-        def find_part(part: str):
+        # We bind the value of diffparts to the closure *immediately* by mentioning it as a default parameter value (which is evaluated on definition).
+        # See: https://docs.python-guide.org/writing/gotchas/#late-binding-closures
+        def find_part(part: str, diffparts=diffparts):
             # Matches a string of non-^ (caret) characters preceded by e.g. ^NAME^
             diff_encoded = re.search(r"(?<=\^" + part.upper() + r"\^)[^^]*", diffparts)
             if not diff_encoded:
@@ -373,7 +379,7 @@ def get_component_library():
     while current_version != version:
         try:
             diff = get_version(current_version)
-        except Exception:
+        except KeyError:
             warnings.warn(
                 "Exhausted version history trying to complete the diff messages report. Likely a custom library version was requested."
             )

@@ -3,7 +3,7 @@ import os
 import smtplib
 import ssl
 import warnings
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from urllib.parse import urlparse
@@ -31,7 +31,10 @@ old_samesite = None
 
 
 # TODO: Add config for "Partitioned" attribute after Flask adds it: https://github.com/pallets/flask/pull/5499
-def cors_enabled(methods=["POST"], allow_credentials=True, development_only=True):
+def cors_enabled(methods=None, allow_credentials=True, development_only=True):
+    if methods is None:
+        methods = ["POST"]
+
     def decorator(view):
         if (not development_only) or (
             development_only and os.environ.get("FLASK_ENV") == "development"
@@ -93,7 +96,7 @@ def admin_required(view_func):
         logout_those_before = (
             datetime.fromisoformat(saved_logout_after.value)
             if saved_logout_after
-            else datetime.fromtimestamp(0)
+            else datetime.fromtimestamp(0, UTC)
         )
 
         saved_login_time = session.get("logged_in_time")
@@ -115,7 +118,10 @@ def admin_required(view_func):
     return wrapped_view
 
 
-def api_view(methods=["GET"], admin_required_=True):
+def api_view(methods=None, admin_required_=True):
+    if methods is None:
+        methods = ["GET"]
+
     def decorator(view_func):
         # @functools.wraps(view_func)
         # def wrapped_view(**kwargs):
@@ -158,9 +164,10 @@ def host_is_local(host):
 
     # hostname = socket.getfqdn(hostname)
     print(o, hostname)
-    if (hostname in ("localhost", "0.0.0.0")) or hostname.startswith("127."):
-        return True
-    return False
+    # if (hostname in ("localhost", "0.0.0.0")) or hostname.startswith("127."):
+    #     return True
+    # return False
+    return (hostname in ("localhost", "0.0.0.0")) or hostname.startswith("127.")
     # localhost = socket.gethostname()
     # localaddrs = socket.getaddrinfo(localhost, port)
     # targetaddrs = socket.getaddrinfo(hostname, port)
@@ -493,7 +500,7 @@ def send_email_info(email_filename, address, **kwargs):
         or INFO_EMAIL_LOGIN_USER is None
         or INFO_EMAIL_LOGIN_PASSWORD is None
     ):
-        raise EnvironmentError(
+        raise OSError(
             "One or more required environment variables for email sending are missing (all of EMAIL_SMTP_SERVER, INFO_EMAIL, INFO_EMAIL_LOGIN_USER and INFO_EMAIL_LOGIN_PASSWORD are required)."
         )
     if EMAIL_PORT is None:
@@ -529,4 +536,4 @@ def collection_exists(client, collection_name: str):
 
 
 def get_unix_timestamp(d: date):
-    return int(datetime(d.year, d.month, d.day).timestamp())
+    return int(datetime(d.year, d.month, d.day, tzinfo=UTC).timestamp())
