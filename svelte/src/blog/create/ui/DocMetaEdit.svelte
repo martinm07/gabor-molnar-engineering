@@ -25,7 +25,8 @@
     "getComponentElStyles",
   );
 
-  const flushServerChanges: () => void = getContext("flushServerChanges");
+  const flushServerChanges: () => Promise<[void | Response, void, void]> =
+    getContext("flushServerChanges");
 
   async function publishChanges() {
     const docEl = getDocEl();
@@ -51,17 +52,17 @@
     );
 
     disablePublishBtn = true;
-    flushServerChanges();
-    publishResp = timeoutPromise(1).then(() =>
-      fetch_("/documents/api/publish_development_document", {
-        method: "post",
-        body: JSON.stringify({
-          id: doc.info.id,
-          body: bodyStr,
-          stylesheet: stylesheetStr,
-        }),
+
+    await flushServerChanges();
+
+    publishResp = fetch_("/documents/api/publish_development_document", {
+      method: "post",
+      body: JSON.stringify({
+        id: doc.info.id,
+        body: bodyStr,
+        stylesheet: stylesheetStr,
       }),
-    );
+    });
     publishResp.finally(() => (disablePublishBtn = false));
   }
 

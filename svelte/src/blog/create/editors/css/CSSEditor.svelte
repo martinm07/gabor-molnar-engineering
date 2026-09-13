@@ -312,10 +312,16 @@
 
       let plainStr: string;
       [styles, , plainStr] = parseStylesStr(styleStr);
-      if (stylesEl?.innerHTML) {
-        stylesEl.innerHTML = styles;
-        declareMadeMutation();
-      }
+      // if (stylesEl.innerHTML) {
+      // console.log(
+      //   `styleStr: ${styleStr}  plainStr: ${plainStr}  styles: ${styles}`,
+      // );
+      // console.log(
+      //   `🎈🎈 selected watch trigger! stylesEl.innerHTML = "${styles}"`,
+      // );
+      stylesEl.innerHTML = styles;
+      declareMadeMutation();
+      // }
 
       // undoManager.changeSelection(targets, {
       //   text: plainStr,
@@ -572,6 +578,9 @@
     let propsList: StylesList;
     let plainStr: string;
     [stylesEl.innerHTML, propsList, plainStr] = parseStylesStr(styleStr);
+    // console.log(
+    //   `🎈🎈 updateDisplay trigger! stylesEl.innerHTML = "${stylesEl.innerHTML}"`,
+    // );
     // console.log("Updating display", propsList, plainStr);
     if (!skipSyncStyles) syncStyles(propsList);
     declareMadeMutation();
@@ -894,7 +903,7 @@
       return value;
     },
     (v) => {
-      if (typeof v === "string") {
+      if (typeof v === "string" && value !== undefined) {
         // console.log("❖❖❖", value, " <--- ", v);
         value = v;
       }

@@ -1,4 +1,5 @@
 import {
+  componentTypeToString,
   decodeComponentStr,
   loadComponentLibrary,
   type GetCompLibFetchReturn,
@@ -28,10 +29,11 @@ import { parseStylesheetStr } from "./DocStyles.svelte";
 // import { parseStylesheetStr } from "../editors/styles/StylesEditor.svelte";
 
 interface EditorInterfaceLoading {
+  componentElStyles: DynamicStylesheet<string>;
+  flushServerChanges: () => Promise<[void | Response, void, void]>;
   multipleSelect?: IMultipleSelect;
   docEl?: HTMLElement;
   historyManager?: HistoryManager;
-  componentElStyles?: DynamicStylesheet<string>;
 }
 
 const getDocumentID = () =>
@@ -99,6 +101,8 @@ export async function loadDocument(p: EditorInterfaceLoading) {
   //   );
   //   return;
   // }
+
+  await p.flushServerChanges();
 
   const resp = await fetch_(
     `/documents/api/get_document_edit?id=${documentID}`,
@@ -229,6 +233,10 @@ async function getSavedComponentLibrary(ver?: string): Promise<{
   const data: GetCompLibFetchReturn = await resp.json();
   console.log(data);
 
+  data.library.forEach((comp) => {
+    comp.type = componentTypeToString(comp.type);
+  });
+
   return {
     componentLibrary: data.library,
     compLibVerInfo: data,
@@ -239,8 +247,10 @@ export async function loadComponent(p: EditorInterfaceLoading) {
   const componentID = getComponentID();
   if (componentID === null) return;
 
+  await p.flushServerChanges();
+
   const { componentLibrary } = await getSavedComponentLibrary();
-  loadComponentLibrary(componentLibrary, "component");
+  loadComponentLibrary(componentLibrary, "component", p.componentElStyles);
 
   localSave.current[`L:latest`] = {
     version: "latest",
@@ -248,9 +258,11 @@ export async function loadComponent(p: EditorInterfaceLoading) {
     comps: $state.snapshot(savedComponents),
   };
 
+  doc.resetDocInfo();
+
   const comp = savedComponents.find((comp) => comp.name === componentID);
   const editMatch = compLibEdits.current.find(
-    (edit) => edit.type !== "remove" && edit.identName === componentID,
+    (edit) => edit.editType !== "remove" && edit.identName === componentID,
   );
   if (!comp && !editMatch) {
     if (p.docEl) {

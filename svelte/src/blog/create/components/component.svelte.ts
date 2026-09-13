@@ -1,17 +1,12 @@
-import { get } from "svelte/store";
 import {
   savedComponents,
   selection,
   type SavedComponent,
-  compLibEdits,
-  compLib,
   doc,
   compPartToInheritedAttrs,
   type PropsList,
-  maskedAttributes,
   type SavedComponentOptionalIdentName,
 } from "../store.svelte";
-import { editorState } from "../url.svelte";
 import {
   getElementString,
   reconstructHTMLString,
@@ -20,12 +15,9 @@ import {
 import {
   DynamicStylesheet,
   getAllChildNodes,
-  getNextElement,
   getNodeParents,
-  getNthParent,
   parseHTMLFragment,
 } from "../helper";
-import { fetch_, assign } from "/shared/helper";
 import { getAttributesRespectingMasks } from "../editors/attributes/AttributesEditor.svelte";
 
 const encodeStr = (str: string) => encodeURI(str);
@@ -70,6 +62,46 @@ function replaceAttrAtIndex(
   const newAttributes = oldAttributes.toSpliced(index, 1, newAttribute);
 
   newAttributes.forEach((attr) => el.setAttribute(attr.name, attr.value));
+}
+
+export function componentTypeToString(type: string | number) {
+  let typeNum: number;
+  if (typeof type === "string") {
+    typeNum = Number.parseInt(type);
+  } else typeNum = type;
+  if (isNaN(typeNum)) typeNum = 0;
+
+  switch (typeNum) {
+    case 0:
+      return "element";
+    case 1:
+      return "style";
+    case 2:
+      return "colour";
+    case 3:
+      return "svelte";
+    case 4:
+      return "media";
+    default:
+      return "element";
+  }
+}
+
+export type CompTypeStr = ReturnType<typeof componentTypeToString>;
+
+export function componentTypeStrToNum(typeStr: CompTypeStr) {
+  switch (typeStr) {
+    case "element":
+      return "0";
+    case "style":
+      return "1";
+    case "colour":
+      return "2";
+    case "svelte":
+      return "3";
+    case "media":
+      return "4";
+  }
 }
 
 export function componentNameValid(str: string) {
@@ -350,7 +382,7 @@ export function addCompLibVerAttrs(compInstance: DocumentFragment) {
 export function loadComponentLibrary(
   compLib: SavedComponentOptionalIdentName[],
   for_: "document" | "component",
-  componentElStyles?: DynamicStylesheet<string>,
+  componentElStyles: DynamicStylesheet<string>,
 ) {
   const compLib_ = structuredClone(compLib).map((comp) => {
     if (!comp.identName) comp.identName = comp.name;
@@ -360,9 +392,9 @@ export function loadComponentLibrary(
   savedComponents.splice(0, savedComponents.length, ...compLib_);
   console.log("LOADING COMPONENT LIBRARY", compLib_, for_, componentElStyles);
 
-  if (for_ === "document") {
-    if (componentElStyles) componentElStyles.clear();
+  componentElStyles.clear();
 
+  if (for_ === "document") {
     compLib_.forEach((comp) => {
       const parts = extractPartsFromCompStr(comp.content);
       // console.log(comp.name, parts);
@@ -371,21 +403,16 @@ export function loadComponentLibrary(
         const partAttrs = Array.from(part.partEl.attributes);
         partAttrs.forEach((attr) => {
           // Populate the dynamic stylesheet componentElStyles with components styles
-          if (componentElStyles) {
-            if (attr.name === "data-dummycompstyle") {
-              const rule = `[data-component="${part.attrValue}"] { ${attr.value} }`;
-              componentElStyles.setRule(rule, part.attrValue);
-            } else if (attr.name.startsWith("data-dummycompstyle-")) {
-              const pseudoClass = attr.name.slice(
-                "data-dummycompstyle-".length,
-              );
-              const rule = `[data-component="${part.attrValue}"]:${pseudoClass} { ${attr.value} }`;
-              componentElStyles.setRule(
-                rule,
-                `${part.attrValue}-${pseudoClass}`,
-              );
-            }
+          // if (componentElStyles) {
+          if (attr.name === "data-dummycompstyle") {
+            const rule = `[data-component="${part.attrValue}"] { ${attr.value} }`;
+            componentElStyles.setRule(rule, part.attrValue);
+          } else if (attr.name.startsWith("data-dummycompstyle-")) {
+            const pseudoClass = attr.name.slice("data-dummycompstyle-".length);
+            const rule = `[data-component="${part.attrValue}"]:${pseudoClass} { ${attr.value} }`;
+            componentElStyles.setRule(rule, `${part.attrValue}-${pseudoClass}`);
           }
+          // }
         });
         // Separately, set the number of attributes parsed on this part in the map compPartsToNumInheritedAttrs,
         //  signifying that for any instance of this component part, that first number of attributes are what are being inherited.

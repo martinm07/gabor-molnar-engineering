@@ -3,6 +3,7 @@ import { elsListConnected } from "./helper";
 import { PersistedState, useDebounce } from "runed";
 import type { CompLibUpgradeInfo } from "./components/libraryupgrade";
 import { SvelteMap } from "svelte/reactivity";
+import type { CompTypeStr } from "./components/component.svelte";
 
 type CursorMode = "select" | "edit" | "add" | "move" | "noselect";
 type SidebarMode =
@@ -101,24 +102,31 @@ export interface DocCSSRule {
   compInheritance: string | null;
 }
 
+export const emptyDocInfo: () => DocumentInfo = () => ({
+  id: "",
+  title: "",
+  description: "",
+  tags: [],
+  accent: "",
+  thumbnail: "",
+  status: "",
+  componentLibVer: "",
+});
+
 class Doc {
-  info: DocumentInfo = $state({
-    id: "",
-    title: "",
-    description: "",
-    tags: [],
-    accent: "",
-    thumbnail: "",
-    status: "",
-    // body: "",
-    componentLibVer: "",
-  });
+  info: DocumentInfo = $state(emptyDocInfo());
   body: string = $state("");
   styles: DocCSSRule[] = $state([]);
 
   infoFetched = $state(false);
   is404 = $state(false);
   // savedInfo: DocumentInfo =
+
+  resetDocInfo() {
+    this.info = emptyDocInfo();
+    this.body = "";
+    this.styles = [];
+  }
 }
 
 export const doc = new Doc();
@@ -153,6 +161,7 @@ export interface SavedComponent {
   // id: string;
   identName: string;
   name: string;
+  type: CompTypeStr;
   content: string;
   parts: string;
   description?: string;
@@ -228,9 +237,10 @@ class CompLib {
 export const compLib = new CompLib();
 
 interface CompLibEdit {
-  type: "add" | "remove" | "edit";
+  editType: "add" | "remove" | "edit";
   identName: string;
   name?: string;
+  type?: CompTypeStr;
   content?: string;
   parts?: string;
   description?: string;

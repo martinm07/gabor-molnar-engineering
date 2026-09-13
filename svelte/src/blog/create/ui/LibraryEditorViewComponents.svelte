@@ -15,6 +15,7 @@
     type SavedComponentWithEdit,
   } from "../store.svelte";
   import { changePage, editorState } from "../url.svelte";
+  import type { CompTypeStr } from "../components/component.svelte";
 
   function selectComponentEdit(comp: SavedComponent) {
     if (editorState.mode !== "component") return;
@@ -32,6 +33,7 @@
       startName++;
     const edit = updateCompAdd({
       name: `unnamed-${startName}`,
+      type: createCompType,
       content: `<div data-component="unnamed-${startName}-[1]">*initial*</div>`,
       parts: "1",
     });
@@ -44,8 +46,10 @@
     );
   }
 
-  $inspect(comps.lib);
-  $inspect(comps.current);
+  let createCompType: CompTypeStr = $state("element");
+
+  // $inspect(comps.lib);
+  // $inspect(comps.current);
 </script>
 
 {#if editorState.mode === "component"}
@@ -71,7 +75,7 @@
 {/if}
 
 <div
-  class="p-2 flex items-center justify-center mt-4"
+  class="p-2 flex flex-col gap-2 items-center justify-center mt-4"
   class:hidden={!mode.sidebar.includes("component") ||
     editorState.mode !== "component"}
 >
@@ -79,4 +83,19 @@
     class="px-3 py-1.5 border-steel-300 border-2 rounded bg-steel-100 text-steel-600 font-bold text-lg font-mono shadow-2xs inset-shadow-xs inset-shadow-rock-500 hover:shadow-md hover:inset-shadow-2xs hover:inset-shadow-steel-100 hover:px-3.5 transition-[padding,box-shadow] hover:active:bg-steel-200 hover:active:text-steel-700 hover:active:translate-y-1"
     onclick={selectComponentCreate}>New component</button
   >
+  <div
+    class="font-mono text-rock-600 italic text-sm tracking-tight"
+    style="word-spacing: -0.125rem;"
+  >
+    Component type to create:
+    <select
+      class="text-rock-700 hover:text-rock-600 cursor-pointer text-base not-italic p-1 focus-visible:border-rock-400 border border-transparent focus:outline-none"
+      bind:value={createCompType}
+    >
+      <option value="element">element</option>
+      <option value="style">style</option>
+      <option value="colour">colour</option>
+      <option value="svelte">svelte</option>
+    </select>
+  </div>
 </div>

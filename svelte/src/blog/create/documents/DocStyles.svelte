@@ -105,6 +105,7 @@
   import { getContext } from "svelte";
 
   import * as csstree from "css-tree";
+  import { editorState } from "../url.svelte";
 
   const getMainStyles: () => DynamicStylesheet<number> =
     getContext("getMainStyles");
@@ -286,10 +287,12 @@
 
       ///////////// DO THE SERVER SYNC
 
-      const stylesheetStr = curr
-        .map((rule) => generateRuleString(rule.selector, rule.declarations))
-        .join("\n");
-      docSaver.syncDocStylesDebounce(stylesheetStr);
+      if (editorState.mode === "document") {
+        const stylesheetStr = curr
+          .map((rule) => generateRuleString(rule.selector, rule.declarations))
+          .join("\n");
+        docSaver.syncDocStylesDebounce(stylesheetStr);
+      }
 
       ///////////// UPDATE THE EDITOR STYLESHEETS
 

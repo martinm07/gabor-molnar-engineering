@@ -9,10 +9,12 @@
     inputErr: string | null;
     lastValidInputVal: string | null = null;
     syncChange: ReturnType<typeof useDebounce>;
+    syncHook?: Function;
 
     constructor(
       keyName: keyof CompParts,
       validateVal: (val: string) => string | null,
+      syncHook?: Function,
     ) {
       this.keyName = keyName;
       this.keyVal = $derived(comps.current[this.keyName] ?? "");
@@ -20,10 +22,11 @@
         this.inputVal !== null ? validateVal(this.inputVal) : null,
       );
       this.inputVal = comps.current[this.keyName] ?? "";
+      this.syncHook = syncHook;
 
       watch([() => this.inputVal, () => this.inputErr], () => {
         if (!this.inputErr && this.inputVal !== null)
-          this.lastValidInputVal = this.inputVal;
+          this.lastValidInputVal = $state.snapshot(this.inputVal);
       });
 
       this.syncChange = useDebounce(
@@ -32,6 +35,7 @@
           updateCompEdit(editorState.resourceName, {
             [this.keyName]: this.lastValidInputVal,
           });
+          this.syncHook?.();
         },
         () => 1000,
       );
@@ -340,8 +344,12 @@
     calculateTotalOffset,
     findNodeFromOffset,
   } from "../editors/css/CSSEditor.svelte";
-  import { onDestroy, untrack } from "svelte";
+  import { getContext, onDestroy, untrack } from "svelte";
   import { deepEqual } from "../helper";
+  import { type TempMutationRecord } from "../documents/docsyncing";
+
+  const syncFakeMutation: (mutation: TempMutationRecord) => void =
+    getContext("syncFakeMutation");
 
   // // Represents the component data saved in the database
   // let compInfo: Partial<CompParts> = $derived.by(() => {
@@ -364,23 +372,39 @@
   // const comps.savedCurrent = comps.savedCurrent();
   // const comps.current = comps.current();
 
-  const nameState = new InputState("name", (val) => {
-    // Validate name
-    if (val.length === 0) return "Name required";
-    if (val.includes(" ")) return "Name can't have spaces";
-    if (val.endsWith("-")) return 'Name can\'t end with "-"';
-    if (/^[0-9]/.test(val)) return "Name can't start with a numeral";
-    if (!/^[a-z0-9\-_]*$/i.test(val))
-      return 'Name must only contain alphanumeric characters, "-" and "_"';
-    if (
-      comps.lib.some(
-        (comp) =>
-          comp.identName !== comps.current.identName && comp.name === val,
+  const nameState = new InputState(
+    "name",
+    (val) => {
+      // Validate name
+      if (val.length === 0) return "Name required";
+      if (val.includes(" ")) return "Name can't have spaces";
+      if (val.endsWith("-")) return 'Name can\'t end with "-"';
+      if (/^[0-9]/.test(val)) return "Name can't start with a numeral";
+      if (!/^[a-z0-9\-_]*$/i.test(val))
+        return 'Name must only contain alphanumeric characters, "-" and "_"';
+      if (
+        comps.lib.some(
+          (comp) =>
+            comp.identName !== comps.current.identName && comp.name === val,
+        )
       )
-    )
-      return "Duplicate name";
-    return null;
-  });
+        return "Duplicate name";
+      return null;
+    },
+    () =>
+      // We add this fake mutation when syncing component name changes, to make sure
+      //  that the component body receives the change to the name as well (in all of the
+      //  data-component attributes of the elements).
+      syncFakeMutation({
+        target: document.body,
+        type: "attributes",
+        addedNode: null,
+        removedNode: null,
+        previousSibling: null,
+        oldValue: null,
+        attributeName: null,
+      }),
+  );
 
   const descriptionState = new InputState("description", () => null);
 

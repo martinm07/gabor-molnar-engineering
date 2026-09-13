@@ -148,6 +148,8 @@
     }),
   );
 
+  // $inspect(sortedSearchResults);
+
   /**
    * Uses `query`, parses it using `parseQuery`, uses the result in `fuse.search`,
    * and then splices searchResults with the new results
@@ -306,10 +308,10 @@
   </div>
 
   {#each sortedSearchResults as comp, i}
-    {let state = comp.state ?? "normal"}
+    {let state = $derived(comp.state ?? "normal")}
     {let active = $derived(i === activeResultI)}
 
-    {const prevState = sortedSearchResults[i - 1]?.state}
+    {const prevState = $derived(sortedSearchResults[i - 1]?.state)}
     {#if comp.state && comp.state !== prevState}
       <!-- (this is purely for the component library editor) Insert a divider/header that gives the states of the following component results. -->
       <div
@@ -328,7 +330,7 @@
       class:active
     >
       <!-- Main information on component (name, description, tags) -->
-      <div class="w-full" class:line-through={state === "removed"}>
+      <div class="w-full relative" class:line-through={state === "removed"}>
         <!-- Name is our main interactible element, we use a ::before style so that hovering
              anywhere over the display result hovers the title. -->
         {#if mainActionTag === "a"}
@@ -340,16 +342,29 @@
 
               e.preventDefault();
               mainAction?.(comp);
-            }}>{@html comp.name}</a
+            }}
+            >{@html comp.name}
+            <span class="font-mono text-xs tracking-tighter text-rock-600"
+              >({comp.type}-type)</span
+            ></a
           >
         {:else if mainActionTag === "button"}
           <button
             class="breakout-interactible font-mono static"
             type="submit"
-            data-i={i}>{@html comp.name}</button
+            data-i={i}
+            >{@html comp.name}
+            <span class="font-mono text-xs tracking-tighter text-rock-600"
+              >({comp.type}-type)</span
+            ></button
           >
         {:else}
-          <div class="font-mono static">{@html comp.name}</div>
+          <div class="font-mono static">
+            {@html comp.name}
+            <span class="font-mono text-xs tracking-tighter text-rock-600"
+              >({comp.type}-type)</span
+            >
+          </div>
         {/if}
 
         <div class="text-rock-600 text-sm">{@html comp.description ?? ""}</div>

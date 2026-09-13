@@ -162,7 +162,7 @@ def apply_diff(
         final.append({})
         adding = find_part("add") is not None
 
-        for part in ["name", "description", "tags", "parts", "content"]:
+        for part in ["name", "type", "description", "tags", "parts", "content"]:
             if adding:
                 final[-1][part] = find_part(part) or ""
                 continue
@@ -268,6 +268,7 @@ def get_component_library():
         {
             # "id": str(comp.id),
             "name": comp.name,
+            "type": str(comp.type),
             "description": comp.description,
             "tags": comp.tags_str,
             "parts": comp.parts,
@@ -558,7 +559,7 @@ def update_components():
             # Remember, the diffs should be telling us how to get back to older versions,
             #  not how to get to this newer version
             diff_parts[-1]["ADD"] = ""
-            for attr in ["name", "description", "content", "parts"]:
+            for attr in ["name", "type", "description", "content", "parts"]:
                 diff_parts[-1][attr] = getattr(comp, attr)
             diff_parts[-1]["tags"] = comp.tags_str
 
@@ -573,6 +574,7 @@ def update_components():
         if not comp_new_data:
             continue
 
+        # We don't have to consider "type" as we don't want component types to be able to be updated
         for attr in ["name", "description", "content", "parts"]:
             newval = comp_new_data.get(attr)
             if newval is not None and attr == "parts":
@@ -603,11 +605,12 @@ def update_components():
     for new_comp_data in add:
         if (
             new_comp_data.get("name") is None
+            or new_comp_data.get("type") is None
             or new_comp_data.get("content") is None
             or new_comp_data.get("parts") is None
         ):
             return (
-                f"'name', 'content' and 'parts' are required when adding new components. Attempted to add {new_comp_data}",
+                f"'name', 'type', 'content' and 'parts' are required when adding new components. Attempted to add {new_comp_data}",
                 400,
             )
         if isinstance(new_comp_data["parts"], list):
@@ -622,6 +625,7 @@ def update_components():
 
         new_comp = SavedComponent(
             name=new_comp_data.get("name"),
+            type=new_comp_data.get("type"),
             description=new_comp_data.get("description", ""),
             content=new_comp_data.get("content"),
             parts=new_comp_data.get("parts"),
@@ -633,6 +637,8 @@ def update_components():
         #  *should* appear at the end. Perhaps more shaky an assumption is that when adding
         #  multiple components at once, the given IDs by SQLAlchemy will monotonically ascend
         #  with the order in which we are appending them to lib.components
+        # TODO: We could explicitly specify the id we want when initialising the SavedComponent object above, to avoid this concern
+
         db.session.add(new_comp)
         diff_parts.append({"REMOVE": ""})
         modified = True

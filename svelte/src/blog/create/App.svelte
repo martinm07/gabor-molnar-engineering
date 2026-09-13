@@ -66,6 +66,7 @@
         docEl,
         historyManager,
         componentElStyles,
+        flushServerChanges: () => docSaver.flushServerChanges(),
       });
     },
   );
@@ -77,6 +78,8 @@
         multipleSelect,
         docEl,
         historyManager,
+        componentElStyles,
+        flushServerChanges: () => docSaver.flushServerChanges(),
       });
     },
   );
@@ -229,17 +232,18 @@
       const alreadyChecked: Set<Element> = new Set();
 
       mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((addedNode) => {
-          if (!(addedNode instanceof Element)) return;
+        [...mutation.addedNodes, ...mutation.removedNodes].forEach((node) => {
+          if (!(node instanceof Element)) return;
 
           const walker = document.createTreeWalker(
-            addedNode,
+            node,
             NodeFilter.SHOW_ELEMENT,
           );
           let current: Element | null = walker.currentNode as Element;
           while (current) {
             if (!alreadyChecked.has(current)) {
               checkDataID(current);
+              console.log("→→→ Checking data styles for element", current);
               syncDataStyleAttrs(current, dataStyles);
               if (!mode.disabled && editorState.mode !== "component")
                 protectInheritedAttrs(current);

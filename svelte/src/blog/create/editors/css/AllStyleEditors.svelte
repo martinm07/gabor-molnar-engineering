@@ -23,7 +23,7 @@
       const pseudoClass = attributeName.slice("data-style-".length);
       const key = `${elID}_${pseudoClass}`;
       const value = el.getAttribute(attributeName);
-      if (value !== null) {
+      if (el.isConnected && value !== null) {
         const rule = `[data-id="${elID}"]:${pseudoClass} { ${value} }`;
         dataStyles.setRule(rule, key);
       } else {

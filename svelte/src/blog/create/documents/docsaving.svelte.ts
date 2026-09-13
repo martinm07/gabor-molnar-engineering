@@ -50,9 +50,11 @@ export class SaveDoc {
   // syncDocMetadataDebounce: (info: typeof doc.info) => void;
   // syncDocMetadataDebounce: typeof useDebounce<Array<typeof doc.info>>;
   syncDocMetadataDebounce: ReturnType<
-    typeof useDebounce<[typeof doc.info], void>
+    typeof useDebounce<[typeof doc.info], Promise<void>>
   >;
-  syncDocStylesDebounce: ReturnType<typeof useDebounce<[string], void>>;
+  syncDocStylesDebounce: ReturnType<
+    typeof useDebounce<[string], Promise<void>>
+  >;
 
   prevDocumentType: typeof editorState.mode | null = null;
   prevDocumentID: typeof editorState.resourceName | null = null;
@@ -77,14 +79,14 @@ export class SaveDoc {
 
     this.syncDocMetadataDebounce = useDebounce(
       (info: typeof doc.info) => {
-        this.syncDocMetadata(info);
+        return this.syncDocMetadata(info);
       },
       () => SERVER_SYNC_INTERVAL_TIME,
     );
 
     this.syncDocStylesDebounce = useDebounce(
       (styles: string) => {
-        this.syncDocStyles(styles);
+        return this.syncDocStyles(styles);
       },
       () => SERVER_SYNC_INTERVAL_TIME,
     );
@@ -163,9 +165,10 @@ export class SaveDoc {
   }
 
   flushServerChanges() {
-    this.syncServerDocPatch(getDocumentID());
-    this.syncDocMetadataDebounce.runScheduledNow();
-    this.syncDocStylesDebounce.runScheduledNow();
+    const bodyPromise = this.syncServerDocPatch(getDocumentID());
+    const metaPromise = this.syncDocMetadataDebounce.runScheduledNow();
+    const stylesPromise = this.syncDocStylesDebounce.runScheduledNow();
+    return Promise.all([bodyPromise, metaPromise, stylesPromise]);
   }
 
   /**
@@ -238,8 +241,8 @@ export class SaveDoc {
    * TODO: Also sync other document info when it changes, using the local save of that info (ideally the local save has some field like "dirty" which indicates whether there
    *        are indeed changes that need to be synced).
    */
-  syncServerDocPatch(documentID: number | null) {
-    if (documentID === null || !this.doServerSync) return;
+  syncServerDocPatch(documentID: number | null): Promise<void | Response> {
+    if (documentID === null || !this.doServerSync) return Promise.resolve();
 
     const createFetch = () => {
       const patches = this.serverSyncPatchesQueue
@@ -290,10 +293,11 @@ export class SaveDoc {
       return resp;
     };
 
-    if (this.serverSyncPatchesQueue.length === 0) return;
+    if (this.serverSyncPatchesQueue.length === 0) return Promise.resolve();
 
     if (this.prevFetch === null) this.prevFetch = createFetch();
     else this.prevFetch = this.prevFetch.then(createFetch);
+    return this.prevFetch;
   }
 
   async syncDocMetadata(info: typeof doc.info) {

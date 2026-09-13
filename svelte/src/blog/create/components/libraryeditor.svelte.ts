@@ -6,6 +6,7 @@ import {
   type SavedComponentWithEdit,
 } from "../store.svelte";
 import { editorState } from "../url.svelte";
+import { componentTypeStrToNum, type CompTypeStr } from "./component.svelte";
 import { assign, fetch_ } from "/shared/helper";
 
 export interface CompParts {
@@ -29,7 +30,7 @@ export function updateCompEdit(identName: string, update: Partial<CompParts>) {
   // If the component already has an edit stored which is updating an existing component
   if (
     (i = newLib.findIndex(
-      (edit) => edit.type === "edit" && edit.identName === identName,
+      (edit) => edit.editType === "edit" && edit.identName === identName,
     )) !== -1
   ) {
     newLib[i] = assign($state.snapshot(newLib[i]), update);
@@ -53,7 +54,7 @@ export function updateCompEdit(identName: string, update: Partial<CompParts>) {
   } else if (
     // If the component is being added, in which case change what is being added
     (i = newLib.findIndex(
-      (edit) => edit.type === "add" && edit.identName === identName,
+      (edit) => edit.editType === "add" && edit.identName === identName,
     )) !== -1
   ) {
     newLib[i] = assign($state.snapshot(newLib[i]), update);
@@ -73,14 +74,16 @@ export function updateCompEdit(identName: string, update: Partial<CompParts>) {
 
     if (!isSame)
       newLib.push({
-        type: "edit",
+        editType: "edit",
         identName: currentLib[i].name,
         ...update,
       });
   }
 }
 
-export function updateCompAdd(add: { name: string } & Partial<CompParts>) {
+export function updateCompAdd(
+  add: { name: string; type: CompTypeStr } & Partial<CompParts>,
+) {
   const newLib = compLibEdits.current;
 
   // Generates a hexadeciaml number
@@ -88,7 +91,7 @@ export function updateCompAdd(add: { name: string } & Partial<CompParts>) {
   const identName = Math.random().toString(16).slice(2);
 
   const newLibEdit: (typeof compLibEdits.current)[0] = {
-    type: "add",
+    editType: "add",
     identName,
     ...add,
   };
@@ -99,19 +102,19 @@ export function updateCompAdd(add: { name: string } & Partial<CompParts>) {
 export function updateCompRemove(identName: string) {
   const newLib = compLibEdits.current;
   const addedI = newLib.findIndex(
-    (edit) => edit.type === "add" && edit.identName === identName,
+    (edit) => edit.editType === "add" && edit.identName === identName,
   );
   if (addedI !== -1) newLib.splice(addedI, 1);
   else
     newLib.push({
-      type: "remove",
+      editType: "remove",
       identName: identName,
     });
 }
 export function updateCompRestore(identName: string) {
   const newLib = compLibEdits.current;
   const i = newLib.findIndex(
-    (edit) => edit.type === "remove" && edit.identName === identName,
+    (edit) => edit.editType === "remove" && edit.identName === identName,
   );
   if (i !== -1) newLib.splice(i, 1);
 }
@@ -125,6 +128,7 @@ export function saveLibChanges(
 
   type UpdateVal = {
     name?: string;
+    type?: string;
     description?: string;
     tags?: string;
     content?: string;
@@ -133,6 +137,7 @@ export function saveLibChanges(
   const nameToUpdateVal = (edit: (typeof edits)[0]): UpdateVal => {
     return {
       name: edit.name,
+      type: edit.type ? componentTypeStrToNum(edit.type) : undefined,
       description: edit.description,
       tags: edit.tags,
       content: edit.content,
@@ -142,21 +147,21 @@ export function saveLibChanges(
 
   const update: { [oldName: string]: UpdateVal } = {};
   edits
-    .filter((edit) => edit.type === "edit")
+    .filter((edit) => edit.editType === "edit")
     .forEach((edit) => {
       update[edit.identName] = nameToUpdateVal(edit);
     });
 
   const add: UpdateVal[] = [];
   edits
-    .filter((edit) => edit.type === "add")
+    .filter((edit) => edit.editType === "add")
     .forEach((edit) => {
       add.push(nameToUpdateVal(edit));
     });
 
   const remove: string[] = [];
   edits
-    .filter((edit) => edit.type === "remove")
+    .filter((edit) => edit.editType === "remove")
     .forEach((edit) => {
       remove.push(edit.identName);
     });
@@ -171,6 +176,8 @@ export function saveLibChanges(
   if (remove.length > 0) final.remove = remove;
 
   if (submitBtn) submitBtn.disabled = true;
+
+  console.log("Submitted update to component library", final);
 
   fetch_("/documents/api/update_components", {
     method: "post",
@@ -218,7 +225,8 @@ class Comps {
       return { identName: editorState.resourceName };
     let compEdit = compLibEdits.current.find(
       (edit) =>
-        edit.type !== "remove" && edit.identName === editorState.resourceName,
+        edit.editType !== "remove" &&
+        edit.identName === editorState.resourceName,
     );
 
     return assign(this.savedCurrent, compEdit ?? {});
@@ -244,7 +252,7 @@ class Comps {
 
     const newSavedComps = savedComps.map((comp) => {
       const edit = compLibEdits.current.find(
-        (edit) => edit.type !== "remove" && edit.identName === comp.name,
+        (edit) => edit.editType !== "remove" && edit.identName === comp.name,
       );
       const updated = assign(
         comp,
@@ -253,7 +261,7 @@ class Comps {
 
       if (
         compLibEdits.current.some(
-          (edit) => edit.type === "remove" && edit.identName === comp.name,
+          (edit) => edit.editType === "remove" && edit.identName === comp.name,
         )
       )
         updated.state = "removed";
@@ -265,7 +273,7 @@ class Comps {
 
     const added = $state
       .snapshot(compLibEdits.current)
-      .filter((edit) => edit.type === "add")
+      .filter((edit) => edit.editType === "add")
       .map((comp) => {
         const final = comp as unknown as (typeof this.lib)[0];
         final.state = "added";

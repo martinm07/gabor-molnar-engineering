@@ -15,6 +15,7 @@
   import type { SaveDoc } from "./docsaving.svelte";
   import { deepEqual } from "../helper";
   import { type TempMutationRecord } from "./docsyncing";
+  import { editorState } from "../url.svelte";
 
   interface Props {
     docEl: HTMLElement;
@@ -90,10 +91,7 @@
   watch(
     () => $state.snapshot(doc.info),
     (curr, prev) => {
-      if (deepEqual(curr, prev)) {
-        // console.log("NOTHING CHANGED.");
-      } else {
-        // console.log("SENDING DEBOUNCED SERVER METADATA UPDATE");
+      if (editorState.mode === "document" && !deepEqual(curr, prev)) {
         docSaver.syncDocMetadataDebounce(curr);
       }
     },

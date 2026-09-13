@@ -176,7 +176,7 @@ export class HistoryManager {
   flagSuggestNewHistoryItem: boolean = false;
   flagForceNewHistoryItem: boolean = false;
   flagHistoryStateChange: boolean = false;
-  newHistoryItemTimeout?: NodeJS.Timeout;
+  newHistoryItemTimeout?: number;
 
   private claimedCaretState: EditorCaret = { focusArea: null };
   private editorHooks: EditorHooks;
