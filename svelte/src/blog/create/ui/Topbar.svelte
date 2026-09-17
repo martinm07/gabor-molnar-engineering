@@ -15,6 +15,7 @@
   import XIcon from "phosphor-svelte/lib/XIcon";
   import ImagesSquareIcon from "phosphor-svelte/lib/ImagesSquareIcon";
   import PaintBrushBroadIcon from "phosphor-svelte/lib/PaintBrushBroadIcon";
+  import { comps } from "../components/libraryeditor.svelte";
 
   // interface Props {
   // }
@@ -89,24 +90,26 @@
       else mode.sidebar = "viewcomponent";
     }}><SquaresFour /></button
   >
-  <button
-    class="aspect-square rounded hover:bg-rock-200/70 h-full flex items-center justify-center text-2xl text-rock-800 [.active]:border border-rock-300 [.active]:bg-background [.active]:hover:bg-rock-200/70 mr-0.5"
-    aria-label="View node tree"
-    title="View node tree"
-    class:active={mode.sidebar === "viewer"}
-    onclick={() => {
-      if (mode.sidebar === "viewer") mode.sidebar = "edit";
-      else mode.sidebar = "viewer";
-    }}><TreeView /></button
-  >
-  {#if editorState.mode === "document"}
+  {#if editorState.mode === "document" || comps.current.type === "element"}
+    <button
+      class="aspect-square rounded hover:bg-rock-200/70 h-full flex items-center justify-center text-2xl text-rock-800 [.active]:border border-rock-300 [.active]:bg-background [.active]:hover:bg-rock-200/70 mr-0.5"
+      aria-label="View node tree"
+      title="View node tree"
+      class:active={mode.sidebar === "viewer"}
+      onclick={() => {
+        if (mode.sidebar === "viewer") mode.sidebar = "edit";
+        else mode.sidebar = "viewer";
+      }}><TreeView /></button
+    >
+  {/if}
+  {#if editorState.mode === "document" || comps.current.type === "style"}
     <button
       class="aspect-square rounded hover:bg-rock-200/70 h-full flex items-center justify-center text-2xl text-rock-800 [.active]:border border-rock-300 [.active]:bg-background [.active]:hover:bg-rock-200/70"
-      aria-label="View global styles"
-      title="View global styles"
-      class:active={mode.sidebar === "styles"}
+      aria-label="Edit global styles"
+      title="Edit global styles"
+      class:active={mode.sidebar.startsWith("styles")}
       onclick={() => {
-        if (mode.sidebar === "styles") mode.sidebar = "edit";
+        if (mode.sidebar.startsWith("styles")) mode.sidebar = "edit";
         else mode.sidebar = "styles";
       }}><PaintBrushBroadIcon /></button
     >

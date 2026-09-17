@@ -243,7 +243,7 @@
           while (current) {
             if (!alreadyChecked.has(current)) {
               checkDataID(current);
-              console.log("→→→ Checking data styles for element", current);
+              // console.log("→→→ Checking data styles for element", current);
               syncDataStyleAttrs(current, dataStyles);
               if (!mode.disabled && editorState.mode !== "component")
                 protectInheritedAttrs(current);

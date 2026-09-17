@@ -1,9 +1,12 @@
-import { mode, type SavedComponent } from "../store.svelte";
+import { parseStylesheetStr } from "../documents/DocStyles.svelte";
+import { doc, mode, type SavedComponent } from "../store.svelte";
 import {
   addCompLibVerAttrs,
   breakInheritance,
-  decodeComponentStr,
-  extractPartsFromCompStr,
+  decodeElComponentStr,
+  extractPartsFromElCompStr,
+  extractPartsFromStyleCompStr,
+  getCompNameAndPart,
 } from "./component.svelte";
 
 export interface CompLibUpgradeInfo {
@@ -18,7 +21,7 @@ export interface CompLibUpgradeInfo {
   }[];
 }
 
-interface AddedPartInfo {
+interface AddedElCompPartInfo {
   bodyStr: string;
   addedPart: string;
   compName: string;
@@ -31,12 +34,12 @@ interface AddedPartInfo {
  * @returns The data-component attribute values (coming from oldBodyStr) for component parts that have been removed,
  *  and information (component part HTML string, part string) coming from newBodyStr for newly added component parts.
  */
-const findCompStructureChanges = (
+const findElCompStructureChanges = (
   oldBodyStr: string,
   newBodyStr: string,
-): [removedParts: string[], addedParts: AddedPartInfo[]] => {
-  const oldParts = extractPartsFromCompStr(oldBodyStr);
-  const newParts = extractPartsFromCompStr(newBodyStr);
+): [removedParts: string[], addedParts: AddedElCompPartInfo[]] => {
+  const oldParts = extractPartsFromElCompStr(oldBodyStr);
+  const newParts = extractPartsFromElCompStr(newBodyStr);
 
   // Parts in oldParts that aren't in newParts are parts that have been removed
 
@@ -68,7 +71,7 @@ const findCompStructureChanges = (
       ),
   );
 
-  const finalAddedParts: AddedPartInfo[] = addedParts.map((part) => {
+  const finalAddedParts: AddedElCompPartInfo[] = addedParts.map((part) => {
     return {
       bodyStr: part.partBody,
       addedPart: part.part,
@@ -82,7 +85,7 @@ const findCompStructureChanges = (
   ];
 };
 
-interface EditPartInfo {
+interface EditElCompPartInfo {
   dataComponentValue: string;
   // number of attributes to replace
   numAttrsOld: number;
@@ -94,14 +97,14 @@ interface EditPartInfo {
   // also, in order to inherit styles from a stylesheet for components, we probably want a data- attribute for that; something like "data-componentname" which is just the component name (excluding the part string)
 }
 
-const findCompPartEdits = (
+const findElCompPartEdits = (
   oldBodyStr: string,
   newBodyStr: string,
-): EditPartInfo[] => {
-  const oldParts = extractPartsFromCompStr(oldBodyStr);
-  const newParts = extractPartsFromCompStr(newBodyStr);
+): EditElCompPartInfo[] => {
+  const oldParts = extractPartsFromElCompStr(oldBodyStr);
+  const newParts = extractPartsFromElCompStr(newBodyStr);
 
-  const final: EditPartInfo[] = [];
+  const final: EditElCompPartInfo[] = [];
   for (const oldPart of oldParts) {
     const newPart = newParts.find((newPart) => oldPart.part === newPart.part);
     if (!newPart) continue;
@@ -127,12 +130,12 @@ const findCompPartEdits = (
 
 type ComponentFields = Omit<SavedComponent, "identName">;
 
-interface EditedCompInfo {
+interface EditedElCompInfo {
   // old: ComponentFields;
   // new: ComponentFields;
   removedParts: string[];
-  editedParts: EditPartInfo[];
-  addedParts: AddedPartInfo[];
+  editedParts: EditElCompPartInfo[];
+  addedParts: AddedElCompPartInfo[];
 }
 
 /**
@@ -146,28 +149,28 @@ interface EditedCompInfo {
  *     The component's data in the old component library is under the "old" field, and the new data is in the "new" field. This also has fields "removedParts" and "addedParts",
  *     specifying further information about how edits to the component body string have added or removed component parts.
  */
-const createCompLibDiff = (
+const createElCompLibDiff = (
   oldCompLib: ComponentFields[],
   newCompLib: ComponentFields[],
   info: CompLibUpgradeInfo,
-): [removedComps: string[], editedComps: EditedCompInfo[]] => {
+): [removedComps: string[], editedComps: EditedElCompInfo[]] => {
   /** List of (old) component names for components that have been removed in the new component library. */
   const removedComps: string[] = [];
   /** List of components that do have a mapping from the old component library to new the new version (i.e. that *could* have been edited). The component's data in the old component library is under the "old" field, and the new data is in the "new" field. */
-  const editedComps: EditedCompInfo[] = [];
+  const editedComps: EditedElCompInfo[] = [];
 
   const nameMap = info.name_map;
   // Populate removedComps and editedComps, using nameMap
   oldCompLib.forEach((old) => {
     const mapped = nameMap[old.name];
-    if (mapped) {
+    if (mapped !== undefined) {
       const new_ = newCompLib.find((comp) => comp.name === mapped);
       if (new_) {
-        const [removedParts, addedParts] = findCompStructureChanges(
+        const [removedParts, addedParts] = findElCompStructureChanges(
           old.content,
           new_.content,
         );
-        const editedParts = findCompPartEdits(old.content, new_.content);
+        const editedParts = findElCompPartEdits(old.content, new_.content);
 
         editedComps.push({
           // old,
@@ -190,7 +193,7 @@ const createCompLibDiff = (
   return [removedComps, editedComps];
 };
 
-const handleRemovedComponents = (
+const handleRemovedElComponents = (
   docContainer: HTMLElement,
   compNames: string[],
 ) => {
@@ -216,7 +219,7 @@ const handleRemovedComponents = (
   }
 };
 
-const handleRemovedCompParts = (
+const handleRemovedElCompParts = (
   docContainer: HTMLElement,
   dataComponentValues: string[],
 ) => {
@@ -240,9 +243,9 @@ const handleRemovedCompParts = (
   toRemove.forEach((el) => el.remove());
 };
 
-const handleEditedCompParts = (
+const handleEditedElCompParts = (
   docContainer: HTMLElement,
-  compPartEdits: EditPartInfo[],
+  compPartEdits: EditElCompPartInfo[],
   info: CompLibUpgradeInfo,
 ) => {
   const walker = document.createTreeWalker(
@@ -290,9 +293,9 @@ const handleEditedCompParts = (
   }
 };
 
-const handleAddedCompParts = (
+const handleAddedElCompParts = (
   docContainer: HTMLElement,
-  addedCompParts: AddedPartInfo[],
+  addedCompParts: AddedElCompPartInfo[],
 ) => {
   const walker = document.createTreeWalker(
     docContainer,
@@ -340,7 +343,7 @@ const handleAddedCompParts = (
       const targetDataComponent = `${addInfo.compName}-[${searchDataComponent}]`;
       if (targetDataComponent !== dataComponent) continue;
 
-      const bodyFrag = decodeComponentStr(addInfo.bodyStr, "document");
+      const bodyFrag = decodeElComponentStr(addInfo.bodyStr, "document");
       addCompLibVerAttrs(bodyFrag);
 
       const body = bodyFrag.childNodes[0];
@@ -415,6 +418,234 @@ const handleAddedCompParts = (
   }
 };
 
+////////////////////////
+
+interface EditStyleCompPartInfo {
+  partKey: string;
+  newSelector: string;
+  newDeclarations: string;
+}
+
+interface AddedStyleCompPartInfo {
+  partkey: string;
+  compName: string;
+  part: string;
+  newSelector: string;
+  newDeclarations: string;
+}
+
+interface EditedStyleCompInfo {
+  removedParts: string[];
+  editedParts: EditStyleCompPartInfo[];
+  addedParts: AddedStyleCompPartInfo[];
+}
+
+const findStyleCompChanges = (
+  oldStylesheetStr: string,
+  newStylesheetStr: string,
+): [
+  removedParts: string[],
+  addedParts: AddedStyleCompPartInfo[],
+  partEdits: EditStyleCompPartInfo[],
+] => {
+  const oldParts = extractPartsFromStyleCompStr(oldStylesheetStr);
+  const newParts = extractPartsFromStyleCompStr(newStylesheetStr);
+
+  let removedParts = oldParts.filter(
+    (oldPart) => !newParts.some((newPart) => oldPart.part === newPart.part),
+  );
+
+  let addedParts = newParts.filter(
+    (newPart) => !oldParts.some((oldPart) => newPart.part === oldPart.part),
+  );
+
+  const partEdits: EditStyleCompPartInfo[] = [];
+  oldParts.forEach((oldPart) => {
+    const newPart = newParts.find((newPart) => newPart.part === oldPart.part);
+    if (!newPart) return;
+
+    if (
+      oldPart.partSelector !== newPart.partSelector ||
+      oldPart.partDeclarations !== newPart.partDeclarations
+    ) {
+      partEdits.push({
+        partKey: oldPart.partKey,
+        newSelector: newPart.partSelector,
+        newDeclarations: newPart.partDeclarations,
+      });
+    }
+  });
+
+  const finalAddedParts: AddedStyleCompPartInfo[] = addedParts.map((part) => ({
+    partkey: part.partKey,
+    compName: part.compName,
+    part: part.part,
+    newSelector: part.partSelector,
+    newDeclarations: part.partDeclarations,
+  }));
+
+  return [removedParts.map((part) => part.partKey), finalAddedParts, partEdits];
+};
+
+const createStyleCompLibDiff = (
+  oldCompLib: ComponentFields[],
+  newCompLib: ComponentFields[],
+  info: CompLibUpgradeInfo,
+): [removedComps: string[], editedComps: EditedStyleCompInfo[]] => {
+  const removedComps: string[] = [];
+  const editedComps: EditedStyleCompInfo[] = [];
+
+  const nameMap = info.name_map;
+  oldCompLib.forEach((old) => {
+    const mapped = nameMap[old.name];
+    if (mapped !== undefined) {
+      const new_ = newCompLib.find((comp) => comp.name === mapped);
+      if (new_) {
+        const [removedParts, addedParts, editedParts] = findStyleCompChanges(
+          old.content,
+          new_.content,
+        );
+
+        editedComps.push({
+          removedParts,
+          editedParts,
+          addedParts,
+        });
+      } else {
+        console.error(
+          `Component has a name mapping, but no entry in the new component library, mapping was "${old.name}" -> "${mapped}".\nOld component: ${old}\nNew component library: ${newCompLib}`,
+        );
+      }
+    } else {
+      removedComps.push(old.name);
+    }
+  });
+
+  return [removedComps, editedComps];
+};
+
+const handleRemovedStyleComponents = (
+  docStyles: typeof doc.styles,
+  compNames: string[],
+) => {
+  docStyles.forEach((rule) => {
+    if (!rule.compInheritance) return;
+    const [name, part] = getCompNameAndPart(rule.compInheritance);
+    if (compNames.includes(name)) {
+      console.log(
+        "Breaking inheritance of instance of removed style-type component (for this specific part)",
+        rule,
+      );
+      // Break inheritance of style-type component
+      rule.compInheritance = null;
+    }
+  });
+};
+
+const handleRemovedStyleCompParts = (
+  docStyles: typeof doc.styles,
+  partKeys: string[],
+) => {
+  for (let i = docStyles.length - 1; i >= 0; i--) {
+    const rule = docStyles[i];
+    if (rule.compInheritance && partKeys.includes(rule.compInheritance)) {
+      console.log("Removing part of style-type component", docStyles[i]);
+      // Remove this rule from the instance of the style-type component in the document doc.styles
+      docStyles.splice(i, 1);
+    }
+  }
+};
+
+const handleEditedStyleCompParts = (
+  docStyles: typeof doc.styles,
+  compPartEdits: EditStyleCompPartInfo[],
+) => {
+  docStyles.forEach((rule) => {
+    if (rule.compInheritance === null) return;
+    const edit = compPartEdits.find(
+      (edit) => edit.partKey === rule.compInheritance,
+    );
+    if (edit) {
+      // prettier-ignore
+      console.log(`Editing style-type component part\nold selector: "${rule.selector}"  new selector: "${edit.newSelector}"\nold declarations: "${rule.declarations}"  new declarations: "${edit.newDeclarations}"`);
+
+      rule.selector = edit.newSelector;
+      rule.declarations = edit.newDeclarations;
+    }
+  });
+};
+
+const handleAddedStyleCompParts = (
+  docStyles: typeof doc.styles,
+  addedCompParts: AddedStyleCompPartInfo[],
+) => {
+  addedCompParts
+    .toSorted((a, b) => Number.parseInt(a.part) - Number.parseInt(b.part))
+    .forEach((addInfo) => {
+      const insertLocs: number[] = [];
+
+      const addPartNum = Number.parseInt(addInfo.part);
+      if (isNaN(addPartNum)) {
+        console.error(
+          "Could not parse style-type component part into number",
+          addInfo,
+        );
+        return;
+      }
+
+      console.log(
+        "Looking for places to add new part of style-type component",
+        addInfo,
+        addPartNum,
+      );
+
+      docStyles.forEach((rule, i) => {
+        if (!rule.compInheritance) return;
+        const [ruleCompName, rulePart] = getCompNameAndPart(
+          rule.compInheritance,
+        );
+        const rulePartNum = Number.parseInt(rulePart);
+        if (isNaN(rulePartNum)) {
+          console.error(
+            "Could not parse part of instance of style-type component into number",
+            rule,
+            rulePart,
+          );
+          return;
+        }
+
+        // prettier-ignore
+        console.log(`--- Checking instance of style-type component part "${rule.compInheritance} (${ruleCompName}) (${rulePartNum})"`);
+
+        // We look for the previous part to append the new part after it.
+        // This makes the order in which we process addedCompParts important; preceding comp parts
+        //  should already be added to docStyles when processing newer ones
+        if (
+          ruleCompName === addInfo.compName &&
+          addPartNum === rulePartNum + 1
+        ) {
+          console.log(
+            `Inserting new style-type component part at index ${i + 1}`,
+            addInfo,
+          );
+          insertLocs.push(i + 1);
+        }
+      });
+
+      // Sort into descending order (to avoid index shifting issues)
+      insertLocs.sort((a, b) => b - a);
+      insertLocs.forEach((loc) =>
+        docStyles.splice(loc, 0, {
+          compInheritance: addInfo.partkey,
+          selector: addInfo.newSelector,
+          declarations: addInfo.newDeclarations,
+        }),
+      );
+    });
+};
+
+///////////////////////////
+
 export function upgradeDoc(
   docContainer: HTMLElement,
   oldCompLib: ComponentFields[],
@@ -428,35 +659,67 @@ export function upgradeDoc(
   console.log("newCompLib:", newCompLib);
   console.log("info:", info);
 
-  const [removedComps, editedComps] = createCompLibDiff(
-    oldCompLib,
-    newCompLib,
+  const oldElCompLib = oldCompLib.filter((comp) => comp.type === "element");
+  const newElCompLib = newCompLib.filter((comp) => comp.type === "element");
+
+  const [removedElComps, editedElComps] = createElCompLibDiff(
+    oldElCompLib,
+    newElCompLib,
     info,
   );
 
-  console.log("removedComps:", removedComps);
-  console.log("editedComps:", editedComps);
+  console.log("removedElComps:", removedElComps);
+  console.log("editedElComps:", editedElComps);
 
   // Break inheritance of components in the documents that were removed (rather than remove them from the document)
-  handleRemovedComponents(docContainer, removedComps);
+  handleRemovedElComponents(docContainer, removedElComps);
 
   // Remove component parts that have been removed (editedComps.removedParts)
-  handleRemovedCompParts(
+  handleRemovedElCompParts(
     docContainer,
-    editedComps.flatMap((edit) => edit.removedParts),
+    editedElComps.flatMap((edit) => edit.removedParts),
   );
 
   // Edit component parts inherited attributes and styles
-  handleEditedCompParts(
+  handleEditedElCompParts(
     docContainer,
-    editedComps.flatMap((edit) => edit.editedParts),
+    editedElComps.flatMap((edit) => edit.editedParts),
     info,
   );
 
   // Add newly added component parts (editedComps.addedParts)
-  handleAddedCompParts(
+  handleAddedElCompParts(
     docContainer,
-    editedComps.flatMap((edit) => edit.addedParts),
+    editedElComps.flatMap((edit) => edit.addedParts),
+  );
+
+  const oldStyleCompLib = oldCompLib.filter((comp) => comp.type === "style");
+  const newStyleCompLib = newCompLib.filter((comp) => comp.type === "style");
+
+  const [removedStyleComps, editedStyleComps] = createStyleCompLibDiff(
+    oldStyleCompLib,
+    newStyleCompLib,
+    info,
+  );
+
+  console.log("removedStyleComps:", removedStyleComps);
+  console.log("editedStyleComps:", editedStyleComps);
+
+  handleRemovedStyleComponents(doc.styles, removedStyleComps);
+
+  handleRemovedStyleCompParts(
+    doc.styles,
+    editedStyleComps.flatMap((edit) => edit.removedParts),
+  );
+
+  handleEditedStyleCompParts(
+    doc.styles,
+    editedStyleComps.flatMap((edit) => edit.editedParts),
+  );
+
+  handleAddedStyleCompParts(
+    doc.styles,
+    editedStyleComps.flatMap((edit) => edit.addedParts),
   );
 
   console.log(

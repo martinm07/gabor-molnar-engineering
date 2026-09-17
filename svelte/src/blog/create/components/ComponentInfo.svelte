@@ -1,6 +1,6 @@
 <script lang="ts">
-  import CaretRighticon from "phosphor-svelte/lib/CaretRightIcon";
-  import CaretDownicon from "phosphor-svelte/lib/CaretDownIcon";
+  import CaretRightIcon from "phosphor-svelte/lib/CaretRightIcon";
+  import CaretDownIcon from "phosphor-svelte/lib/CaretDownIcon";
   import LinkBreakIcon from "phosphor-svelte/lib/LinkBreakIcon";
 
   import {
@@ -302,9 +302,9 @@
 >
   Inherited styles & attributes
   {#if compInheritedInfoOpen}
-    <CaretDownicon class="ml-1 inline text-xl" />
+    <CaretDownIcon class="ml-1 inline text-xl" />
   {:else}
-    <CaretRighticon class="ml-1 inline text-xl" />
+    <CaretRightIcon class="ml-1 inline text-xl" />
   {/if}
 </button>
 

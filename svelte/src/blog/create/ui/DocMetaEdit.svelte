@@ -32,7 +32,13 @@
     const docEl = getDocEl();
 
     const mainStyles = doc.styles
-      .map((rule) => generateRuleString(rule.selector, rule.declarations))
+      .map((rule) =>
+        generateRuleString(
+          rule.selector,
+          rule.declarations,
+          rule.compInheritance,
+        ),
+      )
       .join("\n");
     const dataStyles = getDataStyles();
     const componentElStyles = getComponentElStyles();

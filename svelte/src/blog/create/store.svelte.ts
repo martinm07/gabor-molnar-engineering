@@ -12,7 +12,8 @@ type SidebarMode =
   | "changetocomponent"
   | "viewcomponent"
   | "viewer"
-  | "styles";
+  | "styles"
+  | "stylesadd";
 
 class Mode {
   cursor: CursorMode = $state("select");
@@ -20,6 +21,7 @@ class Mode {
   sidebar: SidebarMode = $state("styles");
   disabled: boolean = $state(false);
   inCompLibUpgrade: boolean = $state(false);
+  // compType: CompTypeStr | null = $derived(comps.current.type ?? null);
 }
 export const mode = new Mode();
 
@@ -100,6 +102,7 @@ export interface DocCSSRule {
   selector: string;
   declarations: string;
   compInheritance: string | null;
+  invalid?: boolean;
 }
 
 export const emptyDocInfo: () => DocumentInfo = () => ({

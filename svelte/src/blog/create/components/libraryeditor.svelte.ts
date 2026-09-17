@@ -11,6 +11,7 @@ import { assign, fetch_ } from "/shared/helper";
 
 export interface CompParts {
   name: string;
+  type: CompTypeStr;
   content: string;
   parts: string;
   description: string;
@@ -18,7 +19,7 @@ export interface CompParts {
 }
 type CompPartsKey = keyof CompParts;
 // prettier-ignore
-const keysList: Array<CompPartsKey> = ["name", "content", "parts", "description", "tags"];
+const keysList: Array<CompPartsKey> = ["name", "type", "content", "parts", "description", "tags"];
 
 export function updateCompEdit(identName: string, update: Partial<CompParts>) {
   // console.log(`Updating component edit with name "${identName}"`, update);

@@ -1,10 +1,9 @@
 import {
   componentTypeToString,
-  decodeComponentStr,
+  decodeElComponentStr,
   loadComponentLibrary,
   type GetCompLibFetchReturn,
 } from "../components/component.svelte";
-import { extractPartsFromCompStr } from "../components/component.svelte";
 import type { IMultipleSelect } from "../cursormodes/MultipleSelect.svelte";
 import { closestClass, DynamicStylesheet, parseHTMLFragment } from "../helper";
 import type { HistoryManager } from "./history";
@@ -13,7 +12,6 @@ import {
   allDocumentTags,
   compLibEdits,
   compLib,
-  compPartToInheritedAttrs,
   doc,
   localSave,
   localSaveEntryIsDoc,
@@ -218,7 +216,9 @@ async function getSavedComponentLibrary(ver?: string): Promise<{
     console.warn(
       `Fetching component library version failed. Will attempt to use local store. Version: "${ver ?? "latest"}"`,
     );
-    const savedInfo = localSave.current[`L:${ver ?? "latest"}`];
+    const savedInfo = $state.snapshot(
+      localSave.current[`L:${ver ?? "latest"}`],
+    );
     if (!savedInfo) {
       console.error(
         `Wasn't able to find requested version of component library stored locally. Version: "${ver ?? "latest"}"`,
@@ -264,24 +264,35 @@ export async function loadComponent(p: EditorInterfaceLoading) {
   const editMatch = compLibEdits.current.find(
     (edit) => edit.editType !== "remove" && edit.identName === componentID,
   );
-  if (!comp && !editMatch) {
-    if (p.docEl) {
-      const div = document.createElement("div");
-      div.textContent =
-        "Welcome to purgatory - Please either select or create a component";
-      loadDocBody([div], p);
-    }
-    // p.docEl.innerHTML =
-    //   "<div>Welcome to purgatory - Please either select or create a component</div>";
-  } else {
+
+  if (comp || editMatch) {
     // Combine the saved component library with locally stored edits
     const compWithEdits = assign(
       $state.snapshot(comp) ?? {},
       editMatch ?? {},
     ) as SavedComponent;
 
-    const compBody = decodeComponentStr(compWithEdits.content, "component");
-    loadDocBody(Array.from(compBody.childNodes), p);
+    if (compWithEdits.type === "element") {
+      const compBody = decodeElComponentStr(compWithEdits.content, "component");
+      loadDocBody(Array.from(compBody.childNodes), p);
+    } else if (compWithEdits.type === "style") {
+      doc.styles = parseStylesheetStr(compWithEdits.content);
+
+      // Show message that the document content is ephemeral
+      const div = document.createElement("div");
+      div.innerHTML = `<main style="width: 70%; margin-left: 15%; padding: 0.75em; color: var(--color-rock-800);">
+        This is a style-type component; edit it using the sidebar CSS rules editor (paintbrush icon on top navigation).<br />You can use this document to see if your rules are working <b>:-)</b><br /><em style="color: var(--color-rock-600);">(please note though that whatever you do with this document won't be saved)</em>
+        </main>`;
+      loadDocBody([div.children[0]], p);
+    }
+  } else {
+    // There's no match of the component ID with a component in the library; this is essentially the 404 view (or as I like to call it; purgatory >:)
+    if (p.docEl) {
+      const div = document.createElement("div");
+      div.textContent =
+        "Welcome to purgatory - Please either select or create a component";
+      loadDocBody([div], p);
+    }
   }
 
   // Get all currently defined tags, so that autocomplete can be provided when modifying component tags
@@ -290,7 +301,7 @@ export async function loadComponent(p: EditorInterfaceLoading) {
     console.warn(
       "Fetching component tags failed. Will attempt to use local store.",
     );
-    const savedInfo = localSave.current[`L:latest`];
+    const savedInfo = $state.snapshot(localSave.current[`L:latest`]);
     if (!savedInfo) {
       console.error(
         `Wasn't able to find latest version of component library stored locally.`,
@@ -316,7 +327,7 @@ export async function loadComponent(p: EditorInterfaceLoading) {
     const data: string[] = await resp.json();
     allComponentTags.splice(0, allComponentTags.length, ...data);
 
-    const latestSavedLib = localSave.current["L:latest"];
+    const latestSavedLib = $state.snapshot(localSave.current["L:latest"]);
     if (latestSavedLib && localSaveEntryIsLib(latestSavedLib))
       latestSavedLib.definedTags = data;
   }
@@ -327,7 +338,7 @@ export async function loadComponent(p: EditorInterfaceLoading) {
     console.warn(
       "Fetching latest component library version failed. Will attempt to use local store.",
     );
-    const savedInfo = localSave.current[`L:latest`];
+    const savedInfo = $state.snapshot(localSave.current[`L:latest`]);
     if (!savedInfo) {
       console.error(
         `Wasn't able to find latest version of component library stored locally.`,
@@ -342,12 +353,10 @@ export async function loadComponent(p: EditorInterfaceLoading) {
     const latestVer = await verResp.text();
     compLib.latestVer = latestVer;
 
-    const latestSavedLib = localSave.current["L:latest"];
+    const latestSavedLib = $state.snapshot(localSave.current["L:latest"]);
     if (latestSavedLib && localSaveEntryIsLib(latestSavedLib)) {
       latestSavedLib.version = latestVer;
-      localSave.current[`L:${latestVer}`] = structuredClone(
-        $state.snapshot(latestSavedLib),
-      );
+      localSave.current[`L:${latestVer}`] = structuredClone(latestSavedLib);
     }
   }
 }

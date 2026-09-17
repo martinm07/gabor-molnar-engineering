@@ -130,6 +130,6 @@
 </div>
 
 <!-- SIDEBAR MODE: styles -->
-<div class:hidden={mode.sidebar !== "styles"}>
+<div class:hidden={!mode.sidebar.startsWith("styles")}>
   <StylesEditor />
 </div>

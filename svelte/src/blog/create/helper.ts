@@ -497,7 +497,7 @@ export class DynamicStylesheet<T> {
     }
   }
 
-  setRule(rule: string, key: T, index?: number) {
+  setRule(rule: string, key: T, index?: number): boolean {
     //  p { ... }   div { ... }   h1 { ... }
     // |          |             |            |
     // 0          1             2            3
@@ -536,6 +536,7 @@ export class DynamicStylesheet<T> {
         this.stylesheet.deleteRule(existingIndex);
         this.stylesheet.insertRule(rule, newIndex);
       }
+      return true;
     } catch (e) {
       console.error(
         `Failed to insert rule into stylesheet under the key`,
@@ -548,6 +549,8 @@ export class DynamicStylesheet<T> {
         //  remove this key from the stylesheetPosMap
         this.stylesheetPosMap.delete(key);
       }
+
+      return false;
     }
   }
 

@@ -14,7 +14,7 @@
   import { getContext } from "svelte";
   import {
     addCompLibVerAttrs,
-    decodeComponentStr,
+    decodeElComponentStr,
   } from "../components/component.svelte";
 
   const removeFromSelection: (nodes?: Node[] | Node) => void = getContext(
@@ -26,7 +26,7 @@
   function addComponent(comp: SavedComponent) {
     if (editorState.mode !== "document") return;
 
-    const componentFrag = decodeComponentStr(comp.content, "document");
+    const componentFrag = decodeElComponentStr(comp.content, "document");
     addCompLibVerAttrs(componentFrag);
     const topLevel = Array(...componentFrag.childNodes);
 
@@ -92,7 +92,7 @@
   </div>
 
   <ComponentTray
-    comps={savedComponents}
+    comps={savedComponents.filter((comp) => comp.type === "element")}
     mainAction={addComponent}
     mainActionTag="button"
     secondaryAction={selectComponentEdit}

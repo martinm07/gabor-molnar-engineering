@@ -13,6 +13,7 @@
   import { changePage, editorState } from "../url.svelte";
   import { getContext, onMount } from "svelte";
   import {
+    componentTypeToString,
     loadComponentLibrary,
     type GetCompLibFetchReturn,
   } from "./component.svelte";
@@ -86,6 +87,10 @@
       return;
     }
     const data: GetCompLibFetchReturn = await resp.json();
+
+    data.library.forEach((comp) => {
+      comp.type = componentTypeToString(comp.type);
+    });
 
     if (data.version !== upgradeInfo.to_version) {
       submitStatus = "error";

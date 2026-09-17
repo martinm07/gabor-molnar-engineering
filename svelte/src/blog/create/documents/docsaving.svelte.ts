@@ -1,5 +1,8 @@
 import { useDebounce } from "runed";
-import { generateCompContentStr } from "../components/component.svelte";
+import {
+  generateElCompContentStr,
+  generateStyleCompContentStr,
+} from "../components/component.svelte";
 import { comps, updateCompEdit } from "../components/libraryeditor.svelte";
 import {
   reconstructHTMLString,
@@ -301,6 +304,7 @@ export class SaveDoc {
   }
 
   async syncDocMetadata(info: typeof doc.info) {
+    if (!this.doServerSync) return;
     console.log("DOING UPDATE OF METADATA");
     const resp = await fetch_("/documents/api/update_document_metadata", {
       method: "post",
@@ -330,6 +334,7 @@ export class SaveDoc {
   }
 
   async syncDocStyles(styles: string) {
+    if (!this.doServerSync) return;
     console.log("DOING UPDATE OF STYLES");
     const resp = await fetch_("/documents/api/sync_development_stylesheet", {
       method: "post",
@@ -411,13 +416,33 @@ export class SaveDoc {
       generatePosNodes(this.docNodes, this.stringPosNodeMap);
     }
 
-    const { content, parts } = generateCompContentStr(
-      docEl,
-      htmlStr,
-      nodeMap ?? this.docNodes,
-      comp.name,
-    );
-    updateCompEdit(componentID, { content, parts });
+    // We still call generateElCompContentStr for style-type components, as
+    //  in that editor state we still want to have the document editing as a playground
+    //  for seeing how styles affect the document.
+    // const { content, parts } = generateElCompContentStr(
+    //   docEl,
+    //   htmlStr,
+    //   nodeMap ?? this.docNodes,
+    //   comp.name,
+    // );
+
+    if (comp.type === "element") {
+      const { content, parts } = generateElCompContentStr(
+        docEl,
+        htmlStr,
+        nodeMap ?? this.docNodes,
+        comp.name,
+      );
+
+      updateCompEdit(componentID, { content, parts });
+    } else if (comp.type === "style") {
+      const { content, parts } = generateStyleCompContentStr(
+        doc.styles,
+        comp.name,
+      );
+      updateCompEdit(componentID, { content, parts });
+    }
+
     return htmlStr;
   }
 }

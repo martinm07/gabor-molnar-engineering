@@ -69,6 +69,8 @@ export function onKeydown(e: KeyboardEvent, p: EditorInterfaceKeyboard) {
       mode.sidebar = "edit";
     } else if (mode.sidebar === "addcomponent") {
       selection.selected.forEach((el) => el.remove());
+    } else if (mode.sidebar === "stylesadd") {
+      mode.sidebar = "styles";
     } else if (mode.cursor === "select") p.multipleSelect?.removeSelection();
 
     mode.cursor = "select";

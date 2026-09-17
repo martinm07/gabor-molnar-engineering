@@ -30,6 +30,12 @@
     changePage("component", comp.identName, editorState.resourceName);
   }
 
+  // TODO: Right now this behaviour is a little bit... not very useful
+  //  It would generally be more useful if multi-selects just turned all selected elements
+  //  into instances of the same component, rather than turning them into different parts of the one component (which has basically zero use-cases).
+  // We could also try allow *all* element-type components, and just display a warning of some kind,
+  //  for elements that aren't a perfect fit.
+
   const filteredCompLib = $derived.by(() => {
     if (mode.sidebar !== "changetocomponent") return savedComponents;
 

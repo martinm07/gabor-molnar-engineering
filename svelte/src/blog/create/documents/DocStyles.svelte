@@ -69,7 +69,11 @@
     return final;
   }
 
-  export function generateRuleString(selector: string, rules: string) {
+  export function generateRuleString(
+    selector: string,
+    rules: string,
+    compInheritance?: string | null,
+  ) {
     // We do this parsing and generating using csstree to automatically fix some syntax.
     // For example an @import at-rule can come in here as selector = "@import url(...);.doc", rules = ""
     //  This removes that stray ".doc" (which comes from parsing a Raw node when adding .doc to selectors).
@@ -89,6 +93,10 @@
         `Could not find a rule or at-rule when parsing the provided selector (${selector}) and rules (${rules}). AST generated:`,
         ast,
       );
+
+    if (typeof compInheritance === "string") {
+      result = `/*! COMP-INHERITED ${compInheritance}*/` + result;
+    }
 
     return result;
   }
@@ -185,8 +193,9 @@
   }
 
   export function informStyleUpdate(mutations: TempMutationRecord[]) {
+    // return;
     for (const mutation of mutations) {
-      if (mutation.type === "attributes") continue;
+      // if (mutation.type === "attributes") continue;
 
       const target =
         mutation.type === "childList"
@@ -226,6 +235,15 @@
         // prettier-ignore
         if (ruleI === -1) throw new Error("ruleEl didn't exist as a child of its parent (parent doesn't exist?).");
       }
+
+      // console.log(
+      //   "informStyleUpdate | preEl:",
+      //   preEl,
+      //   "ruleEl:",
+      //   ruleEl,
+      //   "containerEl:",
+      //   containerEl,
+      // );
 
       if (preEl && ruleEl && containerEl) {
         // Mutation is for a specific <pre> element of a specific rule
@@ -289,7 +307,13 @@
 
       if (editorState.mode === "document") {
         const stylesheetStr = curr
-          .map((rule) => generateRuleString(rule.selector, rule.declarations))
+          .map((rule) =>
+            generateRuleString(
+              rule.selector,
+              rule.declarations,
+              rule.compInheritance,
+            ),
+          )
           .join("\n");
         docSaver.syncDocStylesDebounce(stylesheetStr);
       }
@@ -299,7 +323,11 @@
       const mainStyles = getMainStyles();
 
       modifiedRules.forEach((i) => {
-        if (!curr[i].selector) return;
+        // Don't try add to the stylesheet if the selector is an empty string
+        if (!curr[i].selector) {
+          doc.styles[i].invalid = false;
+          return;
+        }
 
         let selectorAST: csstree.CssNode | null = null;
         try {
@@ -340,20 +368,22 @@
           //  which we'd want to remove.
           editorSelector = editorSelector.replace(/{*}*$/g, "");
 
-          console.log("editorSelector: ", editorSelector);
+          // console.log("editorSelector: ", editorSelector);
 
           const ruleStr = generateRuleString(
             editorSelector,
             curr[i].declarations,
           );
-          console.log("ruleStr: ", ruleStr);
+          // console.log("ruleStr: ", ruleStr);
 
-          mainStyles.setRule(ruleStr, i, i);
+          const successful = mainStyles.setRule(ruleStr, i, i);
+          doc.styles[i].invalid = !successful;
         } else {
           console.error(
             `No mainSelectorNode found for selector "${curr[i].selector}". AST:`,
             selectorAST,
           );
+          doc.styles[i].invalid = true;
         }
       });
 

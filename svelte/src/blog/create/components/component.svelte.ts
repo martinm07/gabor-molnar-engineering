@@ -6,6 +6,7 @@ import {
   compPartToInheritedAttrs,
   type PropsList,
   type SavedComponentOptionalIdentName,
+  type DocCSSRule,
 } from "../store.svelte";
 import {
   getElementString,
@@ -19,6 +20,10 @@ import {
   parseHTMLFragment,
 } from "../helper";
 import { getAttributesRespectingMasks } from "../editors/attributes/AttributesEditor.svelte";
+import {
+  generateRuleString,
+  parseStylesheetStr,
+} from "../documents/DocStyles.svelte";
 
 const encodeStr = (str: string) => encodeURI(str);
 const decodeStr = (str: string) => decodeURI(str);
@@ -166,7 +171,7 @@ const parseElToCompPart = (el: Element): ParseElToCompPartReturn => {
   };
 };
 
-interface CompPartInfo {
+interface ElCompPartInfo {
   // The value of the "data-component" attribute for this component part
   attrValue: string;
 
@@ -178,10 +183,12 @@ interface CompPartInfo {
   partEl: Element;
 }
 
-export const extractPartsFromCompStr = (bodyStr: string): CompPartInfo[] => {
-  const final: CompPartInfo[] = [];
+export const extractPartsFromElCompStr = (
+  bodyStr: string,
+): ElCompPartInfo[] => {
+  const final: ElCompPartInfo[] = [];
 
-  const body = decodeComponentStr(bodyStr, "document");
+  const body = decodeElComponentStr(bodyStr, "document");
   const walker = document.createTreeWalker(body, NodeFilter.SHOW_ELEMENT);
 
   const [parsedBodyStr, docNodes] = reconstructHTMLString(body, {
@@ -218,10 +225,11 @@ export const extractPartsFromCompStr = (bodyStr: string): CompPartInfo[] => {
   return final;
 };
 
-export const extractPartsFromCompEls = (
+// Currently unused
+export const extractPartsFromElCompEls = (
   bodyNode: Node,
-): Omit<CompPartInfo, "partBody">[] => {
-  const final: Omit<CompPartInfo, "partBody">[] = [];
+): Omit<ElCompPartInfo, "partBody">[] => {
+  const final: Omit<ElCompPartInfo, "partBody">[] = [];
   const walker = document.createTreeWalker(bodyNode, NodeFilter.SHOW_ELEMENT);
 
   let el: Element;
@@ -240,6 +248,43 @@ export const extractPartsFromCompEls = (
   return final;
 };
 
+interface StyleCompPartInfo {
+  partKey: string;
+
+  compName: string;
+  part: string;
+
+  partSelector: string;
+  partDeclarations: string;
+}
+
+export const extractPartsFromStyleCompStr = (
+  stylesheetStr: string,
+): StyleCompPartInfo[] => {
+  const parsed = parseStylesheetStr(stylesheetStr);
+  return parsed
+    .map((rule) => {
+      if (rule.compInheritance === null) {
+        console.error(
+          "parseStylesheetStr on style-type component returned rule without comp inheritance. stylsheetStr: ",
+          stylesheetStr,
+        );
+        return null;
+      }
+
+      const [compName, part] = getCompNameAndPart(rule.compInheritance);
+
+      return {
+        partKey: rule.compInheritance,
+        compName,
+        part,
+        partSelector: rule.selector,
+        partDeclarations: rule.declarations,
+      };
+    })
+    .filter((out) => out !== null);
+};
+
 /////////////////////////////////////
 
 /**
@@ -252,7 +297,7 @@ export const extractPartsFromCompEls = (
  * @param compName The name of the component
  * @returns
  */
-export function generateCompContentStr(
+export function generateElCompContentStr(
   topEl: HTMLElement,
   htmlStr: string,
   nodeMap: DocNodeMap,
@@ -313,6 +358,26 @@ export function generateCompContentStr(
   return { content: htmlStr, parts: allPartsStrings.toSorted().join("|") };
 }
 
+export function generateStyleCompContentStr(
+  rules: DocCSSRule[],
+  compName: string,
+): { content: string; parts: string } {
+  const content = rules
+    .map(
+      (rule, i) =>
+        `/*! COMP-INHERITED ${compName}-[${i + 1}]*/` +
+        generateRuleString(rule.selector, rule.declarations),
+    )
+    .join("\n");
+
+  const parts = rules.map((_, i) => i).join("|");
+  // return rules
+  //   .map((rule) => generateRuleString(rule.selector, rule.declarations))
+  //   .join("\n");
+
+  return { content, parts };
+}
+
 // FUN FACT: When the seperator given to .split() is a RegExp with capturing groups,
 //            those groups will be spliced into the result (even if it's 'undefined')
 
@@ -322,7 +387,7 @@ export function generateCompContentStr(
  * @param for_ Whether the resulting DocumentFragment is to be inserted into a document, or to be used in editing the component itself (in the component library editor). When being editing in the editor, all the data-component attributes are removed.
  * @returns
  */
-export function decodeComponentStr(
+export function decodeElComponentStr(
   content: string,
   for_: "document" | "component",
 ) {
@@ -367,10 +432,11 @@ export function addCompLibVerAttrs(compInstance: DocumentFragment) {
     NodeFilter.SHOW_ELEMENT,
   );
 
-  let current: Element | null = walker.currentNode as Element;
+  let current: Node | null = walker.currentNode;
   while (current) {
-    current.setAttribute("data-complibver", doc.info.componentLibVer);
-    current = walker.nextNode() as Element | null;
+    if (current instanceof Element)
+      current.setAttribute("data-complibver", doc.info.componentLibVer);
+    current = walker.nextNode();
   }
 }
 
@@ -396,7 +462,9 @@ export function loadComponentLibrary(
 
   if (for_ === "document") {
     compLib_.forEach((comp) => {
-      const parts = extractPartsFromCompStr(comp.content);
+      if (comp.type !== "element") return;
+
+      const parts = extractPartsFromElCompStr(comp.content);
       // console.log(comp.name, parts);
       // console.log($state.snapshot(comp), $state.snapshot(parts));
       parts.forEach((part) => {
@@ -449,8 +517,8 @@ export function changeElToComp(el: Element, compName: string) {
   //  so that we get all the same processing for component instances being added to a document as we have when adding a new node
   //  that is an instance of a component, or any other situation. Whenever we're "inserting" a component instance into a document,
   //  we should ALWAYS be using decodeComponentStr().
-  const decodedComp = decodeComponentStr(bodyStr, "document");
-  const compParts = extractPartsFromCompEls(decodedComp);
+  const decodedComp = decodeElComponentStr(bodyStr, "document");
+  const compParts = extractPartsFromElCompEls(decodedComp);
 
   const partEl = compParts.find((compPart) => compPart.part === part)?.partEl;
   if (!partEl) {

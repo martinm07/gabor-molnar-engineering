@@ -160,6 +160,13 @@
     return final;
   }
 
+  /**
+   * Parses a CSS string of declarations into
+   *  1) A renderable HTML string
+   *  2) A StylesList object (a list of key-value pairs of parsed declarations)]
+   *  3) Back into a plain CSS string of declarations (showing what exactly was parsed from the original input)
+   * @param inp Either a HTMLElement or a string. If a HTMLElement, will just take its textContent
+   */
   export function parseStylesStr(
     inp?: HTMLElement | string,
   ): [string, StylesList, string] {
