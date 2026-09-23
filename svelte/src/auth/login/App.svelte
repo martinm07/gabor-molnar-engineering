@@ -7,6 +7,7 @@
 
   let errMsg: string | null = $state(null);
   setTimeout(() => {
+    if (!globalThis.flashedMessages) return;
     errMsg = globalThis.flashedMessages.at(0) ?? null;
   }, 50);
 </script>

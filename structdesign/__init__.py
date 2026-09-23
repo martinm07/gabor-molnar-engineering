@@ -3,7 +3,7 @@ import os
 from flask import Flask
 
 from . import helper, home
-from .auth import auth  # , old_auth2, register
+from .auth import auth, pdfpass  # , old_auth2, register
 from .blog import (
     blogadmin,
     blogcreate,
@@ -52,6 +52,7 @@ def create_app(test_config=None):
     app.register_blueprint(blogcreateiframeresizer.bp)
 
     app.register_blueprint(auth.bp)
+    app.register_blueprint(pdfpass.bp)
 
     ## For looking at the old (and frankly better) registration page
     ##  in a Svelte development server under _DEPR_svelte, uncomment this

@@ -34,6 +34,7 @@ const entryPoints = {
   blogtagsedit: resolve(root, "blog/tagsedit/index.html"),
   blogadmin: resolve(root, "blog/admin/index.html"),
   authlogin: resolve(root, "auth/login/index.html"),
+  authpdfpass: resolve(root, "auth/pdfpass/index.html"),
 };
 
 // IMP: Want to extend output.manualChunks? Do so here!

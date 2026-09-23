@@ -35,6 +35,10 @@ export declare global {
   // /blog/admin
   var allDocs: IncomingDoc[];
 
+  // /auth/pdfpass
+  var pdfpassMarker: string;
+  var pdfpassSeed: string;
+
   type CaretPosition = {
     offsetNode: Node;
     offset: number;

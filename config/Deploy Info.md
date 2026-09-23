@@ -27,6 +27,10 @@ There needs to be a file called `.kamal/secrets`, containing secrets referenced 
 - - `<database-name>`: There is passed in a MySQL initialization file however (located at `config/init.sql`) which creates the database that will be used. The name of that database is what needs to go here (e.g. "gab_mol_eng" from `CREATE DATABASE gab_mol_eng;`).
 - `ADMIN_USERNAME`: The username of the "admin account"; the account with privelages to create, edit, delete and generally manage guidance documents.
 - `ADMIN_PASSWORD`: The password of the "admin account".
+- `DROPBOX_APP_KEY`: Used by a cron job on the VM to upload database backups to Dropbox. See `dropbox-db-backup/README.md`.
+- `DROPBOX_APP_SECRET`: Same as a above.
+- `DROPBOX_REFRESH_TOKEN`: Same as above.
+- `FLASK_PDFPASS_SALT`: Salt that will be used to compute the passwords of password-encrypted files, created using the tool `llm-proof`.
 
 ---
 
