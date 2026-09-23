@@ -21,7 +21,7 @@ def pdfpass_seed(seed: str):
 
 
 @bp.route("/api/pdfpass_get_password")
-@api_view()
+@api_view(admin_required_=False)
 def pdfpass_get_password():
     seed = request.args.get("seed")
     if seed is None:
