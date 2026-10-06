@@ -1,21 +1,15 @@
-import { resolve, dirname, parse, sep } from "node:path";
+import { resolve, parse, sep } from "node:path";
 import { promises } from "node:fs";
 import { relative } from "node:path";
 import { createHash } from "crypto";
-import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
-import type {
-  ManualChunksOption,
-  NullValue,
-  GetModuleInfo,
-} from "rollup/dist/rollup.d.ts";
 
-const _dirname =
-  typeof __dirname !== "undefined"
-    ? __dirname
-    : dirname(fileURLToPath(import.meta.url));
+// Vite 8 is powered by Rolldown, whose types Vite re-exports.
+import type { GetModuleInfo } from "rolldown";
+
+const _dirname = import.meta.dirname;
 
 const root = resolve(_dirname, "src");
 const outDir = resolve(_dirname, "dist");
@@ -25,7 +19,7 @@ const outDir = resolve(_dirname, "dist");
 const STATIC_PATH = "static/";
 
 // IMP: Set the build's entry points here. The key names don't matter
-const entryPoints = {
+const entryPoints: Record<string, string> = {
   register: resolve(root, "auth/register/index.html"),
   bloghome: resolve(root, "blog/home/index.html"),
   blogsearch: resolve(root, "blog/search/index.html"),
@@ -38,10 +32,15 @@ const entryPoints = {
 };
 
 // IMP: Want to extend output.manualChunks? Do so here!
-const manualChunks: ManualChunksOption = (
-  id,
-  { getModuleInfo, getModuleIds },
-) => {
+// NOTE: Vite 8 (Rolldown) replaced output.manualChunks with output.codeSplitting,
+//      and the codeSplitting name() function cannot enumerate the module graph.
+//      This function is therefore invoked for every module up front in the
+//      "get-media-section-info" plugin's buildEnd hook (see manualChunksMap),
+//      and its results are honoured by the codeSplitting group in `build`.
+const manualChunks: (
+  id: string,
+  meta: { getModuleInfo: GetModuleInfo; getModuleIds: () => string[] },
+) => string | null | undefined = (id, { getModuleInfo, getModuleIds }) => {
   return;
 };
 
@@ -95,7 +94,10 @@ const getEntryName = (entryPoint: string) =>
   entryPoint.split("/").slice(-3, -1).join("/");
 
 let firstManualChunksCall = true;
-const manualChunksMap = new Map<string, string | NullValue>();
+const manualChunksMap = new Map<string, string | null | undefined>();
+// Rolldown's codeSplitting name() context only exposes getModuleInfo, so we keep
+//  a reference to the build's getModuleInfo ere for the output.chunkFileNames function.
+let currentGetModuleInfo: GetModuleInfo | undefined;
 
 /**
  * NOTE: This function is not as advanced as Rollup's code splitting algorithm!
@@ -142,19 +144,14 @@ const secFromPath = (id: string): string | undefined => {
   const relativePath = relative(root, id);
   return relativePath.split(sep)[0];
 };
+// Returns undefined for an empty array, since Rolldown can emit chunks with
+//  no modules (e.g. an empty code-splitting group).
 const secsEqual = (arr: string[]) =>
-  arr.map((id) => secFromPath(id)).reduce((p, c) => (p === c ? p : undefined));
-
-function getSectionSubpath(id: string, getModuleInfo: GetModuleInfo) {
-  const { dependentEntryPoints } = findDependentEntryPoints(id, getModuleInfo);
-
-  let subpath = relative(root, parse(id).dir).split(sep).slice(2).join("/");
-  subpath = subpath ? subpath + "/" : "";
-
-  if (dependentEntryPoints.length === 0) return { sec: "shared", subpath };
-  const commonSection = secsEqual(dependentEntryPoints);
-  return { sec: commonSection ?? "shared", subpath };
-}
+  arr.length
+    ? arr
+        .map((id) => secFromPath(id))
+        .reduce((p, c) => (p === c ? p : undefined))
+    : undefined;
 
 function getChunkName(
   id: string,
@@ -286,16 +283,48 @@ export default defineConfig({
           } catch {}
 
           mediaFiles.add(id);
+          // Rolldown computes asset filenames at emitFile time, which for Vite 8's CSS
+          //  plugin happens during transform — i.e. BEFORE buildEnd. So the media
+          //  sections must be populated here, up front, using only the media file's
+          //  own path. NOTE: the section is taken from the file's own location, which
+          //  matches the old importer-based algorithm for this project (media files
+          //  live under their own section).
+          const sec = secFromPath(id)!;
+          let subpath = relative(root, parse(id).dir)
+            .split(sep)
+            .slice(2)
+            .join("/");
+          subpath = subpath ? subpath + "/" : "";
+          mediaSections.set(getFileHash(id), { sec, subpath });
           return id;
         }
       },
-      // Find sections of media files in buildEnd, which is executed before output.assetFileNames,
-      //  but just after the point getModuleInfo().importers/dynamicImporters are fully resolved,
-      //  allowing getChunkName() (or rather, findDependentEntryPoints()) to work.
+      // Capture the build's getModuleInfo for output.chunkFileNames, and precompute
+      //  the user's manualChunks outputs for the codeSplitting group.
       buildEnd() {
-        for (const id of mediaFiles) {
-          const { sec, subpath } = getSectionSubpath(id, this.getModuleInfo);
-          mediaSections.set(getFileHash(id), { sec, subpath });
+        const getModuleInfo = this.getModuleInfo;
+        const getModuleIds = () => Array.from(this.getModuleIds());
+        currentGetModuleInfo = getModuleInfo;
+
+        // The first thing we do is generate all the outputs from the user's manualChunks
+        //  function. This is because for each module we need to know ALL the modules it's
+        //  forced to group with that we may determine a common section (or not).
+        // Rolldown's codeSplitting name() function cannot enumerate the module graph
+        //  (its context only exposes getModuleInfo), so we do it here, where the
+        //  full graph is available. This must run after mediaSections is populated,
+        //  since the file hashes are stripped from the module ids before storing.
+        if (firstManualChunksCall) {
+          for (const id_ of getModuleIds()) {
+            const id = Array.from(mediaSections.keys()).reduce(
+              (p, c) => p.replace(c, ""),
+              id_,
+            );
+            manualChunksMap.set(
+              id,
+              manualChunks(id, { getModuleInfo, getModuleIds }),
+            );
+          }
+          firstManualChunksCall = false;
         }
       },
       // Revert the file renames
@@ -309,97 +338,102 @@ export default defineConfig({
   build: {
     outDir,
     emptyOutDir: true,
-    rollupOptions: {
+    rolldownOptions: {
       input: entryPoints,
       output: {
-        manualChunks: (id, { getModuleInfo, getModuleIds }) => {
-          globalThis.getModuleInfo = getModuleInfo;
-          // The first thing we do is generate all the outputs from the user's manualChunks
-          //  function. This is because for each module we need to know ALL the modules it's
-          //  forced to group with that we may determine a common section (or not).
-          if (firstManualChunksCall) {
-            for (const id_ of getModuleIds()) {
-              const id = Array.from(mediaSections.keys()).reduce(
-                (p, c) => p.replace(c, ""),
-                id_,
-              );
-              manualChunksMap.set(
-                id,
-                manualChunks(id, { getModuleInfo, getModuleIds }),
-              );
-            }
-            firstManualChunksCall = false;
-          }
+        // Vite 8 (Rolldown) replaced output.manualChunks with output.codeSplitting.
+        //  As with manualChunks, every distinct name returned by `name` below
+        //  becomes its own chunk.
+        codeSplitting: {
+          groups: [
+            {
+              // Only modules the old manualChunks function would have claimed
+              //  (a user chunk, or a CSS module outside a media section)
+              //  are candidates for this group.
+              test: (id) =>
+                !!manualChunksMap.get(id) ||
+                (!inMediaSections(parse(id).base) && id.endsWith(".css")),
+              // Identifies this group in Rolldown's bundler timing report.
+              debugName: "manual-chunks-and-css",
+              name: (id, ctx) => {
+                // Rolldown's codeSplitting name() context's getModuleInfo is a class
+                //  method (ChunkingContextImpl) that relies on `this`, so bind it.
+                const getModuleInfo = ctx.getModuleInfo.bind(ctx);
+                // Consult the precomputed outputs from the user's manualChunks
+                //  function (see the buildEnd hook above).
+                const userChunk = manualChunksMap.get(id);
+                if (userChunk) {
+                  // Get all module IDs of the same chunk
+                  const idsGroup = [...manualChunksMap.entries()]
+                    .filter(([_, v]) => v === userChunk)
+                    .map(([k, _]) => k);
 
-          const userChunk = manualChunksMap.get(id);
-          if (userChunk) {
-            // Get all module IDs of the same chunk
-            const idsGroup = [...manualChunksMap.entries()]
-              .filter(([_, v]) => v === userChunk)
-              .map(([k, _]) => k);
+                  // A Set because we almost certainly will face an importer
+                  //  importing multiple modules and we don't want duplicates.
+                  const allEntryPointsSet = new Set<string>();
+                  for (const id of idsGroup) {
+                    const { dependentEntryPoints } = findDependentEntryPoints(
+                      id,
+                      getModuleInfo,
+                    );
+                    dependentEntryPoints.forEach((entry) =>
+                      allEntryPointsSet.add(entry),
+                    );
+                  }
+                  const dependentEntryPoints = [...allEntryPointsSet];
 
-            // A Set because we almost certainly will face an importer
-            //  importing multiple modules and we don't want duplicates.
-            const allEntryPointsSet = new Set<string>();
-            for (const id of idsGroup) {
-              const { dependentEntryPoints } = findDependentEntryPoints(
-                id,
-                getModuleInfo,
-              );
-              dependentEntryPoints.forEach((entry) =>
-                allEntryPointsSet.add(entry),
-              );
-            }
-            const dependentEntryPoints = [...allEntryPointsSet];
+                  if (dependentEntryPoints.length === 0) return userChunk;
+                  const commonSec = secsEqual(dependentEntryPoints);
+                  if (!commonSec) return userChunk;
+                  return `${commonSec}/${userChunk}`;
+                }
 
-            if (dependentEntryPoints.length === 0) return userChunk;
-            const commonSec = secsEqual(dependentEntryPoints);
-            if (!commonSec) return userChunk;
-            return `${commonSec}/${userChunk}`;
-          }
+                // Only worry about files under src/
+                // if (!resolve(id).includes(resolve(root))) return;
+                // Generally will never happen, but the custom plugin could handle
+                //  CSS files as long as we don't do anything here
+                if (inMediaSections(parse(id).base)) return;
 
-          // Only worry about files under src/
-          // if (!resolve(id).includes(resolve(root))) return;
-          // Generally will never happen, but the custom plugin could handle
-          //  CSS files as long as we don't do anything here
-          if (inMediaSections(parse(id).base)) return;
-
-          // This also includes the style tag of Svelte files, which are emitted seperately and
-          //   end with "?svelte&type=style&lang.css"
-          // It's possible to remove this conditional (accepting both JS and CSS), but it means opting
-          //   for a worse code splitter (see docstring on findDependentEntryPoints function for more details).
-          if (id.endsWith(".css")) {
-            // This generates a hash that will group all CSS modules that have the same dependencies
-            //   (account for how dynamic imports don't allow grouping).
-            // It also generates a sensible file name (one chosen arbitrarily from the bundle)
-            //   and under a common section if there is one. This better name can be mapped to from the
-            //   hash in the output.assetFileNames method.
-            // NOTE, Because CSS files engage in code splitting,
-            //   the assetFileNames method for CSS modules must execute after these manualChunks calls.
-            //   However, no other asset type I'm aware of does this by Rollup/Vite, and for them assetFileNames executes BEFORE.
-            //   That's why they can't be handled here and must be done with a custom plugin.
-            const chunkName = getChunkName(id, getModuleInfo);
-            if (!chunkName) return;
-            const { hash, name_ } = chunkName;
-            if (!hash) return name_;
-            mapHashName.set(hash, name_);
-            return hash;
-          }
+                // This also includes the style tag of Svelte files, which are emitted seperately and
+                //   end with "?svelte&type=style&lang.css"
+                // It's possible to remove this conditional (accepting both JS and CSS), but it means opting
+                //   for a worse code splitter (see docstring on findDependentEntryPoints function for more details).
+                if (id.endsWith(".css")) {
+                  // This generates a hash that will group all CSS modules that have the same dependencies
+                  //   (account for how dynamic imports don't allow grouping).
+                  // It also generates a sensible file name (one chosen arbitrarily from the bundle)
+                  //   and under a common section if there is one. This better name can be mapped to from the
+                  //   hash in the output.assetFileNames method.
+                  // NOTE, Because CSS files engage in code splitting,
+                  //   the assetFileNames method for CSS modules must execute after these manualChunks calls.
+                  //   However, no other asset type I'm aware of does this by Rollup/Vite, and for them assetFileNames executes BEFORE.
+                  //   That's why they can't be handled here and must be done with a custom plugin.
+                  const chunkName = getChunkName(id, getModuleInfo);
+                  if (!chunkName) return;
+                  const { hash, name_ } = chunkName;
+                  if (!hash) return name_;
+                  mapHashName.set(hash, name_);
+                  return hash;
+                }
+              },
+            },
+          ],
         },
         assetFileNames: (assetInfo) => {
-          if (!assetInfo.name) {
+          const name = assetInfo.name ?? assetInfo.names[0];
+          if (!name) {
             console.warn("Asset without a name. Received object: " + assetInfo);
             return "[name]-[hash][extname]";
           }
 
-          const mediaFilePath = generateMediaFilePath(assetInfo.name);
+          const mediaFilePath = generateMediaFilePath(name);
           if (mediaFilePath) return mediaFilePath;
 
-          const extType_ = parse(assetInfo.name).ext.slice(1);
+          const extType_ = parse(name).ext.slice(1);
           const extType = isMediaFile(extType_) || extType_;
 
-          let mapReturn = mapHashName.get(parse(assetInfo.name).name);
-          if (!mapReturn && extType === "css") mapReturn = assetInfo.name;
+          let mapReturn = mapHashName.get(parse(name).name);
+          if (!mapReturn && extType === "css") mapReturn = name;
           if (mapReturn) {
             const sec = parse(mapReturn).dir || "shared";
             const origName = parse(mapReturn).name;
@@ -409,12 +443,12 @@ export default defineConfig({
             return `${STATIC_PATH}${sec}/${extType}/${origName}-[hash][extname]`;
           }
 
-          console.warn(`The asset file "${assetInfo.name}" was not able to be seen to a section.
+          console.warn(`The asset file "${name}" was not able to be seen to a section.
                         Perhaps it was a media file not recognized?`);
           return `${STATIC_PATH}shared/${extType}/[name][extname]`;
         },
         chunkFileNames: (chunkInfo) => {
-          const getModuleInfo: GetModuleInfo = globalThis.getModuleInfo;
+          const getModuleInfo = currentGetModuleInfo!;
 
           let sec: string | undefined;
           let name: string | undefined;
