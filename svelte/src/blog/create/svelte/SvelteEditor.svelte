@@ -196,85 +196,85 @@
       });
     },
   );
-
-  // watch(() => comps.current.type)
 </script>
 
-<div
-  class="svelte-editor mt-13 bg-white w-full"
-  {@attach (el) => {
-    view = new EditorView({
-      parent: el,
+{#if comps.current.type === "svelte"}
+  <div
+    class="svelte-editor mt-13 bg-white w-full"
+    {@attach (el) => {
+      view = new EditorView({
+        parent: el,
 
-      extensions: [
-        highlightSpecialChars(),
-        history(),
+        extensions: [
+          highlightSpecialChars(),
+          history(),
 
-        lineNumbers(),
-        highlightActiveLineGutter(),
-        foldGutter(),
-        lintGutter(),
+          lineNumbers(),
+          highlightActiveLineGutter(),
+          foldGutter(),
+          lintGutter(),
 
-        drawSelection(),
-        dropCursor(),
-        EditorState.allowMultipleSelections.of(true),
-        indentOnInput(),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-        bracketMatching(),
-        closeBrackets(),
+          drawSelection(),
+          dropCursor(),
+          EditorState.allowMultipleSelections.of(true),
+          indentOnInput(),
+          syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+          bracketMatching(),
+          closeBrackets(),
 
-        autocompletion(),
-        // rectangularSelection(),
-        // crosshairCursor(),
-        // highlightActiveLine(),
-        highlightSelectionMatches(),
-        keymap.of([
-          {
-            key: "Tab",
-            run: (view) => {
-              if (completionStatus(view.state) === "active")
-                return acceptCompletion(view);
-              indentMore(view);
-              return true;
+          autocompletion(),
+          // rectangularSelection(),
+          // crosshairCursor(),
+          // highlightActiveLine(),
+          highlightSelectionMatches(),
+          keymap.of([
+            {
+              key: "Tab",
+              run: (view) => {
+                if (completionStatus(view.state) === "active")
+                  return acceptCompletion(view);
+                indentMore(view);
+                return true;
+              },
             },
-          },
-          {
-            key: "Shift-Tab",
-            run: (view) => {
-              indentLess(view);
-              return true;
+            {
+              key: "Shift-Tab",
+              run: (view) => {
+                indentLess(view);
+                return true;
+              },
             },
-          },
-          ...closeBracketsKeymap,
-          ...defaultKeymap,
-          ...searchKeymap,
-          ...historyKeymap,
-          ...foldKeymap,
-          ...completionKeymap,
-          ...lintKeymap,
-        ]),
-        svelte(),
-        EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
-            onChange(update.state.doc.toString());
-            value = update.state.doc.toString();
-            // Trigger a fake mutation so that docSaver.save() is triggered.
-            syncFakeMutation({
-              type: "attributes",
-              target: getDocEl(),
-              addedNode: null,
-              removedNode: null,
-              previousSibling: null,
-              oldValue: null,
-              attributeName: null,
-            });
-          }
-        }),
-        espresso,
-      ],
-    });
-  }}
-></div>
+            ...closeBracketsKeymap,
+            ...defaultKeymap,
+            ...searchKeymap,
+            ...historyKeymap,
+            ...foldKeymap,
+            ...completionKeymap,
+            ...lintKeymap,
+          ]),
+          svelte(),
+          EditorView.updateListener.of((update) => {
+            if (update.docChanged && comps.current.type === "svelte") {
+              onChange(update.state.doc.toString());
+              value = update.state.doc.toString();
+              // Trigger a fake mutation so that docSaver.save() is triggered.
+              syncFakeMutation({
+                type: "attributes",
+                target: getDocEl(),
+                addedNode: null,
+                removedNode: null,
+                previousSibling: null,
+                oldValue: null,
+                attributeName: null,
+              });
+            }
+          }),
+          espresso,
+        ],
+      });
+    }}
+  ></div>
+{/if}
 
 <style>
   :global(.svelte-editor .cm-editor) {
