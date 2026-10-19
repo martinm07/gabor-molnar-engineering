@@ -4,6 +4,7 @@ import { PersistedState, useDebounce } from "runed";
 import type { CompLibUpgradeInfo } from "./components/libraryupgrade";
 import { SvelteMap } from "svelte/reactivity";
 import type { CompTypeStr } from "./components/component.svelte";
+import type { CompiledModule, LintDiagnostic } from "./svelte/compiler";
 
 type CursorMode = "select" | "edit" | "add" | "move" | "noselect";
 type SidebarMode =
@@ -14,11 +15,12 @@ type SidebarMode =
   | "viewer"
   | "styles"
   | "stylesadd";
+type DropdownMode = "docmetaedit" | "compmetaedit" | "mediatray" | "none";
 
 class Mode {
   cursor: CursorMode = $state("select");
-  // TODO: Change back to "edit"
-  sidebar: SidebarMode = $state("styles");
+  sidebar: SidebarMode = $state("edit");
+  dropdown: DropdownMode = $state("none");
   disabled: boolean = $state(false);
   inCompLibUpgrade: boolean = $state(false);
   // compType: CompTypeStr | null = $derived(comps.current.type ?? null);
@@ -105,6 +107,33 @@ export interface DocCSSRule {
   invalid?: boolean;
 }
 
+interface DocSvelteMountSuccess {
+  status: "success";
+  moduleExports: CompiledModule["moduleExports"];
+  props: () => CompiledModule["props"];
+  unmount: () => void;
+  mountSourceEl: Element;
+  mountPreviewStartMarker: Comment;
+  mountPreviewEndMarker: Comment;
+  id: string;
+  diagnostics: LintDiagnostic[];
+}
+
+interface DocSvelteMountFailOrCompiling {
+  status: "building" | "error";
+  moduleExports: null;
+  props: null;
+  unmount: null;
+  mountSourceEl: Element;
+  mountPreviewStartMarker: Comment;
+  mountPreviewEndMarker: Comment;
+  id: null;
+  diagnostics: LintDiagnostic[];
+}
+
+export type DocSvelteMount =
+  DocSvelteMountSuccess | DocSvelteMountFailOrCompiling;
+
 export const emptyDocInfo: () => DocumentInfo = () => ({
   id: "",
   title: "",
@@ -120,6 +149,7 @@ class Doc {
   info: DocumentInfo = $state(emptyDocInfo());
   body: string = $state("");
   styles: DocCSSRule[] = $state([]);
+  svelteCompMounts: DocSvelteMount[] = $state([]);
 
   infoFetched = $state(false);
   is404 = $state(false);

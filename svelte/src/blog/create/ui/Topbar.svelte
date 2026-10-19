@@ -17,16 +17,8 @@
   import PaintBrushBroadIcon from "phosphor-svelte/lib/PaintBrushBroadIcon";
   import { comps } from "../components/libraryeditor.svelte";
 
-  // interface Props {
-  // }
-
-  // let {  }: Props = $props();
-
-  type DropdownState = "docmetaedit" | "compmetaedit" | "mediatray" | "none";
-  let dropdown: DropdownState = $state("none");
-
   const dropdownContainerClass = $derived.by(() => {
-    switch (dropdown) {
+    switch (mode.dropdown) {
       case "compmetaedit":
         return dClassComponentMetaEdit;
       case "docmetaedit":
@@ -67,12 +59,7 @@
       e.target instanceof Element &&
       (e.target.closest(".topbar") || !e.target.isConnected)
     ))
-      dropdown = "none";
-  }}
-/>
-<svelte:window
-  onkeydown={(e) => {
-    if (e.key === "Escape") dropdown = "none";
+      mode.dropdown = "none";
   }}
 />
 
@@ -120,53 +107,53 @@
   {#if editorState.mode === "component"}
     <button
       class="aspect-square m-1.5 rounded flex items-center justify-center text-3xl text-rock-700 hover:bg-rock-100 cursor-pointer"
-      class:bg-rock-100={dropdown === "compmetaedit"}
+      class:bg-rock-100={mode.dropdown === "compmetaedit"}
       aria-label="Configure component metadata"
       onclick={() => {
-        if (dropdown === "compmetaedit") dropdown = "none";
-        else dropdown = "compmetaedit";
+        if (mode.dropdown === "compmetaedit") mode.dropdown = "none";
+        else mode.dropdown = "compmetaedit";
       }}><ListIcon /></button
     >
   {:else if editorState.mode === "document"}
     <button
       class="aspect-square m-1.5 rounded flex items-center justify-center text-3xl text-rock-700 hover:bg-rock-100 cursor-pointer"
-      class:bg-rock-100={dropdown === "mediatray"}
+      class:bg-rock-100={mode.dropdown === "mediatray"}
       aria-label="Configure component metadata"
       onclick={() => {
-        if (dropdown === "mediatray") dropdown = "none";
-        else dropdown = "mediatray";
+        if (mode.dropdown === "mediatray") mode.dropdown = "none";
+        else mode.dropdown = "mediatray";
       }}
     >
-      <ImagesSquareIcon class={dropdown === "mediatray" ? "hidden" : ""} />
-      <XIcon class={dropdown === "mediatray" ? "" : "hidden"} />
+      <ImagesSquareIcon class={mode.dropdown === "mediatray" ? "hidden" : ""} />
+      <XIcon class={mode.dropdown === "mediatray" ? "" : "hidden"} />
     </button>
 
     <button
       class="aspect-square m-1.5 rounded flex items-center justify-center text-3xl text-rock-700 hover:bg-rock-100 cursor-pointer"
-      class:bg-rock-100={dropdown === "docmetaedit"}
+      class:bg-rock-100={mode.dropdown === "docmetaedit"}
       aria-label="Configure component metadata"
       onclick={() => {
-        if (dropdown === "docmetaedit") dropdown = "none";
-        else dropdown = "docmetaedit";
+        if (mode.dropdown === "docmetaedit") mode.dropdown = "none";
+        else mode.dropdown = "docmetaedit";
       }}
     >
-      <ListIcon class={dropdown === "docmetaedit" ? "hidden" : ""} />
-      <XIcon class={dropdown === "docmetaedit" ? "" : "hidden"} />
+      <ListIcon class={mode.dropdown === "docmetaedit" ? "hidden" : ""} />
+      <XIcon class={mode.dropdown === "docmetaedit" ? "" : "hidden"} />
     </button>
   {/if}
 </div>
 
-{#if dropdown !== "none"}
+{#if mode.dropdown !== "none"}
   <div
     transition:dropdownExpandTransition={{ expandAmount: 500, duration: 100 }}
     class={dropdownContainerClass}
   >
-    {#if dropdown === "docmetaedit"}
+    {#if mode.dropdown === "docmetaedit"}
       <!-- <div class="h-screen"></div> -->
       <DocMetaEdit />
-    {:else if dropdown === "compmetaedit"}
+    {:else if mode.dropdown === "compmetaedit"}
       <ComponentMetaEdit />
-    {:else if dropdown === "mediatray"}
+    {:else if mode.dropdown === "mediatray"}
       <MediaTray />
     {/if}
   </div>

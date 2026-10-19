@@ -1,4 +1,5 @@
 import { useDebounce } from "runed";
+import { encode } from "he";
 import {
   generateElCompContentStr,
   generateStyleCompContentStr,
@@ -23,8 +24,11 @@ import {
 } from "../store.svelte";
 import { editorState } from "../url.svelte";
 import { fetch_ } from "/shared/helper";
-import { DynamicStylesheet, isHistoryNotBodyContainer } from "../helper";
+import { closestAttribute, DynamicStylesheet } from "../helper";
+import { isHistoryNotBodyContainer } from "../App.svelte";
 import { parseStylesheetStr } from "./DocStyles.svelte";
+import type { CompilePublishInfo, SvelteCompiler } from "../svelte/compiler";
+import { P } from "/public/svelte-lib/index-client-CHdY4_o-";
 
 const getDocumentID = () =>
   editorState.mode === "document"
@@ -198,6 +202,8 @@ export class SaveDoc {
     });
     generatePosNodes(this.docNodes, this.stringPosNodeMap);
 
+    // console.log("🎈🎈🎈 Got HTML string:", htmlStr);
+
     let filteredHTMLStr = htmlStr;
 
     const changes: { start: number; len: number }[] = [];
@@ -219,7 +225,12 @@ export class SaveDoc {
     );
 
     if (this.debug) {
-      console.log("🎈🎈🎈 Syncing htmlStr:\n\n", filteredHTMLStr);
+      console.log(
+        "🎈🎈🎈 After changes: ",
+        changes,
+        " Syncing htmlStr:\n\n",
+        filteredHTMLStr,
+      );
     }
 
     this.syncingHTMLStr = filteredHTMLStr;
@@ -410,7 +421,7 @@ export class SaveDoc {
         docNodes: this.docNodes, // TODO: Should this be included here?
         docContainer: docEl,
         includeContainer: false,
-        includeHistoryNotBodyEls: false,
+        includeHistoryNotBodyEls: true,
       });
 
       generatePosNodes(this.docNodes, this.stringPosNodeMap);
@@ -441,16 +452,23 @@ export class SaveDoc {
         comp.name,
       );
       updateCompEdit(componentID, { content, parts });
+    } else if (comp.type === "svelte") {
+      updateCompEdit(componentID, { content: doc.body });
     }
 
     return htmlStr;
   }
 }
 
-export function createPublishDoc(
+interface CreatePublishDocParams {
+  svelteCompiler: SvelteCompiler;
+}
+
+export async function createPublishDoc(
   docEl: HTMLElement,
   stylesheets: (DynamicStylesheet<any> | string)[],
-): { bodyStr: string; stylesheetStr: string } {
+  p: CreatePublishDocParams,
+): Promise<{ bodyStr: string; stylesheetStr: string }> {
   const [htmlStr, nodeMap] = reconstructHTMLString(docEl, {
     docContainer: docEl,
     includeContainer: false,
@@ -459,29 +477,95 @@ export function createPublishDoc(
 
   const strUpdates: { insert: string; length: number; index: number }[] = [];
 
+  const compileInfo: CompilePublishInfo = [];
+
   nodeMap.entries().forEach(([node, info]) => {
     if (info.isEl && node instanceof Element) {
-      const newEl = document.createElement(node.tagName.toLowerCase());
-      Array.from(node.attributes).forEach((attr) => {
-        if ("data-complibver" === attr.name) return;
-        if ("data-componentname" === attr.name) return;
-        if ("data-iscompcontainer" === attr.name) return;
-        if ("data-comppartblacklist" === attr.name) return;
-        if ("data-compdisinherited" === attr.name) return;
-        if (/^data-style-.*$/g.test(attr.name)) return;
-        if (/^data-dummycompstyle.*$/g.test(attr.name)) return;
-        if (/^data-override-.*$/g.test(attr.name)) return;
+      if (node.hasAttribute("data-sveltecomp-source")) {
+        const uuid = crypto.randomUUID();
+        const parentEl = node.parentElement;
+        if (!parentEl) {
+          console.error(
+            "data-sveltecomp-source element somehow didn't have parentElement",
+          );
+          return;
+        }
+        const parentDataID = parentEl.getAttribute("data-id");
+        if (!parentDataID) {
+          console.error(
+            "Parent of data-sveltecomp-source element didn't have data-id attribute.",
+          );
+          return;
+        }
 
-        newEl.setAttribute(attr.name, attr.value);
-      });
+        const children = Array.from(node.children);
 
-      const [newTagStr] = getElementString(newEl);
+        const codeEl = children.find((child) =>
+          child.hasAttribute("data-sveltecomp-code"),
+        );
+        if (!codeEl) {
+          console.error(
+            "data-sveltecomp-source element didn't have a child data-sveltecomp-code element",
+          );
+          return;
+        }
+        const svelteCode = codeEl.textContent;
 
-      strUpdates.push({
-        index: info.stringPos,
-        length: info.startTagLen,
-        insert: newTagStr,
-      });
+        const name =
+          node.getAttribute("data-sveltecomp-compname") ?? "component";
+
+        const props: CompilePublishInfo[0]["props"] = [];
+        children.forEach((child) => {
+          const propname = child.getAttribute("data-sveltecomp-propname");
+          if (!propname) return;
+          const proptype =
+            child.getAttribute("data-sveltecomp-proptype") ?? "string";
+          props.push({
+            name: propname,
+            type: proptype as "string" | "html" | "dom" | "snippet",
+            value: proptype === "string" ? child.textContent : child.innerHTML,
+          });
+        });
+
+        compileInfo.push({
+          uuid,
+          parentDataID,
+          svelteCode,
+          name,
+          props,
+        });
+
+        // Replace the source element with a comment containing nothing but the UUID
+        //  (this UUID will be used by the generated script to mount the component)
+        strUpdates.push({
+          index: info.stringPos,
+          length: info.stringLen,
+          insert: `<!--${uuid}-->`,
+        });
+      } else if (!closestAttribute(node, "data-sveltecomp-source")) {
+        // Patch out certain attributes of the element
+        const newEl = document.createElement(node.localName);
+        Array.from(node.attributes).forEach((attr) => {
+          if ("data-complibver" === attr.name) return;
+          if ("data-componentname" === attr.name) return;
+          if ("data-iscompcontainer" === attr.name) return;
+          if ("data-comppartblacklist" === attr.name) return;
+          if ("data-compdisinherited" === attr.name) return;
+          if (/^data-style-.*$/g.test(attr.name)) return;
+          if (/^data-dummycompstyle.*$/g.test(attr.name)) return;
+          if (/^data-override-.*$/g.test(attr.name)) return;
+
+          newEl.setAttribute(attr.name, attr.value);
+        });
+
+        const [newTagStr] = getElementString(newEl);
+
+        strUpdates.push({
+          index: info.stringPos,
+          length: info.startTagLen,
+          insert: newTagStr,
+        });
+      }
     }
   });
 
@@ -491,6 +575,14 @@ export function createPublishDoc(
   strUpdates.forEach(({ index, length, insert }) => {
     bodyStr = bodyStr.slice(0, index) + insert + bodyStr.slice(index + length);
   });
+
+  // Create compilation
+  const svelteReply = await p.svelteCompiler.compileForPublish(compileInfo);
+  if (!svelteReply.ok)
+    throw new Error("Compiling svelte-type components failed.");
+
+  // TODO: Does this (svelteReply.code) need to be encoded or escaped in any way?
+  bodyStr += '<script type="module">' + svelteReply.code + "</script>";
 
   let stylesheetStr = "";
 
@@ -503,6 +595,8 @@ export function createPublishDoc(
       stylesheetStr += stylesheet + "\n\n";
     }
   });
+
+  stylesheetStr += "\n\n" + svelteReply.css;
 
   return {
     bodyStr,

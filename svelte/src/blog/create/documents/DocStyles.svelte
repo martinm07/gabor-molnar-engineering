@@ -19,7 +19,7 @@
           declarations: declarations.slice(1, -1),
           compInheritance,
         });
-        console.log("Processed rule", final.at(-1));
+        // console.log("Processed rule", final.at(-1));
 
         if (compInheritance) compInheritance = null;
       } else if (node.type === "Atrule") {
@@ -61,7 +61,7 @@
       ) {
         // Note that the css-tree parser omits comments that don' start with an exclamation mark
         //  so those that aren't of the form of e.g. '/*! Hello world */'
-        console.log("🎈 CSS comment: ", node.value);
+        // console.log("🎈 CSS comment: ", node.value);
         compInheritance = node.value.slice("! COMP-INHERITED ".length);
       }
     });
@@ -396,7 +396,7 @@
 <div
   class="doc-styles history-not-body"
   {@attach (container) => {
-    console.log("→→→ Setting DocStyles elements", $state.snapshot(doc.styles));
+    // console.log("→→→ Setting DocStyles elements", $state.snapshot(doc.styles));
     if (container.childElementCount > doc.styles.length) {
       // If there are more child <div>s than styles, we must remove the excess
       Array.from(container.children)

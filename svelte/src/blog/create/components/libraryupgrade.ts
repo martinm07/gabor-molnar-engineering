@@ -422,6 +422,7 @@ const handleAddedElCompParts = (
 
 interface EditStyleCompPartInfo {
   partKey: string;
+  newPartKey: string;
   newSelector: string;
   newDeclarations: string;
 }
@@ -470,6 +471,7 @@ const findStyleCompChanges = (
     ) {
       partEdits.push({
         partKey: oldPart.partKey,
+        newPartKey: newPart.partKey,
         newSelector: newPart.partSelector,
         newDeclarations: newPart.partDeclarations,
       });
@@ -571,6 +573,7 @@ const handleEditedStyleCompParts = (
 
       rule.selector = edit.newSelector;
       rule.declarations = edit.newDeclarations;
+      rule.compInheritance = edit.newPartKey;
     }
   });
 };
@@ -646,6 +649,111 @@ const handleAddedStyleCompParts = (
 
 ///////////////////////////
 
+interface EditedSvelteCompInfo {
+  compName: string;
+  newCompName: string;
+  newSvelteCode: string;
+}
+
+const createSvelteCompLibDiff = (
+  oldCompLib: ComponentFields[],
+  newCompLib: ComponentFields[],
+  info: CompLibUpgradeInfo,
+): [removedComps: string[], editedComps: EditedSvelteCompInfo[]] => {
+  const removedComps: string[] = [];
+  const editedComps: EditedSvelteCompInfo[] = [];
+
+  const nameMap = info.name_map;
+  oldCompLib.forEach((old) => {
+    const mapped = nameMap[old.name];
+    if (mapped !== undefined) {
+      const new_ = newCompLib.find((comp) => comp.name === mapped);
+      if (new_) {
+        editedComps.push({
+          compName: old.name,
+          newCompName: mapped,
+          newSvelteCode: new_.content,
+        });
+      } else {
+        console.error(
+          `Component has a name mapping, but no entry in the new component library, mapping was "${old.name}" -> "${mapped}".\nOld component: ${old}\nNew component library: ${newCompLib}`,
+        );
+      }
+    } else {
+      removedComps.push(old.name);
+    }
+  });
+
+  return [removedComps, editedComps];
+};
+
+const handleRemovedSvelteComponents = (
+  docContainer: HTMLElement,
+  compNames: string[],
+) => {
+  const walker = document.createTreeWalker(
+    docContainer,
+    NodeFilter.SHOW_ELEMENT,
+  );
+
+  let el: Element;
+  while ((el = walker.nextNode() as Element)) {
+    if (compNames.includes(el.getAttribute("data-sveltecomp-compname") ?? "")) {
+      // prettier-ignore
+      console.log("Disinheriting svelte-type component by removing data-sveltecomp-compname attribute from", el);
+
+      el.removeAttribute("data-sveltecomp-compname");
+    }
+  }
+};
+
+const handleEditedSvelteComponents = (
+  docContainer: HTMLElement,
+  compEdits: EditedSvelteCompInfo[],
+) => {
+  const walker = document.createTreeWalker(
+    docContainer,
+    NodeFilter.SHOW_ELEMENT,
+  );
+
+  let el: Element;
+  while ((el = walker.nextNode() as Element)) {
+    const svelteCompName = el.getAttribute("data-sveltecomp-compname");
+    if (!svelteCompName) continue;
+
+    const editInfo = compEdits.find((edit) => edit.compName === svelteCompName);
+    if (!editInfo) continue;
+
+    const sourceEl = el;
+    const children = Array.from(sourceEl.children);
+
+    let codeEl = children.find((child) =>
+      child.hasAttribute("data-sveltecomp-code"),
+    );
+    if (!codeEl) {
+      // If the code elemenet doesn't exist, then create it
+      console.log(
+        "--- Found svelte-type component without a code element; creating it. Source element:",
+        sourceEl,
+      );
+
+      codeEl = document.createElement("pre");
+      codeEl.setAttribute("data-sveltecomp-code", "");
+      sourceEl.insertBefore(codeEl, sourceEl.firstChild);
+    }
+
+    // Perform updates
+    console.log("Updating svelte-type component code in codeEl", codeEl);
+    codeEl.textContent = editInfo.newSvelteCode;
+    // prettier-ignore
+    if (editInfo.newCompName !== svelteCompName) console.log(`Updating component name of svelte-type component from "${svelteCompName}" to "${editInfo.newCompName}" for sourceEl`, sourceEl);
+
+    sourceEl.setAttribute("data-sveltecomp-compname", editInfo.newCompName);
+  }
+};
+
+///////////////////////////
+
 export function upgradeDoc(
   docContainer: HTMLElement,
   oldCompLib: ComponentFields[],
@@ -693,6 +801,8 @@ export function upgradeDoc(
     editedElComps.flatMap((edit) => edit.addedParts),
   );
 
+  ///////////////////////////
+
   const oldStyleCompLib = oldCompLib.filter((comp) => comp.type === "style");
   const newStyleCompLib = newCompLib.filter((comp) => comp.type === "style");
 
@@ -721,6 +831,24 @@ export function upgradeDoc(
     doc.styles,
     editedStyleComps.flatMap((edit) => edit.addedParts),
   );
+
+  ///////////////////////////
+
+  const oldSvelteCompLib = oldCompLib.filter((comp) => comp.type === "svelte");
+  const newSvelteCompLib = newCompLib.filter((comp) => comp.type === "svelte");
+
+  const [removedSvelteComps, editedSvelteComps] = createSvelteCompLibDiff(
+    oldSvelteCompLib,
+    newSvelteCompLib,
+    info,
+  );
+
+  console.log("removedSvelteComps:", removedSvelteComps);
+  console.log("editedSvelteComps:", editedSvelteComps);
+
+  handleRemovedSvelteComponents(docContainer, removedSvelteComps);
+
+  handleEditedSvelteComponents(docContainer, editedSvelteComps);
 
   console.log(
     "======================= End of log on component library upgrade",

@@ -6,6 +6,7 @@ import {
 } from "../components/component.svelte";
 import type { IMultipleSelect } from "../cursormodes/MultipleSelect.svelte";
 import { closestClass, DynamicStylesheet, parseHTMLFragment } from "../helper";
+import { isNotBody, isHistoryNotBody } from "../App.svelte";
 import type { HistoryManager } from "./history";
 import {
   allComponentTags,
@@ -42,19 +43,18 @@ const getComponentID = () =>
   editorState.mode === "component" ? editorState.resourceName : null;
 
 function loadDocBody(body: Node[], p: EditorInterfaceLoading) {
-  const documentID = getDocumentID();
   // TODO: What replaces this?
   // patchSync = false;
 
   // The first elements of docEl can include "non-body" elements (such as containing metadata), which shouldn't be removed here
   //  (we're removing body elements to replace them with new body elements)
-  const isBody = (node: Node) =>
-    !closestClass(node, "not-body") && !closestClass(node, "history-not-body");
+  const isBody = (node: Node) => !isNotBody(node) && !isHistoryNotBody(node);
   while (p.docEl?.lastChild && isBody(p.docEl.lastChild))
     p.docEl.removeChild(p.docEl.lastChild);
   body.forEach((node) => p.docEl?.appendChild(node));
 
-  p.historyManager?.changeActiveDoc(`${documentID}`);
+  const id = `${editorState.mode}/${editorState.resourceName}`;
+  p.historyManager?.changeActiveDoc(id);
 
   // If we are coming back from editing components in the middle
   //  of adding a new node, then we need to recover the editor state
@@ -192,7 +192,7 @@ export async function loadDocument(p: EditorInterfaceLoading) {
   console.log(`${documentID}`);
   console.log(data["body"]);
   console.groupEnd();
-  const parsedBody = parseHTMLFragment(data["body"], true, true);
+  const parsedBody = parseHTMLFragment(data["body"]);
   loadDocBody(parsedBody, p);
 
   const tagsResp = await fetch_("/documents/api/get_all_tags");
@@ -284,6 +284,14 @@ export async function loadComponent(p: EditorInterfaceLoading) {
         This is a style-type component; edit it using the sidebar CSS rules editor (paintbrush icon on top navigation).<br />You can use this document to see if your rules are working <b>:-)</b><br /><em style="color: var(--color-rock-600);">(please note though that whatever you do with this document won't be saved)</em>
         </main>`;
       loadDocBody([div.children[0]], p);
+    } else if (compWithEdits.type === "svelte") {
+      const div = document.createElement("div");
+      div.innerHTML = `<main style="width: 70%; margin-left: 15%; padding: 0.75em; color: var(--color-rock-800); font-style: italic;">
+        Loading...
+      </main>`;
+      loadDocBody([div.children[0]], p);
+
+      doc.body = compWithEdits.content;
     }
   } else {
     // There's no match of the component ID with a component in the library; this is essentially the 404 view (or as I like to call it; purgatory >:)

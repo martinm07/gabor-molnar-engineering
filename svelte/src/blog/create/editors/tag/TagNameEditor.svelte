@@ -43,6 +43,7 @@
       replacements.push(replacement);
     }
     selection.selected = replacements;
+    $autocompleteSuggestions = [];
   }
 
   function parseTagStr(str: string) {

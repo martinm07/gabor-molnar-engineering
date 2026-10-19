@@ -1,9 +1,9 @@
+import { getNodeParents, XHTML_NS } from "../helper";
 import {
-  getNodeParents,
   isHistoryNotBody,
   isHistoryNotBodyContainer,
   isNotBody,
-} from "../helper";
+} from "../App.svelte";
 import { maskedAttributes } from "../store.svelte";
 import he from "he";
 
@@ -110,7 +110,6 @@ export function decodeHTMLText(
 }
 
 function getNodeSourceRepresentation(node: Node): string {
-  const textContent = encodeHTMLText(node.textContent ?? "");
   switch (node.nodeType) {
     // TODO: I want to explicitly deny ELEMENT_NODE case, because we never actually use this string representation-
     //        we build it up manually in the reconstructHTMLString function, and only use this function for
@@ -118,9 +117,9 @@ function getNodeSourceRepresentation(node: Node): string {
     case Node.ELEMENT_NODE:
       return (node as Element).outerHTML;
     case Node.TEXT_NODE:
-      return textContent;
+      return encodeHTMLText(node.textContent ?? "");
     case Node.COMMENT_NODE:
-      return `<!--${textContent}-->`;
+      return `<!--${node.textContent ?? ""}-->`;
     case Node.DOCUMENT_TYPE_NODE:
       return new XMLSerializer().serializeToString(node);
     case Node.PROCESSING_INSTRUCTION_NODE:
@@ -138,12 +137,14 @@ function getNodeSourceRepresentation(node: Node): string {
   }
 }
 
+function getQualifiedName(el: Element) {
+  return el.prefix ? `${el.prefix}:${el.localName}` : el.localName;
+}
+
 export function getElementString(
   el: Element,
 ): [startingTag: string, closingTag: string | null] {
-  // Serialize the HTML opening tag into a string, taking into account attribute masks
-
-  const attrs = Array.from(el.attributes)
+  const attrStrs = Array.from(el.attributes)
     .map((attr) => {
       // Find if there's a mask for this attribute for this element
       const attrMask = maskedAttributes.find(
@@ -159,12 +160,43 @@ export function getElementString(
 
       return attr.name + '="' + encodeHTMLText(value) + '"';
     })
-    .filter((strOrUndefined) => typeof strOrUndefined === "string")
-    .join(" ");
-  const startingTagStr = `<${el.tagName.toLowerCase()}${attrs.length > 0 ? " " : ""}${attrs}>`;
+    .filter((strOrUndefined) => typeof strOrUndefined === "string");
+
+  // Declare the element's namespace if the parser wouldn't inherit it
+  if (
+    el.namespaceURI &&
+    !el.prefix &&
+    // If the element doesn't have a parent element (i.e. is disconnected from the DOM) we assume a root XHTML namespace
+    el.namespaceURI !== (el.parentElement?.namespaceURI ?? XHTML_NS) &&
+    !el.hasAttribute("xmlns")
+  ) {
+    attrStrs.unshift(`xmlns="${encodeHTMLText(el.namespaceURI)}"`);
+  }
+
+  // Declare prefixes used by attributes (e.g. xlink:href), which the HTML parser
+  // creates in the XLink namespace without any declaration
+  const declared = new Set(Array.from(el.attributes, (a) => a.name));
+  for (const a of Array.from(el.attributes)) {
+    if (
+      a.prefix &&
+      a.namespaceURI &&
+      a.prefix !== "xml" &&
+      a.prefix !== "xmlns"
+    ) {
+      const decl = `xmlns:${a.prefix}`;
+      if (!declared.has(decl)) {
+        declared.add(decl);
+        attrStrs.unshift(`${decl}="${encodeHTMLText(a.namespaceURI)}"`);
+      }
+    }
+  }
+
+  const attrs = attrStrs.join(" ");
+  const name = getQualifiedName(el);
+  const startingTagStr = `<${name}${attrs ? " " : ""}${attrs}>`;
 
   if (isVoidEl(el)) return [startingTagStr.slice(0, -1) + " />", null];
-  else return [startingTagStr, `</${el.tagName.toLowerCase()}>`];
+  return [startingTagStr, `</${name}>`];
 }
 
 function isVoidEl(el: Element) {
@@ -188,6 +220,7 @@ export function reconstructHTMLString(
     debug?: boolean;
   },
 ): [finalStr: string, docNodes: DocNodeMap] {
+  // p.debug = true;
   const docNodes: DocNodeMap = p.docNodes ?? new Map();
   let includeContainer = p.includeContainer ?? true;
   const includeHistoryNotBodyEls = p.includeHistoryNotBodyEls ?? true;
@@ -207,18 +240,7 @@ export function reconstructHTMLString(
   }
   const voidEls: Set<Node> = new Set();
 
-  const walker = document.createTreeWalker(
-    startNode,
-    NodeFilter.SHOW_ALL,
-    (node) => {
-      if (
-        isNotBody(node) ||
-        (!includeHistoryNotBodyEls && isHistoryNotBody(node))
-      )
-        return NodeFilter.FILTER_REJECT;
-      else return NodeFilter.FILTER_ACCEPT;
-    },
-  );
+  const walker = document.createTreeWalker(startNode, NodeFilter.SHOW_ALL);
 
   let stringIndex: number = 0;
   let constructedHTMLString: string = "";
@@ -277,6 +299,19 @@ export function reconstructHTMLString(
         stringIndex += closingTag.length;
         constructedHTMLString += closingTag;
       }
+    }
+
+    if (
+      isNotBody(node) ||
+      (!includeHistoryNotBodyEls && isHistoryNotBody(node))
+    ) {
+      if (p.debug)
+        console.log(
+          "%c        Skipping adding node because it's not-body/history-not-body",
+          "font-style: italic; color: #777;",
+          node,
+        );
+      continue;
     }
 
     if (node instanceof Element) {
@@ -517,6 +552,7 @@ function handleNodeAdd(
   newDocNodes.entries().forEach(([key, val]) => {
     if (val.stringPos !== 0) {
       subPosStarts.push(val.stringPos);
+      if (val.isEl) subPosEnds.push(val.stringPos + val.startTagLen);
       subPosEnds.push(val.stringPos + val.stringLen);
     }
 
@@ -631,6 +667,8 @@ function handleNodeRemove(
         console.log("%c    Removing node", "font-style: italic;", key);
 
       subPosStarts.push(val.stringPos - nodeInfo.stringPos);
+      if (val.isEl)
+        subPosEnds.push(val.stringPos + val.startTagLen - nodeInfo.stringPos);
       subPosEnds.push(val.stringPos + val.stringLen - nodeInfo.stringPos);
       // Nodes positioned after this node in the hierarchy (like further siblings)
     } else if (val.stringPos >= nodeInfo.stringPos + nodeInfo.stringLen) {

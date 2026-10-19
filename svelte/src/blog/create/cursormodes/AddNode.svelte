@@ -4,8 +4,9 @@
     nextSibling,
     firstChild,
     lastChild,
-    closestClass,
+    closestAttribute,
   } from "../helper";
+  import { isNotBody, isHistoryNotBody } from "../App.svelte";
 
   export type Rect = { x: number; y: number; w: number; h: number };
   // Represents line segment locked only to a change in x or a change in y (but not both)
@@ -45,10 +46,13 @@
     referenceNode.insertBefore(newNode, null);
   }
 
-  function createRect(el: Element, doc?: Element): Rect {
+  function createRect(
+    el: Element,
+    doc?: Element,
+    scrollContainer?: Element,
+  ): Rect {
     const rect = el.getBoundingClientRect();
-    if (doc) {
-      const scrollContainer = doc.parentElement!;
+    if (doc && scrollContainer) {
       rect.x += scrollContainer.scrollLeft;
       rect.y += scrollContainer.scrollTop;
     }
@@ -163,6 +167,7 @@
 
   export class PotentialLocations {
     doc: HTMLElement;
+    scrollContainer: HTMLElement;
     locationMap: Map<Rect, HTMLElement> = new Map();
     locationGroups: Array<
       [Rect, { rect: Rect; origRect: Rect; el: HTMLElement }[]]
@@ -177,9 +182,11 @@
 
     constructor(
       doc: HTMLElement,
+      scrollContainer: HTMLElement,
       params?: { maxDiff?: number; offset?: number; buffer?: number },
     ) {
       this.doc = doc;
+      this.scrollContainer = scrollContainer;
       // For slightly adjusting the positioning of multiple locations on top of each other
       //  (e.g. because of one being beside a nested element and the other beside a parent)
       this.MAXDIFF = params?.maxDiff ?? 5;
@@ -191,12 +198,15 @@
 
     addPotentialLocs(filterLocs: (loc: HTMLElement) => boolean = () => true) {
       if (this.addedLocs) return;
+
+      // const isSvelteSource = (node: Node) => closestAttribute(node, "data-sveltecomp-source");
       const allNodes = getAllChildNodes(this.doc)
         .slice(1)
         .filter(
           (node) =>
-            !closestClass(node, "not-body") &&
-            !closestClass(node, "history-not-body"),
+            !isNotBody(node) &&
+            !isHistoryNotBody(node) &&
+            !closestAttribute(node, "data-sveltecomp-source"),
         );
       const potentialLocations: HTMLElement[] = [];
       for (const node of allNodes) {
@@ -232,6 +242,9 @@
           potentialLocations.push(el);
         }
       }
+
+      // await timeoutPromise(0);
+
       for (const el of potentialLocations) {
         const rect = createRect(el, this.doc);
 
@@ -295,9 +308,8 @@
     }
 
     handleHover(e: MouseEvent) {
-      const scrollContainer = this.doc.parentElement!;
-      const mouseX = e.clientX + scrollContainer.scrollLeft;
-      const mouseY = e.clientY + scrollContainer.scrollTop;
+      const mouseX = e.clientX + this.scrollContainer.scrollLeft;
+      const mouseY = e.clientY + this.scrollContainer.scrollTop;
       let addedActive: [
         { x: number; y: number; w: number; h: number },
         HTMLElement,
@@ -362,7 +374,11 @@
     "suggestCreateNewHistoryItem",
   );
 
-  const potentialLocations = new PotentialLocations(docEl);
+  const potentialLocations = new PotentialLocations(
+    docEl,
+    // the scrollContainer of the document (this is dependent on the structure in App.svelte)
+    docEl.parentElement?.parentElement!,
+  );
 
   watch(
     () => mode.cursor,
@@ -463,6 +479,9 @@
     box-shadow: 0 0 0 var(--potential-location-width) var(--rock-400);
     background: var(--rock-400);
     border-radius: 5px;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
   }
   :global(.potential-location.active) {
     /* box-shadow:
@@ -479,6 +498,9 @@
     box-shadow: 0 0 0 var(--potential-location-width) var(--rock-400);
     background: var(--rock-400);
     border-radius: 5px;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
   }
   :global(.potential-location.active div) {
     box-shadow: 0 0 0 var(--potential-location-width) #0060df;

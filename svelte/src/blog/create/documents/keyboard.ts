@@ -52,8 +52,10 @@ export function onKeydown(e: KeyboardEvent, p: EditorInterfaceKeyboard) {
   } else if (e.key === "Escape") {
     // The autocomplete window handles Escape by itself (escaping the autocomplete window);
     //  if the autocomlete window is present, we shouldn't do anything here.
-    if (document.querySelector(".autocomplete-display button"))
+    if (document.querySelector(".autocomplete-display button")) {
+      console.log("Stopped handling because autocomplete buttons exist");
       break keyHandler;
+    }
 
     if (inTextField) {
       if (e.target instanceof HTMLElement) e.target.blur();
@@ -69,11 +71,14 @@ export function onKeydown(e: KeyboardEvent, p: EditorInterfaceKeyboard) {
       mode.sidebar = "edit";
     } else if (mode.sidebar === "addcomponent") {
       selection.selected.forEach((el) => el.remove());
+      selection.selected = [];
+      mode.sidebar = "edit";
     } else if (mode.sidebar === "stylesadd") {
       mode.sidebar = "styles";
     } else if (mode.cursor === "select") p.multipleSelect?.removeSelection();
 
     mode.cursor = "select";
+    mode.dropdown = "none";
   } else if ((e.ctrlKey || e.metaKey) && e.key === "z") {
     try {
       p.historyManager?.undo();
@@ -85,7 +90,7 @@ export function onKeydown(e: KeyboardEvent, p: EditorInterfaceKeyboard) {
         "Caught error while undoing. Resetting html string to before undo was attempted.",
       );
       if (p.docEl && p.htmlStr) {
-        const parsed = parseHTMLFragment(p.htmlStr, true, true);
+        const parsed = parseHTMLFragment(p.htmlStr);
         while (p.docEl.firstChild) p.docEl.removeChild(p.docEl.firstChild);
         parsed.forEach((node) => p.docEl?.appendChild(node));
       }
@@ -100,7 +105,7 @@ export function onKeydown(e: KeyboardEvent, p: EditorInterfaceKeyboard) {
         "Caught error while redoing. Resetting html string to before redo was attempted.",
       );
       if (p.docEl && p.htmlStr) {
-        const parsed = parseHTMLFragment(p.htmlStr, true, true);
+        const parsed = parseHTMLFragment(p.htmlStr);
         while (p.docEl.firstChild) p.docEl.removeChild(p.docEl.firstChild);
         parsed.forEach((node) => p.docEl?.appendChild(node));
       }

@@ -1,11 +1,10 @@
 import {
   closestClass,
   getAllTextNodes,
-  isHistoryNotBody,
-  isNotBody,
   lastChild,
   nextElementSibling,
 } from "../helper";
+import { isNotBody, isHistoryNotBody } from "../App.svelte";
 import { mode } from "../store.svelte";
 import { request2AnimationFrames } from "/shared/helper";
 
@@ -49,8 +48,8 @@ function nodeWhitespaceRestricted(node: Node, strict = true) {
   if (node instanceof HTMLElement) {
     return (
       (strict ? node.textContent : node.textContent.trim()) === "" &&
-      !closestClass(node, "not-body") &&
-      !closestClass(node, "history-not-body")
+      !isNotBody(node) &&
+      !isHistoryNotBody(node)
     );
   } else if (node instanceof Text) {
     return (strict ? node.textContent : node.textContent?.trim()) === "";
@@ -136,11 +135,7 @@ export function handleCollapsePrevention(
     const target = mutation.target;
 
     // Don't do anything with the element/node if it has anything to do with "non-body" elements
-    if (
-      closestClass(target, "not-body") ||
-      closestClass(target, "history-not-body") ||
-      !target.isConnected
-    )
+    if (isNotBody(target) || isHistoryNotBody(target) || !target.isConnected)
       continue;
 
     // 1)

@@ -249,6 +249,9 @@ export default defineConfig({
   //   globals: true,
   //   environment: "jsdom",
   // },
+  server: {
+    hmr: false,
+  },
   plugins: [
     tailwindcss(),
     svelte({

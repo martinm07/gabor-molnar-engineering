@@ -19,6 +19,11 @@ import {
   getNodeParents,
   parseHTMLFragment,
 } from "../helper";
+import {
+  isNotBody,
+  isHistoryNotBody,
+  isHistoryNotBodyContainer,
+} from "../App.svelte";
 import { getAttributesRespectingMasks } from "../editors/attributes/AttributesEditor.svelte";
 import {
   generateRuleString,
@@ -35,11 +40,7 @@ function getSiblingIndex(el: Element) {
   const parent = el.parentElement;
   if (!parent) return 1;
   const index = Array.from(parent.children)
-    .filter(
-      (el) =>
-        !el.classList.contains("not-body") &&
-        !el.classList.contains("history-not-body"),
-    )
+    .filter((el) => !isNotBody(el) && !isHistoryNotBody(el))
     .indexOf(el);
   if (index === -1)
     throw new Error("Somehow parent element didn't have element as child.");
@@ -307,7 +308,18 @@ export function generateElCompContentStr(
   const strUpdates: { insert: string; length: number; index: number }[] = [];
   const allPartsStrings: string[] = [];
   nodeMap.entries().forEach(([node, info]) => {
-    if (info.isEl && node instanceof HTMLElement) {
+    if (isHistoryNotBodyContainer(node)) {
+      // Remove history-not-body elements
+      strUpdates.push({
+        index: info.stringPos,
+        length: info.stringLen,
+        insert: "",
+      });
+    } else if (
+      info.isEl &&
+      node instanceof HTMLElement &&
+      !isHistoryNotBody(node)
+    ) {
       // This creates a list of the element, then all its parents up-to-but-not-including topEl
       //  (which is just the container for our component), reverses the order (to go from top-most
       //  to bottom-most element) and creates a string of the sibling indexes of all these elements.
@@ -696,7 +708,7 @@ export function protectInheritedAttrs(el: Element) {
     );
 
     const oldAttributes = Array.from(el.attributes);
-    console.log("🎈🎈🎈", oldAttributes);
+    // console.log("🎈🎈🎈", oldAttributes);
     oldAttributes.forEach((oldAttr) => el.removeAttribute(oldAttr.name));
     currentAttrs.forEach(([attrName, attrValue]) =>
       el.setAttribute(attrName, attrValue),

@@ -8,7 +8,7 @@
     type IAllStyleEditors,
   } from "../editors/css/AllStyleEditors.svelte";
   import TagNameEditor from "../editors/tag/TagNameEditor.svelte";
-  import { selection, mode, compLib } from "../store.svelte";
+  import { selection, mode, compLib, doc } from "../store.svelte";
   import { watch } from "runed";
   import { changePage, editorState } from "../url.svelte";
   import UpdateDocLib from "../components/UpdateDocLib.svelte";
@@ -21,6 +21,9 @@
   import DocumentViewComponents from "./DocumentViewComponents.svelte";
   import ChangeToComponent from "./ChangeToComponent.svelte";
   import StylesEditor from "../editors/styles/StylesEditor.svelte";
+  import { comps } from "../components/libraryeditor.svelte";
+  import SvelteEditor from "../svelte/SvelteEditor.svelte";
+  import SvelteComponentInfo from "../svelte/SvelteComponentInfo.svelte";
 
   const updateHighlight: () => void = getContext("updateHighlight");
 
@@ -61,6 +64,13 @@
   //       );
   //   },
   // );
+
+  const elementEditMode = $derived(
+    mode.sidebar === "edit" && comps.current.type !== "svelte",
+  );
+  const svelteEditMode = $derived(
+    mode.sidebar === "edit" && comps.current.type === "svelte",
+  );
 </script>
 
 {#if editorState.documentRedirect && mode.sidebar === "edit"}
@@ -87,31 +97,39 @@
   </a>
 {/if}
 
-<!-- SIDEBAR MODE: edit -->
-<div class="text-center">
+<!-- SIDEBAR MODE: edit (for element editing) -->
+
+<div class="text-center" class:hidden={!elementEditMode}>
   <ComponentInfo {currentAttrs} />
+  <SvelteComponentInfo {currentAttrs} />
 </div>
 <div
-  class:hidden={selection.main.length === 0 ||
-    mode.sidebar !== "edit" ||
+  class:hidden={!elementEditMode ||
+    selection.main.length === 0 ||
     selectionHasComponents}
   class="text-center"
 >
   <TagNameEditor selected={selection.main} />
 </div>
 <div
-  class:hidden={selection.main.length === 0 || mode.sidebar !== "edit"}
+  class:hidden={!elementEditMode || selection.main.length === 0}
   class="w-full h-fit p-2 text-center mt-8"
 >
   <AllStyleEditors {currentAttrs} bind:this={cssEditor} />
 </div>
-<div class:hidden={selection.main.length === 0 || mode.sidebar !== "edit"}>
+<div class:hidden={!elementEditMode || selection.main.length === 0}>
   <AttributesEditor
     selected={selection.main}
     bind:this={attributesEditor}
     bind:currentAttrs
   />
 </div>
+
+<!-- SIDEBAR MODE: edit (for Svelte code editing) -->
+<div class:hidden={!svelteEditMode} class="flex w-full">
+  <SvelteEditor bind:value={doc.body} />
+</div>
+
 <!-- SIDEBAR MODE: component -->
 
 {#if mode.inCompLibUpgrade || (compLib.isVersFetched && !compLib.isLibUpToDate)}

@@ -8,6 +8,7 @@
   import { onDestroy, getContext } from "svelte";
   import { on } from "svelte/events";
   import { mode, selection } from "../store.svelte";
+  import { isInSveltePreview } from "../App.svelte";
 
   const getDocEl: () => HTMLElement = getContext("getDocEl");
   const docEl = getDocEl();
@@ -35,9 +36,11 @@
   const off1 = on(docEl, "mouseover", (e) => {
     if (!(e.target instanceof Element)) return;
     const target = e.target === docEl ? undefined : e.target;
-    if (doSelect) selection.hover = target;
-    targetOriginal = target;
-    ancestorCount = 0;
+    if (target) {
+      if (doSelect) selection.hover = target;
+      targetOriginal = target;
+      ancestorCount = 0;
+    }
   });
   onDestroy(off1);
 
@@ -116,6 +119,7 @@
 <div
   class:hidden={!selection.hover || !displaySelection}
   class="absolute border-8 rounded-xl border-rock-500/50 box-content -translate-x-2 -translate-y-2 pointer-events-none z-10"
-  class:border-dashed={selection.hover?.getAttribute("data-component")}
+  class:border-dashed={selection.hover?.getAttribute("data-component") ||
+    isInSveltePreview(selection.hover)}
   bind:this={highlight}
 ></div>

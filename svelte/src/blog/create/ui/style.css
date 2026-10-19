@@ -1,0 +1,20 @@
+[data-sveltecomp-sourcehidden] {
+  display: none !important;
+}
+
+[data-sveltecomp-source]::before {
+  content: var(--markertext, "Hello, world!");
+  background: var(--color-steel-100);
+  display: inline-block;
+  font-family: monospace;
+  color: var(--color-steel-700);
+  border-radius: 0.25rem;
+  padding: 0.25rem;
+  font-size: 0.9rem;
+  border: 2px solid var(--color-steel-300);
+}
+
+[data-sveltecomp-code] {
+  font-size: 8px;
+  display: none;
+}

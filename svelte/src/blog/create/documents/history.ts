@@ -8,6 +8,7 @@ import {
   reconstructHTMLString,
 } from "./docsyncing";
 import { closestClass, insertAfter, parseHTMLFragment } from "../helper";
+import { isNotBody, isHistoryNotBody } from "../App.svelte";
 import { selection } from "../store.svelte";
 
 export type DocHistoryStack = DocHistoryItem[];
@@ -286,6 +287,11 @@ export class HistoryManager {
         ? 1
         : 0;
       while (leftToClose > 0) {
+        if (leftToClose > 100000)
+          throw new Error(
+            "Exceeded limit for leftToClose in handleEphemeralAddOrRemovePatch getTotalLen; likely ran into bug with provided string",
+          );
+
         const currentOffset = offset_ + totalLen;
         const nextOffset = getNextOffset(currentOffset);
         totalLen += nextOffset - currentOffset;
@@ -481,6 +487,8 @@ export class HistoryManager {
         );
       return [strPosForwardMap];
     }
+
+    patches = patches.filter((patch) => patch.forwardValue !== patch.backValue);
 
     if (this.debug)
       console.groupCollapsed(
@@ -1128,7 +1136,7 @@ export class HistoryManager {
     console.log("Bookmarked state as HTML string:\n\n", savedHTMLStr);
 
     return () => {
-      const parsedDoc = parseHTMLFragment(savedHTMLStr, true, true);
+      const parsedDoc = parseHTMLFragment(savedHTMLStr);
       console.log("Restoring bookmarked state. Parsed:", parsedDoc);
       while (docEl.firstChild) docEl.removeChild(docEl.firstChild);
       parsedDoc.forEach((node) => docEl.appendChild(node));
@@ -1177,7 +1185,10 @@ export class HistoryManager {
     tempPosNodes: Map<number, Node>,
     patch: DocPatchDom,
   ) {
-    const newNodes = parseHTMLFragment(value, value.startsWith("<"));
+    const newNodes = parseHTMLFragment(
+      value,
+      referredNode.parentElement?.namespaceURI,
+    );
 
     if (newNodes.length === 0) this.warn(`Added nothing from "${value}"`);
 
@@ -1294,7 +1305,7 @@ export class HistoryManager {
   }
 
   private setAttributes(referredNode: Node, value: string, patch: DocPatchDom) {
-    const newNode = parseHTMLFragment(value, false).at(0);
+    const newNode = parseHTMLFragment(value).at(0);
     if (!newNode || !(newNode instanceof Element))
       throw new Error(`Could not parse string "${value}" as a single element.`);
     if (!(referredNode instanceof Element)) {
@@ -1390,10 +1401,8 @@ export class HistoryManager {
           // When adding an element at the "start" of the document, it should be after these elements.
           let notBodyEl: Element | undefined;
           for (const child of docEl.children) {
-            const isNotBody =
-              closestClass(child, "not-body") ||
-              closestClass(child, "history-not-body");
-            if (!isNotBody) break;
+            const isNotBody_ = isNotBody(child) || isHistoryNotBody(child);
+            if (!isNotBody_) break;
             notBodyEl = child;
           }
           if (notBodyEl) {
@@ -1525,10 +1534,8 @@ export class HistoryManager {
           // When adding an element at the "start" of the document, it should be after these elements.
           let notBodyEl: Element | undefined;
           for (const child of docEl.children) {
-            const isNotBody =
-              closestClass(child, "not-body") ||
-              closestClass(child, "history-not-body");
-            if (!isNotBody) break;
+            const isNotBody_ = isNotBody(child) || isHistoryNotBody(child);
+            if (!isNotBody_) break;
             notBodyEl = child;
           }
           if (notBodyEl) {

@@ -13,10 +13,15 @@
   import FitContentWrapTextarea from "/shared/components/FitContentWrapTextarea.svelte";
   import { TagsEditor } from "../components/ComponentMetaEdit.svelte";
   import { fetch_, timeoutPromise } from "/shared/helper";
-  import { deepEqual, DynamicStylesheet } from "../helper";
+  import {
+    deepEqual,
+    DynamicGroupStylesheet,
+    DynamicStylesheet,
+  } from "../helper";
   import { getContext } from "svelte";
   import { createPublishDoc } from "../documents/docsaving.svelte";
   import { generateRuleString } from "../documents/DocStyles.svelte";
+  import type { SvelteCompiler } from "../svelte/compiler";
 
   const getDocEl: () => HTMLElement = getContext("getDocEl");
   const getDataStyles: () => DynamicStylesheet<string> =
@@ -24,12 +29,18 @@
   const getComponentElStyles: () => DynamicStylesheet<string> = getContext(
     "getComponentElStyles",
   );
+  const getSvelteCompiler: () => SvelteCompiler =
+    getContext("getSvelteCompiler");
+  // const getSvelteCompStyles: () => DynamicGroupStylesheet<string> = getContext(
+  //   "getSvelteCompStyles",
+  // );
 
   const flushServerChanges: () => Promise<[void | Response, void, void]> =
     getContext("flushServerChanges");
 
   async function publishChanges() {
     const docEl = getDocEl();
+    const svelteCompiler = getSvelteCompiler();
 
     const mainStyles = doc.styles
       .map((rule) =>
@@ -43,32 +54,31 @@
     const dataStyles = getDataStyles();
     const componentElStyles = getComponentElStyles();
 
-    // IMP: The order of stylesheets passed in MATTERS for determining the result of the CSS cascade.
-    //      It should be the same order as the dynamic stylesheets are defined/initalised in App.svelte.
-    const { bodyStr, stylesheetStr } = createPublishDoc(docEl, [
-      mainStyles,
-      dataStyles,
-      componentElStyles,
-    ]);
-
-    console.log("PUBLISHING CHANGES.");
-    console.log("HTML string of published document:\n--------\n" + bodyStr);
-    console.log(
-      "Stylesheet string of published document:\n-------\n" + stylesheetStr,
-    );
-
     disablePublishBtn = true;
 
-    await flushServerChanges();
-
-    publishResp = fetch_("/documents/api/publish_development_document", {
-      method: "post",
-      body: JSON.stringify({
-        id: doc.info.id,
-        body: bodyStr,
-        stylesheet: stylesheetStr,
-      }),
-    });
+    publishResp = flushServerChanges()
+      .then(() =>
+        // IMP: The order of stylesheets passed in MATTERS for determining the result of the CSS cascade.
+        //      It should be the same order as the dynamic stylesheets are defined/initalised in App.svelte.
+        createPublishDoc(docEl, [mainStyles, dataStyles, componentElStyles], {
+          svelteCompiler,
+        }),
+      )
+      .then(({ bodyStr, stylesheetStr }) => {
+        console.log("PUBLISHING CHANGES.");
+        console.log("HTML string of published document:\n--------\n" + bodyStr);
+        console.log(
+          "Stylesheet string of published document:\n-------\n" + stylesheetStr,
+        );
+        return fetch_("/documents/api/publish_development_document", {
+          method: "post",
+          body: JSON.stringify({
+            id: doc.info.id,
+            body: bodyStr,
+            stylesheet: stylesheetStr,
+          }),
+        });
+      });
     publishResp.finally(() => (disablePublishBtn = false));
   }
 

@@ -63,7 +63,7 @@
 >
   <a
     class="title font-serif text-2xl border-b border-steel-700 hover:border-b-0"
-    href="/documents/{encodeURI(doc.title.replaceAll(' ', '-'))}"
+    href="/documents/read/{encodeURI(doc.title.replaceAll(' ', '-'))}"
     target="_blank"
     >{doc.title}<ArrowSquareOutIcon
       class="text-steel-700 inline ml-3 mb-1.5 text-xl"

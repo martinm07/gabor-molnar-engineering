@@ -1,3 +1,6 @@
+import * as csstree from "css-tree";
+import * as htmlparser2 from "htmlparser2";
+
 function recurseIgnoreWhitspace(
   traverseFromNode: (node: Node, ...args: any) => Node | null,
   recurse: (
@@ -290,6 +293,14 @@ export function closestClass(
   else return node?.parentElement?.closest(`.${searchClass}`) ?? null;
 }
 
+export function closestAttribute(
+  node: Node | null | undefined,
+  searchAttr: string,
+) {
+  if (node instanceof Element) return node.closest(`[${searchAttr}]`);
+  else return node?.parentElement?.closest(`[${searchAttr}]`);
+}
+
 /**
  * Returns recursive list of all child nodes of node, including the node itself
  */
@@ -361,108 +372,69 @@ export function getNextElement(element: Element) {
   return undefined; // No next element found
 }
 
-const domParser = new DOMParser();
+// const domParser = new DOMParser();
+export const XHTML_NS = "http://www.w3.org/1999/xhtml";
 
 export function parseHTMLFragment(
   htmlStr: string,
-  useXMLParser: boolean = true,
-  hasMultipleTopEls: boolean = false,
+  parentNamespace?: string | null,
 ): Node[] {
-  // "text/html" produces a HTML document starting with a root <html> node, which is not what we want.
-  // "text/xml", meanwhile, doesn't handle bare Text nodes.
+  const root = document.createDocumentFragment();
+  const stack: Node[] = [root];
+  const nsStack = [parentNamespace ?? XHTML_NS]; // namespace of the current parent
 
-  // If the htmlStr is an element, and is not being used for attributes intepreting attributes,
-  //  we use DOMParser with "text/xml" in order to AVOID CORRECTIONS TO THE STRUCTURE;
-  //  a HTML parser corrects things like block elements inside inline containers; `<p><div></div></p>` -> `<p></p><div></div><p></p>`
-  //  where an XML parser doesn't. The XML document then needs to be reinterpreted as a HTML document and everything works.
-  // IMP: XML IS STRICT AND WILL ERROR IF IT DOESN'T LIKE SOMETHING. THIS INCLUDES:
+  // We AVOID using a HTML parser (like htmlparser2.Parser with xmlMode: false), as they generally expect a full HTML document (starting with a root <html> node and so on)
+  //  *and* because HTML parsers implement corrective behaviour to certain structures, for example breaking block elements out of inline containers, transforming e.g. `<p><div></div></p>` -> `<p></p><div></div><p></p>`.
+  // An XML parser meanwhile won't do these things, as it doesn't consider tag names to have any meaning (it doesn't know what a 'p' tag is, or a 'div', etc.).
+  // However, XML is a different spec/standard and so has some differences in expectation from HTML. Some things that an XML parser won't understand:
   //  1) Void elements that dont end in " />"
   //  2) Attributes whose values aren't quoted
   //  3) Boolean attributes which don't have a value
   //  4) Named references to entities e.g. "&nbsp;" (basically requires hex or numeric references)
   //  5) Empty comments, comments with "--" inside
-  //  6) Differences in "namespaces" (more research in general has to be done here)
-  parseAsXML: if (useXMLParser) {
-    const htmlStr_ = hasMultipleTopEls ? `<div>${htmlStr}</div>` : htmlStr;
-    const parsed = domParser.parseFromString(htmlStr_, "text/xml");
+  //  6) Implicit changes in namespaces (HTML/browsers implicitly understand SVG and MathML namespaces)
 
-    // Resort to using a HTML parser if there's a paser error
-    if (parsed.getElementsByTagName("parsererror").length > 0) {
-      console.warn(
-        `Detected parsing error. Resorting to using a HTML parser instead.Tried parsing:\n${htmlStr_}`,
-      );
-      break parseAsXML;
-    }
+  // We use this XML parser over the browser's builtin one (through the DOMParser API) for a few reasons:
+  // - DOMParser can't handle bare Text nodes in "text/xml", where this one can
+  // - DOMParser implements "Attribute Value Normalization" (https://www.xml.com/axml/target.html#AVNormalize),
+  //    which strips newlines and things from attribute values (which HTML doesn't do and hence can mess things up), where this doesn't
+  // - In general this is a "forgiving" parser, where the XML parser is STRICT and is very quick to throw an error.
+  const parser = new htmlparser2.Parser(
+    {
+      onopentag(name, attribs) {
+        const ns = attribs.xmlns ?? nsStack[nsStack.length - 1];
 
-    const nodeToHTML = (node: Node) => {
-      if (node.nodeType === Node.TEXT_NODE) {
-        return document.createTextNode(node.textContent ?? "");
-      } else if (node.nodeType === Node.COMMENT_NODE) {
-        return document.createComment(node.textContent ?? "");
-      } else if (node.nodeType !== Node.ELEMENT_NODE) {
-        console.warn(
-          "node wasn't Text node, Comment node or Element. Not sure what to do with it:",
-          node,
-        );
-        return document.createTextNode("");
-      }
+        const el = ns
+          ? document.createElementNS(ns, name)
+          : document.createElement(name);
+        for (const [k, v] of Object.entries(attribs)) {
+          if (k !== "xmlns") el.setAttribute(k, v);
+        }
+        stack[stack.length - 1].appendChild(el);
+        stack.push(el);
+        nsStack.push(ns);
+      },
+      onclosetag() {
+        stack.pop();
+        nsStack.pop();
+      },
+      ontext(text) {
+        stack[stack.length - 1].appendChild(document.createTextNode(text));
+      },
+      oncomment(data) {
+        stack[stack.length - 1].appendChild(document.createComment(data));
+      },
+    },
+    { xmlMode: true, decodeEntities: true },
+  );
 
-      const el = node as Element;
-
-      const htmlEl = document.createElement(el.nodeName);
-
-      for (let i = 0; i < el.attributes.length; i++) {
-        const attr = el.attributes[i];
-        htmlEl.setAttribute(attr.name, attr.value);
-      }
-
-      return htmlEl;
-    };
-
-    const walker = document.createTreeWalker(
-      parsed.documentElement,
-      NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT | NodeFilter.SHOW_COMMENT,
-    );
-
-    const rootHTML = nodeToHTML(walker.currentNode) as Element;
-    // console.log("%cstarting tree search from node", "font-style: italic", rootHTML);
-
-    const xmlToHTML = new Map<Node, Node>();
-    xmlToHTML.set(walker.currentNode, rootHTML);
-
-    let i = 0;
-    while (walker.nextNode()) {
-      const current = walker.currentNode;
-      const currentHTML = nodeToHTML(current);
-      // console.log(`%c${i}: processing`, "font-style: italic", current);
-
-      const parent = current.parentNode;
-      const parentHTML = parent ? xmlToHTML.get(parent) : null;
-
-      if (!parentHTML) {
-        console.error("Node has no parent in map:", current, xmlToHTML);
-        break;
-      }
-
-      parentHTML.appendChild(currentHTML);
-
-      if (current.nodeType === Node.ELEMENT_NODE) {
-        xmlToHTML.set(current, currentHTML);
-      }
-
-      i++;
-    }
-
-    if (hasMultipleTopEls) return Array.from(rootHTML.childNodes);
-    else return [rootHTML];
-  }
-
-  // A <template> element is efficient, because the content is inert;
-  //  scripts don't run, images don't load.
-  const template = document.createElement("template");
-  template.innerHTML = htmlStr;
-  return Array.from(template.content.childNodes);
+  parser.write(htmlStr);
+  parser.end();
+  root.normalize(); // merge adjacent text nodes (ontext can fire in chunks)
+  return Array.from(root.childNodes);
 }
+
+console.log(parseHTMLFragment("Hello wlrd"));
 
 // https://stackoverflow.com/a/32922084/11493659
 export function deepEqual(x: any, y: any): boolean {
@@ -611,18 +583,113 @@ export class DynamicStylesheet<T> {
   }
 }
 
-export const isNotBody = (node?: Node | null) =>
-  Boolean(closestClass(node, "not-body"));
+export class DynamicGroupStylesheet<T> extends DynamicStylesheet<number> {
+  stylesheetGroupMap: Map<T, number[]>;
+  private counter = 0;
 
-export const isHistoryNotBody = (node?: Node | null) =>
-  Boolean(closestClass(node, "history-not-body"));
+  constructor(useConstructedStylesheet = true) {
+    super(useConstructedStylesheet);
+    this.stylesheetGroupMap = new Map();
+  }
 
-export const isNotBodyContainer = (node?: Node | null) =>
-  node instanceof Element &&
-  node.classList.contains("not-body") &&
-  !isNotBody(node.parentElement);
+  setRules(rules: string | string[], key: T) {
+    const rulesList = DynamicGroupStylesheet.rulesToList(rules);
 
-export const isHistoryNotBodyContainer = (node?: Node | null) =>
-  node instanceof Element &&
-  node.classList.contains("history-not-body") &&
-  !isHistoryNotBody(node.parentElement);
+    let stylesheetKeys = this.stylesheetGroupMap.get(key);
+    if (!stylesheetKeys) {
+      stylesheetKeys = [];
+      this.stylesheetGroupMap.set(key, stylesheetKeys);
+    }
+    // if (stylesheetKeys = this.stylesheetPosMap.get(key)) {
+    for (let i = 0; i < rulesList.length; i++) {
+      const rule = rulesList[i];
+      if (i < stylesheetKeys.length) {
+        this.setRule(rule, stylesheetKeys[i]);
+      } else {
+        const newKey = this.counter++;
+        this.setRule(rule, newKey);
+        stylesheetKeys.push(newKey);
+      }
+    }
+
+    stylesheetKeys
+      .slice(rulesList.length)
+      .forEach((key) => this.removeRule(key));
+  }
+
+  static rulesToList(rules: string | string[]) {
+    let rulesList: string[];
+    if (typeof rules === "string") {
+      const ast = csstree.parse(rules, {
+        parseValue: false,
+        parseAtrulePrelude: false,
+        parseRulePrelude: false,
+      });
+
+      if (ast.type === "StyleSheet") {
+        rulesList = [];
+        ast.children.forEach((node, item, list) => {
+          rulesList.push(csstree.generate(node));
+        });
+      } else {
+        console.warn(
+          "Root of AST wasn't a StyleSheet node; parsing as single rule",
+        );
+        rulesList = [csstree.generate(ast)];
+      }
+    } else rulesList = rules;
+    return rulesList;
+  }
+}
+
+export function isInSveltePreview(
+  node: Node | null | undefined,
+  p?: { container?: Element; cache?: SveltePreviewCheckCache },
+): boolean {
+  if (!node || (p?.container && !p.container.contains(node))) return false;
+
+  const isStartBoundary = (node: Node) =>
+    node.nodeType === Node.COMMENT_NODE &&
+    node.textContent?.trim() === "!<SVELTECOMP-PREVIEW>";
+  const isEndBoundary = (node: Node) =>
+    node.nodeType === Node.COMMENT_NODE &&
+    node.textContent?.trim() === "!</SVELTECOMP-PREVIEW>";
+
+  if (isStartBoundary(node) || isEndBoundary(node)) {
+    // console.log(
+    //   "🍀🍀 decided inSveltePreview true because node passed in was a boundary marker",
+    //   node,
+    // );
+    return true;
+  }
+
+  const getResult = (): boolean => {
+    if (p?.cache?.has(node)) return p.cache.get(node)!;
+
+    // const searched = [];
+
+    let searchNode = node.previousSibling ?? node.parentNode;
+    while (searchNode) {
+      if (searchNode === p?.container) return false;
+      if (p?.cache?.has(searchNode)) return p.cache.get(searchNode)!;
+
+      if (isStartBoundary(searchNode)) {
+        //   console.log(
+        //     "🍀🍀 decided inSveltePreview true because of backtracing to first finding startBoundary",
+        //     searched,
+        //   );
+        return true;
+      } else if (isEndBoundary(searchNode)) return false;
+
+      // searched.push(searchNode);
+      searchNode = searchNode.previousSibling ?? searchNode.parentNode;
+    }
+    return false;
+  };
+
+  const result = getResult();
+  if (p?.cache) p.cache.set(node, result);
+  return result;
+}
+
+export type SveltePreviewCheckCache = Map<Node, boolean>;

@@ -16,6 +16,7 @@
   } from "../store.svelte";
   import { changePage, editorState } from "../url.svelte";
   import type { CompTypeStr } from "../components/component.svelte";
+  import starterSvelteCode from "../svelte/startersvelte.txt?raw";
 
   function selectComponentEdit(comp: SavedComponent) {
     if (editorState.mode !== "component") return;
@@ -27,14 +28,26 @@
     else updateCompRemove(comp.identName);
   }
 
+  function getStarterContent(type: CompTypeStr, startName: number) {
+    switch (type) {
+      case "element":
+        return `<div data-component="unnamed-${startName}-[1]">*initial*</div>`;
+      case "style":
+        return `/*! COMP-INHERITED unnamed-${startName}-[1]*/em{font-size:0.9em}`;
+      case "svelte":
+        return starterSvelteCode;
+    }
+  }
+
   function selectComponentCreate() {
     let startName = 1;
     while (comps.lib.some((comp) => comp.name === `unnamed-${startName}`))
       startName++;
+
     const edit = updateCompAdd({
       name: `unnamed-${startName}`,
       type: createCompType,
-      content: `<div data-component="unnamed-${startName}-[1]">*initial*</div>`,
+      content: getStarterContent(createCompType, startName),
       parts: "1",
     });
     changePage(

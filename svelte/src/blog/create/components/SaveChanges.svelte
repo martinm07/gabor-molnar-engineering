@@ -37,7 +37,7 @@
 {#if showFullModal && editorState.mode === "component" && compLibEdits.current.length > 0}
   <div
     transition:fly={{ y: 48 }}
-    class="fixed bottom-6 w-1/2 ml-[25%] h-[40%] bg-background border-2 rounded-lg border-rock-300"
+    class="fixed z-10 bottom-6 w-1/2 ml-[25%] h-[40%] bg-background border-2 rounded-lg border-rock-300"
   >
     <form
       class="overflow-y-auto w-full max-h-full px-3 pt-6 pb-20"
@@ -95,7 +95,7 @@
 {#if editorState.mode === "component" && compLibEdits.current.length > 0}
   <div
     transition:fly={{ y: 48 }}
-    class="fixed bottom-6 ml-[50%] -translate-x-1/2 shadow-lg shadow-rock-300 rounded-md hover:-translate-y-1 hover:active:translate-y-0 transition-all duration-300 [.inmodal]:bottom-9 [.inmodal]:shadow-none"
+    class="fixed z-20 bottom-6 ml-[50%] -translate-x-1/2 shadow-lg shadow-rock-300 rounded-md hover:-translate-y-1 hover:active:translate-y-0 transition-all duration-300 [.inmodal]:bottom-9 [.inmodal]:shadow-none"
     class:inmodal={showFullModal}
   >
     <button

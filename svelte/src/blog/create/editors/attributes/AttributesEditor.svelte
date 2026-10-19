@@ -31,6 +31,7 @@
     "data-dummycompstyle.*",
     "data-override-.*",
     "data-id",
+    "data-sveltecomp-.*",
   ];
 
   const hiddenAttrsRegex = HIDDEN_ATTRIBUTES.map(

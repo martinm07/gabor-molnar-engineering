@@ -1,5 +1,50 @@
+<script module>
+  const LOG_PATCH_SYNC = false;
+  const LOG_DOC_HIST = true;
+  const LOG_DOC_SAVING = false;
+  const LOG_SVELTE_BUNDLING = false;
+  const DO_SERVER_SYNC = true;
+  const SVELTE_PREVIEW_IN_HISTORY = false;
+
+  let docEl: HTMLElement | undefined = $state();
+
+  const sveltePreviewCheckCache: SveltePreviewCheckCache = new Map();
+
+  export const isInSveltePreview = (node: Node | null | undefined) =>
+    isInSveltePreview_(node, {
+      cache: sveltePreviewCheckCache,
+      container: docEl,
+    });
+
+  /** Handles optimisations of the function in `helper.ts`, and has conditional handling of SVELTE_PREVIEW_IN_HISTORY. */
+  export const isNotBody = (node: Node | null | undefined) => {
+    if (closestClass(node, "not-body")) return true;
+    if (!SVELTE_PREVIEW_IN_HISTORY) return isInSveltePreview(node);
+    else return false;
+  };
+
+  export const isHistoryNotBody = (node: Node | null | undefined) => {
+    if (closestClass(node, "history-not-body")) return true;
+    if (SVELTE_PREVIEW_IN_HISTORY) return isInSveltePreview(node);
+    else return false;
+  };
+
+  export const isHistoryNotBodyContainer = (node: Node | null | undefined) => {
+    if (
+      node instanceof Element &&
+      node.classList.contains("history-not-body") &&
+      !closestClass(node?.parentNode, "history-not-body")
+    )
+      return true;
+    if (SVELTE_PREVIEW_IN_HISTORY)
+      return isInSveltePreview(node) && !isInSveltePreview(node?.parentNode);
+  };
+</script>
+
 <script lang="ts">
   import "/shared/tailwindinit.css";
+  import "./ui/style.css";
+
   import NodeSelect, {
     type INodeSelect,
   } from "./cursormodes/NodeSelect.svelte";
@@ -8,6 +53,9 @@
   import Topbar from "./ui/Topbar.svelte";
   import { PersistedState, useMutationObserver, watch } from "runed";
   import { onDestroy, setContext } from "svelte";
+
+  import { PaneGroup, Pane, PaneResizer } from "paneforge";
+
   import {
     mode,
     selection,
@@ -22,7 +70,14 @@
   } from "./cursormodes/MultipleSelect.svelte";
   import MoveNodes from "./cursormodes/MoveNodes.svelte";
   import { type IAttributesEditor } from "./editors/attributes/AttributesEditor.svelte";
-  import { ClonedSelection, DynamicStylesheet } from "./helper";
+  import {
+    ClonedSelection,
+    closestClass,
+    DynamicGroupStylesheet,
+    DynamicStylesheet,
+    isInSveltePreview as isInSveltePreview_,
+    type SveltePreviewCheckCache,
+  } from "./helper";
   import {
     type DocNodeMap,
     type StringPosNodeMap,
@@ -46,6 +101,9 @@
   import DocMeta, { type IDocMeta } from "./documents/DocMeta.svelte";
   import { protectInheritedAttrs } from "./components/component.svelte";
   import DocStyles, { type IDocStyles } from "./documents/DocStyles.svelte";
+  import { comps } from "./components/libraryeditor.svelte";
+  import { SvelteCompiler } from "./svelte/compiler";
+  import { handleSvelteCompMounts } from "./svelte/sveltecomp.svelte";
 
   let documentID = $derived(
     editorState.mode === "document"
@@ -84,8 +142,11 @@
     },
   );
 
-  let docEl: HTMLElement | undefined = $state();
   setContext("getDocEl", () => docEl);
+
+  setContext("isNotBody", isNotBody);
+  setContext("isHistoryNotBody", isHistoryNotBody);
+  setContext("isHistoryNotBodyContainer", isHistoryNotBodyContainer);
 
   let shiftPressed = $state(false);
 
@@ -144,16 +205,6 @@
 
   let cssEditor: IAllStyleEditors | undefined = $state();
 
-  // const stopLogInterval = setInterval(() => {
-  //   console.log("Focused element:", document.activeElement);
-  // }, 1000);
-  // onDestroy(() => clearInterval(stopLogInterval));
-
-  const LOG_PATCH_SYNC = false;
-  const LOG_DOC_HIST = false;
-  const LOG_DOC_SAVING = false;
-  const DO_SERVER_SYNC = true;
-
   const docNodes: DocNodeMap = new Map();
   const stringPosNodeMap: StringPosNodeMap = new Map();
   let htmlStr: string;
@@ -199,6 +250,13 @@
   onDestroy(() => componentElStyles.destroy());
   setContext("getComponentElStyles", () => componentElStyles);
 
+  const svelteCompiler = new SvelteCompiler({ debug: LOG_SVELTE_BUNDLING });
+  setContext("getSvelteCompiler", () => svelteCompiler);
+
+  const svelteCompStyles = new DynamicGroupStylesheet<string>();
+  onDestroy(() => svelteCompStyles.destroy());
+  setContext("getSvelteCompStyles", () => svelteCompStyles);
+
   // This observer is to
   //  1- disallow non-element nodes as direct children of docEl.
   //      AND enforce at least one element in the document (done by handleCollapsePrevention)
@@ -214,6 +272,8 @@
     () => docEl,
     (mutations) => {
       console.log("mutation observer triggered", mutations);
+      if (mutations.some((mutation) => mutation.type === "childList"))
+        sveltePreviewCheckCache.clear();
 
       // (1) and (2) and (3), essentially; prevent and clean up elements/nodes that can't be interacted with
 
@@ -247,6 +307,7 @@
               syncDataStyleAttrs(current, dataStyles);
               if (!mode.disabled && editorState.mode !== "component")
                 protectInheritedAttrs(current);
+
               alreadyChecked.add(current);
             }
 
@@ -263,16 +324,25 @@
               mutation.attributeName as string,
               mutation.oldValue as string,
             );
+
             syncDataStyleAttrs(
               el,
               dataStyles,
               mutation.attributeName as string,
             );
+
             if (!mode.disabled && editorState.mode !== "component")
               protectInheritedAttrs(el);
+
             alreadyChecked.add(el);
           }
         }
+      });
+
+      handleSvelteCompMounts(mutations, {
+        getSvelteCompiler: () => svelteCompiler,
+        getSvelteCompStyles: () => svelteCompStyles,
+        svelteCompMounts: doc.svelteCompMounts,
       });
 
       function checkDataID(
@@ -453,63 +523,88 @@
   }}
 />
 
-<div
-  class="grid grid-cols-[30%_1fr] grid-rows-[48px_3fr_1fr] [.hide-bl]:grid-rows-[48px_3fr_0fr] h-screen overflow-y-hidden"
-  class:hide-bl={mode.sidebar !== "edit" && mode.sidebar !== "styles"}
+<PaneGroup
+  direction="horizontal"
+  class="h-screen! relative"
+  autoSaveId="editor-horizontal-pane-sizes"
 >
-  <div
-    style="scrollbar-color: var(--rock-100) var(--background);"
-    class="row-span-2 border-r-2 border-rock-300 bg-background overflow-y-scroll"
-  >
-    <div class="h-fit relative p-2">
-      <Sidebar bind:attributesEditor bind:cssEditor />
+  <Pane>
+    <PaneGroup
+      direction="vertical"
+      autoSaveId="editor-sidebar-vertical-pane-sizes"
+    >
+      <Pane
+        class="border-r-2 border-rock-300 bg-background"
+        style="scrollbar-color: var(--rock-100) var(--background);"
+      >
+        <div class="overflow-y-scroll h-full">
+          <div
+            class="h-fit relative p-2 [.svelte-editor]:h-full [.svelte-editor]:flex"
+            class:svelte-editor={comps.current.type === "svelte" &&
+              mode.sidebar === "edit"}
+          >
+            <Sidebar bind:attributesEditor bind:cssEditor />
+          </div>
+        </div>
+      </Pane>
+      <PaneResizer class="h-2 bg-background border-r-2 border-rock-300" />
+      <Pane
+        style="scrollbar-color: #cdcdcd var(--rock-50);"
+        class="bg-rock-50 border-r-2 border-t-2 border-rock-300 {comps.current
+          .type === 'svelte' ||
+        (mode.sidebar !== 'edit' && mode.sidebar !== 'styles')
+          ? 'hidden'
+          : ''}"
+      >
+        <div class="overflow-y-scroll h-full">
+          <div
+            class="h-fit min-h-full flex items-center justify-center"
+            class:hidden={!$autocompleteMode}
+          >
+            <Autocomplete />
+          </div>
+        </div>
+        <div
+          class="h-fit min-h-full flex items-center justify-center"
+          class:hidden={$autocompleteMode}
+        >
+          Keyboard shortcuts here :)
+        </div>
+      </Pane>
+    </PaneGroup>
+  </Pane>
+  <PaneResizer
+    data-direction="horizontal"
+    class="w-0 after:content-[''] after:absolute after:h-full after:w-2 after:-translate-x-1"
+  />
+  <Pane class="flex flex-col">
+    <div
+      class="topbar h-12 shrink-0 flex relative border-b-2 border-rock-300 bg-rock-50 bg-opacity-85"
+    >
+      <Topbar />
     </div>
-  </div>
-  <div
-    class="topbar flex relative border-b-2 border-rock-300 bg-rock-50 bg-opacity-85"
-  >
-    <Topbar />
-  </div>
-  <div
-    class="flex row-span-2 col-span-1 justify-center relative z-0 overflow-auto"
-  >
-    {#if docEl}
-      <EditText bind:this={editText} {docEl} />
-      <NodeSelect {shiftPressed} bind:this={nodeSelect} />
-      <MultipleSelect bind:this={multipleSelect} />
-      <AddNode bind:this={addNode} />
-      <MoveNodes />
-    {/if}
+    <div class="flex grow justify-center relative z-0 overflow-auto">
+      {#if docEl}
+        <EditText bind:this={editText} {docEl} />
+        <NodeSelect {shiftPressed} bind:this={nodeSelect} />
+        <MultipleSelect bind:this={multipleSelect} />
+        <AddNode bind:this={addNode} />
+        <MoveNodes />
+      {/if}
 
-    <div class="relative h-fit w-full flex justify-center">
-      <!-- The document itself should have a single containing element, that can have the styles
-               width: min(75%, 600px); margin: 0 auto;
-           for example. -->
-      <div class="doc w-full" bind:this={docEl}>
-        <DocMeta {docEl} {docSaver} bind:this={docMeta} />
-        <DocStyles {docSaver} bind:this={docStyles} />
-        <div class="w-3/4 max-w-[600px] mx-auto">Loading document...</div>
+      <div class="relative h-fit w-full flex justify-center">
+        <!-- The document itself should have a single containing element, that can have the styles
+                 width: min(75%, 600px); margin: 0 auto;
+             for example. -->
+        <div class="doc w-full" bind:this={docEl}>
+          <DocMeta {docEl} {docSaver} bind:this={docMeta} />
+          <DocStyles {docSaver} bind:this={docStyles} />
+          <div class="w-3/4 max-w-[600px] mx-auto">Loading document...</div>
+        </div>
       </div>
     </div>
-  </div>
-  <div
-    style="scrollbar-color: #cdcdcd var(--rock-50);"
-    class="bg-rock-50 border-r-2 border-t-2 border-rock-300 overflow-y-scroll"
-  >
-    <div
-      class="h-fit min-h-full flex items-center justify-center"
-      class:hidden={!$autocompleteMode}
-    >
-      <Autocomplete />
-    </div>
-    <div
-      class="h-fit min-h-full flex items-center justify-center"
-      class:hidden={$autocompleteMode}
-    >
-      Keyboard shortcuts here :)
-    </div>
-  </div>
-</div>
+  </Pane>
+</PaneGroup>
 
 <SaveChanges />
 

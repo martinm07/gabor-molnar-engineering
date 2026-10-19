@@ -246,117 +246,110 @@
   });
 </script>
 
-<div
-  class="my-2 text-rock-800 text-xl relative [:not(.hidden)]:inline-block w-full"
-  class:hidden={mode.sidebar !== "edit"}
->
-  <span
-    class="absolute text-nowrap -ml-2 [.only-child]:right-3 [:not(.only-child)]:-translate-x-full -translate-y-0.5"
-    class:hidden={!compsSelected}
-    class:only-child={compName === null}
+{#if compsSelected}
+  <div
+    class="my-2 text-rock-800 text-xl relative [:not(.hidden)]:inline-block w-full"
   >
-    <button
-      class="flex items-center text-steel-600 text-2xl hover:bg-steel-100 rounded p-1 hover:active:translate-y-0.5 hover:active:bg-steel-200 hover:active:text-steel-700"
-      title="Break inheritance of element from component"
-      aria-label="Break inheritance of element from component"
-      onclick={() => breakInheritance(selection.main)}
-      ><LinkBreakIcon weight="bold" /></button
-    >
-  </span>
-  <span class="bg-rock-100 rounded px-3 py-1.5" class:hidden={compName === null}
-    >{compName}</span
-  >
-  <span class="absolute ml-2 text-nowrap" class:hidden={!compPart}
-    ><span class="text-rock-600 mr-1">∋</span><span
-      class="-translate-y-px inline-block">{compPart}</span
-    ></span
-  >
-</div>
-<div
-  class="text-rock-700 text-lg italic mb-1"
-  class:hidden={compDescription === null || mode.sidebar !== "edit"}
->
-  {compDescription}
-</div>
-<div
-  class="text-rock-700 text-lg/9 italic"
-  class:hidden={compTags === null || mode.sidebar !== "edit"}
->
-  {#each compTags as tag}
-    <span class="bg-rock-50 border border-rock-200 rounded px-1 py-0.5"
-      >{tag}</span
-    >
-    &nbsp;
-  {/each}
-</div>
-
-<div
-  class:hidden={compName === null || mode.sidebar !== "edit"}
-  class="h-0.5 bg-rock-200 my-3"
-></div>
-
-<button
-  class="mt-4 text-lg text-rock-700 flex items-center justify-start hover:text-rock-600"
-  class:hidden={compName === null || mode.sidebar !== "edit"}
-  onclick={() => (compInheritedInfoOpen = !compInheritedInfoOpen)}
->
-  Inherited styles & attributes
-  {#if compInheritedInfoOpen}
-    <CaretDownIcon class="ml-1 inline text-xl" />
-  {:else}
-    <CaretRightIcon class="ml-1 inline text-xl" />
-  {/if}
-</button>
-
-{#if compInheritedInfoOpen && mode.sidebar === "edit" && compName !== null}
-  <div class="mt-3">
     <span
-      class="bg-rock-100 p-2 rounded font-mono text-lg font-bold text-rock-700"
-      >&lt;{inheritedTagName}&gt;</span
+      class="absolute text-nowrap -ml-2 [.only-child]:right-3 [:not(.only-child)]:-translate-x-full -translate-y-0.5"
+      class:hidden={!compsSelected}
+      class:only-child={compName === null}
+    >
+      <button
+        class="flex items-center text-steel-600 text-2xl hover:bg-steel-100 rounded p-1 hover:active:translate-y-0.5 hover:active:bg-steel-200 hover:active:text-steel-700"
+        title="Break inheritance of element from component"
+        aria-label="Break inheritance of element from component"
+        onclick={() => breakInheritance(selection.main)}
+        ><LinkBreakIcon weight="bold" /></button
+      >
+    </span>
+    <span
+      class="bg-rock-100 rounded px-3 py-1.5"
+      class:hidden={compName === null}>{compName}</span
+    >
+    <span class="absolute ml-2 text-nowrap" class:hidden={!compPart}
+      ><span class="text-rock-600 mr-1">∋</span><span
+        class="-translate-y-px inline-block">{compPart}</span
+      ></span
     >
   </div>
-  {#each inheritedStyles.entries() as [stylesAttr, propsList]}
-    <div class="my-4">
-      {#if stylesAttr}
-        <div
-          class="font-mono text-lg text-rock-700 flex items-center justify-center"
-        >
-          {stylesAttr}
-        </div>
-      {/if}
-      <div
-        class="styles-display font-mono inline-block text-left text-rock-700 bg-rock-100 p-2 rounded text-sm"
+  <div
+    class="text-rock-700 text-lg italic mb-1"
+    class:hidden={compDescription === null}
+  >
+    {compDescription}
+  </div>
+  <div class="text-rock-700 text-lg/9 italic" class:hidden={compTags === null}>
+    {#each compTags as tag}
+      <span class="bg-rock-50 border border-rock-200 rounded px-1 py-0.5"
+        >{tag}</span
       >
-        {#each propsList as prop}
-          <b>{prop[0]}</b><span class="colon">:</span><em>{prop[1]}</em><span
-            class="semic">;</span
-          ><br />
-        {/each}
-      </div>
-    </div>
-  {/each}
-  <div class="h-1"></div>
-  {#each inheritedAttributes as { name, value, overridden }}
-    <div
-      class="my-3 flex justify-center items-center flex-wrap text-rock-700 font-mono text-sm"
-    >
-      <div
-        class:overridden
-        class="m-0.5 text-wrap bg-rock-100 font-bold max-w-[calc(100%-8px)] p-1 rounded box-content [.overridden]:text-rock-500"
-      >
-        {name}
-      </div>
-      <div
-        class:overridden
-        class="m-0.5 text-wrap wrap-break-word bg-rock-100 max-w-[calc(100%-8px)] p-1 rounded box-content [.overridden]:text-rock-500"
-      >
-        {value}
-      </div>
-    </div>
-  {/each}
-{/if}
+      &nbsp;
+    {/each}
+  </div>
 
-<div
-  class:hidden={compName === null || mode.sidebar !== "edit"}
-  class="h-0.5 bg-rock-200 my-3"
-></div>
+  <div class:hidden={compName === null} class="h-0.5 bg-rock-200 my-3"></div>
+
+  <button
+    class="mt-4 text-lg text-rock-700 flex items-center justify-start hover:text-rock-600"
+    class:hidden={compName === null}
+    onclick={() => (compInheritedInfoOpen = !compInheritedInfoOpen)}
+  >
+    Inherited styles & attributes
+    {#if compInheritedInfoOpen}
+      <CaretDownIcon class="ml-1 inline text-xl" />
+    {:else}
+      <CaretRightIcon class="ml-1 inline text-xl" />
+    {/if}
+  </button>
+
+  {#if compInheritedInfoOpen && mode.sidebar === "edit" && compName !== null}
+    <div class="mt-3">
+      <span
+        class="bg-rock-100 p-2 rounded font-mono text-lg font-bold text-rock-700"
+        >&lt;{inheritedTagName}&gt;</span
+      >
+    </div>
+    {#each inheritedStyles.entries() as [stylesAttr, propsList]}
+      <div class="my-4">
+        {#if stylesAttr}
+          <div
+            class="font-mono text-lg text-rock-700 flex items-center justify-center"
+          >
+            {stylesAttr}
+          </div>
+        {/if}
+        <div
+          class="styles-display font-mono inline-block text-left text-rock-700 bg-rock-100 p-2 rounded text-sm"
+        >
+          {#each propsList as prop}
+            <b>{prop[0]}</b><span class="colon">:</span><em>{prop[1]}</em><span
+              class="semic">;</span
+            ><br />
+          {/each}
+        </div>
+      </div>
+    {/each}
+    <div class="h-1"></div>
+    {#each inheritedAttributes as { name, value, overridden }}
+      <div
+        class="my-3 flex justify-center items-center flex-wrap text-rock-700 font-mono text-sm"
+      >
+        <div
+          class:overridden
+          class="m-0.5 text-wrap bg-rock-100 font-bold max-w-[calc(100%-8px)] p-1 rounded box-content [.overridden]:text-rock-500"
+        >
+          {name}
+        </div>
+        <div
+          class:overridden
+          class="m-0.5 text-wrap wrap-break-word bg-rock-100 max-w-[calc(100%-8px)] p-1 rounded box-content [.overridden]:text-rock-500"
+        >
+          {value}
+        </div>
+      </div>
+    {/each}
+  {/if}
+
+  <div class:hidden={compName === null} class="h-0.5 bg-rock-200 my-3"></div>
+{/if}

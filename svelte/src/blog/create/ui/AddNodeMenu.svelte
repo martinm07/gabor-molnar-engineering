@@ -26,13 +26,30 @@
   function addComponent(comp: SavedComponent) {
     if (editorState.mode !== "document") return;
 
-    const componentFrag = decodeElComponentStr(comp.content, "document");
-    addCompLibVerAttrs(componentFrag);
-    const topLevel = Array(...componentFrag.childNodes);
+    if (comp.type === "element") {
+      const componentFrag = decodeElComponentStr(comp.content, "document");
+      addCompLibVerAttrs(componentFrag);
+      const topLevel = Array(...componentFrag.childNodes);
 
-    selection.selected[0].replaceWith(componentFrag);
-    setSelection(topLevel);
-    mode.sidebar = "edit";
+      selection.selected[0].replaceWith(componentFrag);
+      setSelection(topLevel);
+      mode.sidebar = "edit";
+    } else if (comp.type === "svelte") {
+      // localName is the tagName, but already lowercased
+      const sourceEl = document.createElement(selection.selected[0].localName);
+      sourceEl.setAttribute("data-sveltecomp-source", "");
+      sourceEl.setAttribute("data-sveltecomp-compname", comp.name);
+      sourceEl.style.setProperty("--markertext", `"Mounted ${comp.name}"`);
+
+      const codeEl = document.createElement("pre");
+      codeEl.setAttribute("data-sveltecomp-code", "");
+      codeEl.textContent = comp.content;
+
+      sourceEl.appendChild(codeEl);
+      selection.selected[0].replaceWith(sourceEl);
+
+      mode.sidebar = "edit";
+    }
   }
 
   function selectComponentEdit(comp: SavedComponentWithEdit) {
@@ -92,7 +109,9 @@
   </div>
 
   <ComponentTray
-    comps={savedComponents.filter((comp) => comp.type === "element")}
+    comps={savedComponents.filter(
+      (comp) => comp.type === "element" || comp.type === "svelte",
+    )}
     mainAction={addComponent}
     mainActionTag="button"
     secondaryAction={selectComponentEdit}

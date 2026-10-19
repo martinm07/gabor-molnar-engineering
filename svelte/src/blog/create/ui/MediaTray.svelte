@@ -199,7 +199,7 @@
 
 <div class="grow bg-background relative overflow-hidden">
   {let showPopup = $state(false)}
-  {let showPopupTransition: NodeJS.Timeout | undefined}
+  {let showPopupTransition: number | undefined}
   {let popupEl: HTMLElement | undefined}
   {let error: string = $state("")}
   <div class="overflow-y-scroll h-full py-4">
