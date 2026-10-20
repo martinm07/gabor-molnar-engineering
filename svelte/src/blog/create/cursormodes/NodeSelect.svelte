@@ -35,8 +35,8 @@
 
   const off1 = on(docEl, "mouseover", (e) => {
     if (!(e.target instanceof Element)) return;
-    const target = e.target === docEl ? undefined : e.target;
-    if (target) {
+    if (e.target) {
+      const target = e.target === docEl ? undefined : e.target;
       if (doSelect) selection.hover = target;
       targetOriginal = target;
       ancestorCount = 0;

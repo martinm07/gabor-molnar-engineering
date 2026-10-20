@@ -177,7 +177,7 @@
 
     //   if (numInherited === undefined) {
     //     console.error(
-    //       `No entry for data-component '${elDataComponent}' in compPartsToNumInheritedAttrs`,
+    //       `No entry for data-component '${elDataComponent}' in compPartToInheritedAttrs`,
     //       compPartToInheritedAttrs,
     //     );
     //     return;
@@ -206,7 +206,7 @@
 
             if (numInherited === undefined) {
               console.error(
-                `No entry for data-component '${elDataComponent}' in compPartsToNumInheritedAttrs`,
+                `No entry for data-component '${elDataComponent}' in compPartToInheritedAttrs`,
                 compPartToInheritedAttrs,
               );
               return;

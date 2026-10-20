@@ -281,7 +281,9 @@ export async function loadComponent(p: EditorInterfaceLoading) {
       // Show message that the document content is ephemeral
       const div = document.createElement("div");
       div.innerHTML = `<main style="width: 70%; margin-left: 15%; padding: 0.75em; color: var(--color-rock-800);">
-        This is a style-type component; edit it using the sidebar CSS rules editor (paintbrush icon on top navigation).<br />You can use this document to see if your rules are working <b>:-)</b><br /><em style="color: var(--color-rock-600);">(please note though that whatever you do with this document won't be saved)</em>
+        <p>
+          This is a style-type component; edit it using the sidebar CSS rules editor (paintbrush icon on top navigation).<br />You can use this document to see if your rules are working <b>:-)</b><br /><em style="color: var(--color-rock-600);">(please note though that whatever you do with this document won't be saved)</em>
+        </p>
         </main>`;
       loadDocBody([div.children[0]], p);
     } else if (compWithEdits.type === "svelte") {

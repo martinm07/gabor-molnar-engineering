@@ -406,7 +406,7 @@ export function decodeElComponentStr(
   const fragment = document.createDocumentFragment();
   const tempDiv = document.createElement("div");
 
-  const parsed = parseHTMLFragment(content, true, true);
+  const parsed = parseHTMLFragment(content);
   parsed.forEach((node) => tempDiv.appendChild(node));
 
   if (for_ === "component") {
@@ -494,7 +494,7 @@ export function loadComponentLibrary(
           }
           // }
         });
-        // Separately, set the number of attributes parsed on this part in the map compPartsToNumInheritedAttrs,
+        // Separately, set the number of attributes parsed on this part in the map compPartToInheritedAttrs,
         //  signifying that for any instance of this component part, that first number of attributes are what are being inherited.
 
         // console.log(
