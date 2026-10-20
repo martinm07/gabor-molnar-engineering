@@ -2,7 +2,7 @@ import re
 
 from flask import Blueprint, jsonify, render_template, request, send_file
 
-from .extensions import db
+from .extensions import csrf, db
 from .models import NewsletterEmail
 
 bp = Blueprint("home", __name__)
@@ -11,6 +11,17 @@ bp = Blueprint("home", __name__)
 @bp.route("/up")
 def up():
     return ""
+
+
+@bp.post("/_debug")
+@csrf.exempt
+def _debug():
+    return {
+        "referer": request.headers.get("Referer"),
+        "host": request.host,
+        "scheme": request.scheme,
+        "xfp": request.headers.get("X-Forwarded-Proto"),
+    }
 
 
 @bp.route("/")

@@ -41,6 +41,12 @@ def create_app(test_config=None):
     except OSError:
         pass
 
+    @app.before_request
+    def debug_headers():
+        print(dict(request.headers))
+        app.logger.warning("Headers: %s", dict(request.headers))
+        app.logger.warning("is_secure=%s host=%s", request.is_secure, request.host)
+
     db.init_app(app)
     migrate.init_app(app, db)
     csrf.init_app(app)
@@ -84,11 +90,5 @@ def create_app(test_config=None):
     def check_public_files():
         if any(x == request.path[1:] for x in public_files):
             return send_file(os.path.join(PUBLIC_ROOT, request.path[1:]))
-
-    @app.before_request
-    def debug_headers():
-        if request.path == "/login" and request.method == "POST":
-            app.logger.warning("Headers: %s", dict(request.headers))
-            app.logger.warning("is_secure=%s host=%s", request.is_secure, request.host)
 
     return app
