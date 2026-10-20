@@ -19,6 +19,7 @@
   type Vec2 = [x: number, y: number];
 
   function getAllChildNodes(node: Node): Node[] {
+    if (node.nodeType === Node.COMMENT_NODE) return [];
     if (!node.childNodes) return [node];
     return [
       node,
