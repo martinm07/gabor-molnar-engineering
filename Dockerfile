@@ -14,5 +14,12 @@ COPY . .
 # Install the project itself
 RUN uv sync --frozen
 
+ENV PYTHONUNBUFFERED=1
+
 EXPOSE 5000
-CMD ["uv", "run", "gunicorn", "-b", "0.0.0.0:5000", "wsgi:app"]
+CMD ["uv", "run", "gunicorn", "-b", "0.0.0.0:5000", \
+  "--access-logfile", "-", \
+  "--error-logfile", "-", \
+  "--log-level", "info", \
+  "--capture-output", \
+  "wsgi:app"]
