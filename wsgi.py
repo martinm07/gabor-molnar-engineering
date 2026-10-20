@@ -1,14 +1,14 @@
 import pymysql
-from dotenv import load_dotenv
+from dotenv import find_dotenv, load_dotenv
+from werkzeug.middleware.proxy_fix import ProxyFix
 
-# from werkzeug.middleware.proxy_fix import ProxyFix
 from structdesign import create_app
 
 load_dotenv()
+load_dotenv(find_dotenv(".flaskenv"))
 
 pymysql.install_as_MySQLdb()
 
 app = create_app()
-# TODO: Determine whether there are any proxies in front of the app in production
-#        (chiefly Kamal Proxy, or DigitalOcean)
-# app.wsgi_app = ProxyFix(app.wsgi_app, 1)
+# The app sits behind three proxies; Kamal-proxy, go-away and nginx
+app.wsgi_app = ProxyFix(app.wsgi_app, 3)
