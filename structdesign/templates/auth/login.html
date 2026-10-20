@@ -6,54 +6,29 @@
     <link
       rel="apple-touch-icon"
       sizes="180x180"
-      href="static/shared/img/apple-touch-icon.png"
+      href="/static/shared/img/apple-touch-icon.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="32x32"
-      href="static/shared/img/favicon-32x32.png"
+      href="/static/shared/img/favicon-32x32.png"
     />
     <link
       rel="icon"
       type="image/png"
       sizes="16x16"
-      href="static/shared/img/favicon-16x16.png"
+      href="/static/shared/img/favicon-16x16.png"
     />
     <link rel="manifest" href="static/shared/site.webmanifest" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Log into structural-design.eu</title>
-    <script
-      type="module"
-      crossorigin
-      src="/static/auth/js/login-B2jMC1qU.js"
-    ></script>
-    <link
-      rel="modulepreload"
-      crossorigin
-      href="/static/shared/js/svelte-BUzXFy7s.js"
-    />
-    <link
-      rel="modulepreload"
-      crossorigin
-      href="/static/shared/js/transitions-B-qLeVdp.js"
-    />
-    <link
-      rel="modulepreload"
-      crossorigin
-      href="/static/shared/js/context-Cx66y0Yi.js"
-    />
-    <link
-      rel="modulepreload"
-      crossorigin
-      href="/static/shared/js/ArrowRightIcon-CtKswXpa.js"
-    />
-    <link
-      rel="stylesheet"
-      crossorigin
-      href="/static/shared/css/tailwindinit.css"
-    />
+    <script type="module" crossorigin src="/static/auth/js/login-Dhp-2n6a.js"></script>
+    <link rel="modulepreload" crossorigin href="/static/shared/js/helper-Cf7cGgS6.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/context-Bjd6pWIC.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/ArrowRightIcon-DYzBz-9o.js">
+    <link rel="stylesheet" crossorigin href="/static/shared/css/tailwindinit.css">
   </head>
   <body>
     <div
@@ -82,5 +57,6 @@
         globalThis.flashedMessages = {{ get_flashed_messages()|tojson }};
       } catch {}
     </script>
+
   </body>
 </html>

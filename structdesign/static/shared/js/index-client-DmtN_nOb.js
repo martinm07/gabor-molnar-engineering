@@ -1,0 +1,1 @@
+import{at as t,au as e,a2 as c,Q as a}from"./svelte-1WQwkeaR.js";function u(n){t===null&&e(),c(()=>{const o=a(n);if(typeof o=="function")return o})}function s(n){t===null&&e(),u(()=>()=>a(n))}export{s as a,u as o};

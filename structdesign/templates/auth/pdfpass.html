@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+
+    <link
+      rel="apple-touch-icon"
+      sizes="180x180"
+      href="/static/shared/img/apple-touch-icon.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="/static/shared/img/favicon-32x32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="16x16"
+      href="/static/shared/img/favicon-16x16.png"
+    />
+    <link rel="manifest" href="static/shared/site.webmanifest" />
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Retrieve PDF file password</title>
+    <script type="module" crossorigin src="/static/auth/js/pdfpass-DQwTlrNj.js"></script>
+    <link rel="modulepreload" crossorigin href="/static/shared/js/helper-Cf7cGgS6.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/dist-DILvz1LR.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/context-Bjd6pWIC.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/ArrowRightIcon-DYzBz-9o.js">
+    <link rel="modulepreload" crossorigin href="/static/shared/js/transition-BRf5KToz.js">
+    <link rel="stylesheet" crossorigin href="/static/shared/css/tailwindinit.css">
+    <link rel="stylesheet" crossorigin href="/static/auth/css/pdfpass-Q00N3ZPJ.css">
+  </head>
+  <body>
+    <div
+      id="app"
+      style="
+        position: relative;
+        /*display: flex;*/
+        min-height: 100vh;
+        background-color: var(--color-background);
+        /*align-items: center;
+        justify-content: center;*/
+      "
+    ></div>
+    <input id="flask-server" type="hidden" value="http://127.0.0.1:5000" />
+    <script>
+      globalThis.jinjaParsed = false;
+      globalThis.urlRoot = document.getElementById("flask-server").value;
+      try {
+        if (!Number.parseInt("{{ 1 }}"))
+          throw new Error("Jinja wasn't parsed.");
+        globalThis.jinjaParsed = true;
+
+        globalThis.csrfToken = "{{ csrf_token() }}";
+
+        globalThis.pdfpassMarker = "{{ marker }}";
+        globalThis.pdfpassSeed = "{{ seed }}";
+      } catch {}
+    </script>
+
+  </body>
+</html>

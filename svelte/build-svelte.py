@@ -10,7 +10,7 @@ os.chdir(project_root)
 
 flaskapp = os.environ.get("FLASK_APP")
 if not flaskapp:
-    raise Exception(
+    raise OSError(
         'Environment variable "FLASK_APP" is not set. \
         Please set it to relevant value that would run the Flask app \
         (e.g. "flaskapp") either through a .env file in the project root \
@@ -28,9 +28,29 @@ PUBLIC_DIRNAME = "public"
 DIST_PATH = os.path.join(project_root, "svelte", "dist")
 SRC_PATH = os.path.join(project_root, "svelte", "src")
 
+# Files under src/public/ are copied by Vite to the root of dist/, but they
+# are handled separately below (copied directly from src/public/ into the
+# Flask public/ directory), so ignore them when looking for Flask template
+# pages: a public directory that contains only an index.html would otherwise
+# be mistaken for a template section. They are still tracked in distfiles,
+# so that public files removed from src/public/ get cleaned up from the
+# Flask public/ directory.
+public_files = {
+    str(path.relative_to(Path(SRC_PATH) / PUBLIC_DIRNAME))
+    for path in (Path(SRC_PATH) / PUBLIC_DIRNAME).rglob("*")
+    if path.is_file()
+}
+
 distfiles = []
 for root, dirs, files in os.walk(DIST_PATH):
-    if files == ["index.html"]:
+    non_public_files = []
+    for file in files:
+        fullpath = os.path.join(root, file)
+        projectpath = Path(fullpath).relative_to(DIST_PATH)
+        if str(projectpath) not in public_files:
+            non_public_files.append(file)
+        distfiles.append(str(projectpath))
+    if non_public_files == ["index.html"]:
         sec = Path(root).parent.name
         name = Path(root).name
 
@@ -40,10 +60,6 @@ for root, dirs, files in os.walk(DIST_PATH):
         shutil.copyfile(
             os.path.join(root, "index.html"), os.path.join(dst_dir, f"{name}.html")
         )
-    for file in files:
-        fullpath = os.path.join(root, file)
-        projectpath = Path(fullpath).relative_to(DIST_PATH)
-        distfiles.append(str(projectpath))
 
 shutil.copytree(
     os.path.join(DIST_PATH, STATIC_DIRNAME), STATIC_PATH, dirs_exist_ok=True

@@ -1,0 +1,1 @@
+import{Bt as e,zt as t}from"./helper-Cf7cGgS6.js";var n=Symbol(`phosphor-svelte`);function r(){return e(n)?t(n):{}}export{r as t};

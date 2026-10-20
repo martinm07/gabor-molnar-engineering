@@ -132,6 +132,9 @@ function createVirtualFilesPlugin(
   return {
     name: "provide-virtual-files",
     resolveId(importee, importer, { attributes, importerAttributes }) {
+      // TODO: Might this do all of our "resolving relative filepaths" and "propagating URL origins" for us?
+      // this.resolve(importee, importer)
+
       let source: string;
 
       // Importee is a relative filepath, and we need to resolve it using `importer`
