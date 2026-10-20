@@ -182,7 +182,7 @@ accessories:
         GOAWAY_METRICS_BIND: ":9090"
         GOAWAY_POLICY: "/policy.yml"
         GOAWAY_CHALLENGE_TEMPLATE: "anubis"
-        GOAWAY_SLOG_LEVEL: "DEBUG"
+        GOAWAY_SLOG_LEVEL: "WARN"
 
     files:
       - ./config/go-away-policy.yml:/policy.yml:ro
