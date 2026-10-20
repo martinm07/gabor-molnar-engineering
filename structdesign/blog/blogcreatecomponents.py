@@ -9,7 +9,7 @@ from functools import cmp_to_key
 from typing import Any
 
 from diff_match_patch import diff_match_patch
-from flask import Blueprint, g, request
+from flask import Blueprint, current_app, g, request
 from sqlalchemy import select
 
 from ..extensions import db
@@ -149,18 +149,26 @@ def apply_diff(
             # -> If a component is removed, then added, then removed again, leaving its name in g.updated_contents, then
             #     that must be handled when handling the component being removed
 
+            # print(f"→→→ Removing component {components[i]['name']}")
+
             if components[i]["name"] in g.removed_comps:
                 # .remove() removed only first occurence of value. All elements in this list should always be unique hovever
                 #  (since component names have to always be unique identifiers)
                 g.removed_comps.remove(components[i]["name"])
                 if components[i]["name"] not in new_contents_names:
+                    print(f"Appending to new_contents_names: '{components[i]['name']}'")
                     new_contents_names.append(components[i]["name"])
+            elif components[i]["name"] in new_contents_names:
+                new_contents_names.remove(components[i]["name"])
 
             i += 1  # Index without appending (to `final`)
             continue
 
         final.append({})
         adding = find_part("add") is not None
+
+        if adding:
+            print(f"→→→ Adding component {find_part('name')}")
 
         for part in ["name", "type", "description", "tags", "parts", "content"]:
             if adding:
@@ -212,9 +220,13 @@ def apply_diff(
     print(inv_name_map)
 
     # Note that these diffs are going backwards in time
-    g.updated_contents = [
+    new_updated_contents = [
         inv_name_map.get(last_name, last_name) for last_name in new_contents_names
     ]
+    print(
+        f"Updating updated_contents, from {g.updated_contents} to {new_updated_contents}"
+    )
+    g.updated_contents = new_updated_contents
     # Map previous version component names to their new names, without mapping those added in this version
     #  (as a component being added cannot have its name edited in that same version).
     g.removed_comps = [
@@ -345,7 +357,10 @@ def get_component_library():
                 f"Version history exhausted without finding the following component versions: {', '.join([ver for ver in comp_versions if ver is not None])}",
                 400,
             )
+        print("--------------------------")
 
+        print("> " + current.message)
+        print("> --- " + current.description)
         components = apply_diff(components, current.diff)
         # We want to prepend diff messages/versions, so that the order matches the
         #  chronological order of when the diffs were made.
@@ -412,12 +427,28 @@ def get_component_library():
 
         print(f"Old name: '{old_name}'   New name: '{new_name}'")
 
-        old_content = next(
-            comp["content"] for comp in final if comp and comp["name"] == old_name
-        )
-        new_content = next(
-            comp["content"] for comp in latest_components if comp["name"] == new_name
-        )
+        try:
+            old_content = next(
+                comp["content"] for comp in final if comp and comp["name"] == old_name
+            )
+        except StopIteration:
+            current_app.logger.error(
+                f"No old_content found for name {old_name}, updated_contents: {g.updated_contents}"
+            )
+            continue
+
+        try:
+            new_content = next(
+                comp["content"]
+                for comp in latest_components
+                if comp["name"] == new_name
+            )
+        except StopIteration:
+            current_app.logger.error(
+                f"No new_content found for name {new_name}, updated_contents: {g.updated_contents}"
+            )
+            continue
+
         if old_content == new_content:
             g.updated_contents.remove(old_name)
 
